@@ -1,1 +1,1 @@
-# Diamond
+# The Diamond Language
