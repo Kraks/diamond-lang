@@ -19,12 +19,12 @@ case class Env(m: Map[String, VLoc]):
 
 import Value._
 
-case class State(m: Map[VLoc, Value]):
+case class Store(m: Map[VLoc, Value]):
   def apply(ℓ: VLoc): Value = m(ℓ)
-  def +(lv: (VLoc, Value)) = State(m + lv)
-  def alloc: (VLoc, State) =
+  def +(lv: (VLoc, Value)) = Store(m + lv)
+  def alloc: (VLoc, Store) =
     val ℓ: VLoc = VLoc(m.size)
-    (ℓ, State(m + (ℓ -> null)))
+    (ℓ, Store(m + (ℓ -> null)))
 
 def evalBinOp(op: String, v1: Value, v2: Value): Value =
   op match {
@@ -32,9 +32,11 @@ def evalBinOp(op: String, v1: Value, v2: Value): Value =
     case "-" => VNum(v1.asInstanceOf[VNum].x - v2.asInstanceOf[VNum].x)
     case "*" => VNum(v1.asInstanceOf[VNum].x * v2.asInstanceOf[VNum].x)
     case "/" => VNum(v1.asInstanceOf[VNum].x / v2.asInstanceOf[VNum].x)
+    case "=" => VBool(v1.asInstanceOf[VNum].x == v2.asInstanceOf[VNum].x)
   }
 
-def eval(e: Expr, ρ: Env, σ: State): (Value, State) = e match {
+def eval(e: Expr, ρ: Env, σ: Store): (Value, Store) = e match {
+  case EUnit => (VUnit, σ)
   case ENum(n) => (VNum(n), σ)
   case EBool(b) => (VBool(b), σ)
   case EVar(x) => (σ(ρ(x)), σ)
@@ -76,3 +78,6 @@ def eval(e: Expr, ρ: Env, σ: State): (Value, State) = e match {
     val (VBool(b), σ1) = eval(cnd, ρ, σ)
     if (b) eval(thn, ρ, σ1) else eval(els, ρ, σ1)
 }
+
+def topEval(e: Expr): (Value, Store) =
+  eval(e, Env(Map()), Store(Map()))

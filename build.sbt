@@ -1,4 +1,4 @@
-val scala3Version = "3.1.2"
+val scala3Version = "3.2.1"
 
 lazy val root = project
   .in(file("."))
@@ -8,5 +8,5 @@ lazy val root = project
 
     scalaVersion := scala3Version,
 
-    libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % "test"
+    libraryDependencies += "org.scalatest" %% "scalatest" % "3.2.9" % Test
   )
