@@ -1,4 +1,4 @@
-package diamond
+package diamond.f
 
 import Type._
 import Expr._
@@ -85,7 +85,7 @@ def typeWFCheck(t: Type, Γ: TEnv): Type = t match {
   case TUnit | TNum | TBool => t
   case t@TVar(x) =>
     if (Γ.contains(t)) t
-    else ???
+    else throw TypeVarNotFound(t)
   case TFun(t1, t2) =>
     typeWFCheck(t1, Γ)
     typeWFCheck(t2, Γ)
@@ -150,4 +150,4 @@ def topTypeCheck(e: Expr): Type = {
   Counter.reset
   typeCheck(e, TEnv.empty)
 }
-  
+

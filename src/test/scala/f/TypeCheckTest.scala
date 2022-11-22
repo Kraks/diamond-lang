@@ -1,4 +1,4 @@
-package diamond
+package diamond.f
 
 import org.scalatest.funsuite.AnyFunSuite
 
@@ -93,7 +93,7 @@ class TypeCheckTests extends TestBase {
         }
       }
     assert(topTypeCheck(e1) == TNum)
-    val e2 = 
+    val e2 =
       let("t" ⇐ True) {
         let("f" ⇐ False) {
           let("and" ⇐ And) {

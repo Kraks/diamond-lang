@@ -1,4 +1,4 @@
-package diamond
+package diamond.f
 
 // TODO: add F-sub style subtyping
 // TODO: add qualified types (QType)
@@ -17,8 +17,6 @@ enum Type:
   case TRef(t: Type)
 
 import Type._
-
-case class QType(t: Type, q: Set[String])
 
 enum Expr:
   case EUnit

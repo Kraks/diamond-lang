@@ -1,4 +1,4 @@
-package diamond
+package diamond.f
 
 import org.scalatest.funsuite.AnyFunSuite
 
@@ -57,7 +57,7 @@ class EvalTests extends TestBase {
     // λf(x).λg(n). if (n == 0) 1 else x * f(x)(n-1)
     val e1 =
       ELam("f", "x",
-        ELam("g", "n", 
+        ELam("g", "n",
           ECond(EBinOp("=", n, ENum(0)),
             ENum(1),
             EBinOp("*", x, EApp(EApp(f, x), EBinOp("-", n, ENum(1))))),
@@ -92,7 +92,7 @@ class EvalTests extends TestBase {
     val (v1, _) = topEval(e1)
     assert(v1 == VNum(0))
 
-    val e2 = 
+    val e2 =
       let("t" ⇐ True) {
         let("f" ⇐ False) {
           let("and" ⇐ And) {

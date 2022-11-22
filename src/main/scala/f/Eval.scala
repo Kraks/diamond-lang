@@ -1,4 +1,4 @@
-package diamond
+package diamond.f
 
 import Type._
 import Expr._
