@@ -6,6 +6,14 @@ import Expr._
 case class TypeVarNotFound(x: TVar) extends RuntimeException
 case class TypeMismatch(e: Expr, actual: Type, expect: Type) extends RuntimeException
 
+object Counter:
+  var i: Int = 0
+  def reset: Unit = i = 0
+  def fresh: String = try { "#" + i } finally { i += 1 }
+
+object TEnv:
+  def empty: TEnv = TEnv(Map(), Set())
+
 case class TEnv(m: Map[String, Type], tm: Set[TVar]):
   def apply(x: String): Type = m(x)
   def apply(t: TVar): Type =
@@ -25,7 +33,49 @@ def typeCheckBinOp(e1: Expr, e2: Expr, op: String, t1: Type, t2: Type): Type =
       typeCheckEq(e2, t2, TNum)
       TBool
 
-def typeEq(t1: Type, t2: Type): Boolean = ???
+def typeEq(t1: Type, t2: Type): Boolean = (t1, t2) match {
+  case (TUnit, TUnit) => true
+  case (TNum, TNum) => true
+  case (TBool, TBool) => true
+  case (TVar(x), TVar(y)) if x == y => true
+  case (TFun(t1, t2), TFun(t3, t4)) if
+    typeEq(t1, t3) && typeEq(t2, t4) => true
+  case (TForall(x, t1), TForall(y, t2)) =>
+    if (x == y) typeEq(t1, t2)
+    else {
+      val z = Counter.fresh
+      typeEq(TForall(z, typeSubst(t1, x, TVar(z))), TForall(z, typeSubst(t2, y, TVar(z))))
+    }
+  case (TRef(t1), TRef(t2)) =>
+    typeEq(t1, t2)
+  case _ => false
+}
+
+def isFreeIn(x: String, t: Type): Boolean = t match {
+  case TUnit | TNum | TBool => false
+  case TVar(y) => x == y
+  case TFun(t1, t2) => isFreeIn(x, t1) || isFreeIn(x, t2)
+  case TForall(y, body) =>
+    if (x == y) false
+    else isFreeIn(x, body)
+  case TRef(t) => isFreeIn(x, t)
+}
+
+def typeSubst(t: Type, from: String, to: Type): Type = t match {
+  case TUnit | TNum | TBool => t
+  case TVar(x) =>
+    if (x == from) to else t
+  case TFun(t1, t2) =>
+    TFun(typeSubst(t1, from, to), typeSubst(t2, from, to))
+  case TForall(x, body) =>
+    if (x == from) t
+    else if (isFreeIn(x, to)) {
+      val fresh = Counter.fresh
+      val newBody = typeSubst(body, x, TVar(fresh))
+      typeSubst(TForall(fresh, newBody), from, to)
+    } else TForall(x, typeSubst(body, from, to))
+  case TRef(t) => TRef(typeSubst(t, from, to))
+}
 
 def typeCheckEq(e: Expr, actual: Type, exp: Type): Type =
   if (typeEq(actual, exp)) actual
@@ -46,8 +96,6 @@ def typeWFCheck(t: Type, Γ: TEnv): Type = t match {
     typeWFCheck(t, Γ)
     t
 }
-
-def typeSubst(t: Type, from: TVar, to: Type) = ???
 
 def typeCheck(e: Expr, Γ: TEnv): Type = e match {
   case EUnit => TUnit
@@ -79,7 +127,7 @@ def typeCheck(e: Expr, Γ: TEnv): Type = e match {
   case ETyApp(e, t) =>
     typeWFCheck(t, Γ)
     val TForall(x, t0) = typeCheck(e, Γ)
-    typeSubst(t0, TVar(x), t)
+    typeSubst(t0, x, t)
   case EAlloc(e) =>
     TRef(typeCheck(e, Γ))
   case EAssign(e1, e2) =>
@@ -97,3 +145,9 @@ def typeCheck(e: Expr, Γ: TEnv): Type = e match {
     val t3 = typeCheck(els, Γ)
     typeCheckEq(thn, t2, t3)
 }
+
+def topTypeCheck(e: Expr): Type = {
+  Counter.reset
+  typeCheck(e, TEnv.empty)
+}
+  

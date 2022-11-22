@@ -13,11 +13,16 @@ enum Value:
 
 import Value._
 
+object Env:
+  def empty: Env = Env(Map())
+
 case class Env(m: Map[String, VLoc]):
   def apply(x: String): VLoc = m(x)
   def +(xl: (String, VLoc)): Env = Env(m + xl)
 
-import Value._
+
+object Store:
+  def empty: Store = Store(Map())
 
 case class Store(m: Map[VLoc, Value]):
   def apply(ℓ: VLoc): Value = m(ℓ)

@@ -7,8 +7,9 @@ import Expr._
 import Value._
 
 class TestBase extends AnyFunSuite {
-  val ρ0 = Env(Map())
-  val σ0 = Store(Map())
+  val ρ0 = Env.empty
+  val σ0 = Store.empty
+  val Γ0 = TEnv.empty
   val x = EVar("x")
   val y = EVar("y")
   val z = EVar("z")

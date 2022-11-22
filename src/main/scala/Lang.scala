@@ -35,3 +35,29 @@ enum Expr:
   case EAssign(lhs: Expr, rhs: Expr)
   case EDeref(e: Expr)
   case ECond(cnd: Expr, thn: Expr, els: Expr)
+
+object TypeSyntax:
+  import Type._
+  def ∀(x: String)(t: Type) = TForall(x, t)
+  extension (t: Type)
+    def ->(s: Type): TFun = TFun(t, s)
+
+object ExprSyntax:
+  import Expr._
+  import Type._
+  def λ(f: String, x: String)(ft: TFun)(e: => Expr): ELam = ELam(f, x, e, ft)
+  def Λ(x: String)(e: => Expr): ETyLam = ETyLam(x, e)
+  def ite(c: Expr)(thn: Expr)(els: Expr): Expr = ECond(c, thn, els)
+
+  extension (e: Expr)
+    def apply(a: Expr): Expr = EApp(e, a)
+    def ===(e0: Expr): Expr = EBinOp("=", e, e0)
+    def ===(e0: Int): Expr = EBinOp("=", e, ENum(e0))
+    def +(e0: Expr): Expr = EBinOp("+", e, e0)
+    def +(e0: Int): Expr = EBinOp("+", e, ENum(e0))
+    def -(e0: Expr): Expr = EBinOp("-", e, e0)
+    def -(e0: Int): Expr = EBinOp("-", e, ENum(e0))
+    def *(e0: Expr): Expr = EBinOp("*", e, e0)
+    def *(e0: Int): Expr = EBinOp("*", e, ENum(e0))
+    def /(e0: Expr): Expr = EBinOp("/", e, e0)
+    def /(e0: Int): Expr = EBinOp("/", e, ENum(e0))
