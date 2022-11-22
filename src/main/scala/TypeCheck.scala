@@ -12,6 +12,7 @@ case class TEnv(m: Map[String, Type], tm: Set[TVar]):
     if (tm(t)) t else throw TypeVarNotFound(t)
   def +(xt: (String, Type)): TEnv = TEnv(m + xt, tm)
   def +(t: String): TEnv = TEnv(m, tm + TVar(t))
+  def contains(v: TVar): Boolean = tm.contains(v)
 
 def typeCheckBinOp(e1: Expr, e2: Expr, op: String, t1: Type, t2: Type): Type =
   op match
@@ -30,7 +31,23 @@ def typeCheckEq(e: Expr, actual: Type, exp: Type): Type =
   if (typeEq(actual, exp)) actual
   else throw TypeMismatch(e, actual, exp)
 
-def typeWFCheck(t: Type, Γ: TEnv): Type = ???
+def typeWFCheck(t: Type, Γ: TEnv): Type = t match {
+  case TUnit | TNum | TBool => t
+  case t@TVar(x) =>
+    if (Γ.contains(t)) t
+    else ???
+  case TFun(t1, t2) =>
+    typeWFCheck(t1, Γ)
+    typeWFCheck(t2, Γ)
+    t
+  case TForall(x, t) =>
+    typeWFCheck(t, Γ + x)
+  case TRef(t) =>
+    typeWFCheck(t, Γ)
+    t
+}
+
+def typeSubst(t: Type, from: TVar, to: Type) = ???
 
 def typeCheck(e: Expr, Γ: TEnv): Type = e match {
   case EUnit => TUnit
@@ -62,8 +79,7 @@ def typeCheck(e: Expr, Γ: TEnv): Type = e match {
   case ETyApp(e, t) =>
     typeWFCheck(t, Γ)
     val TForall(x, t0) = typeCheck(e, Γ)
-    // TODO: need type substitution
-    ???
+    typeSubst(t0, TVar(x), t)
   case EAlloc(e) =>
     TRef(typeCheck(e, Γ))
   case EAssign(e1, e2) =>
