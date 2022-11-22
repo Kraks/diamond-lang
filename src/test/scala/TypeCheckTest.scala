@@ -38,7 +38,7 @@ class TypeCheckTests extends TestBase {
   }
 
   test("typing lambda") {
-    val e = λ("f", "x")(TNum -> (TNum -> TNum)) {
+    val e1 = λ("f", "x")(TNum -> (TNum -> TNum)) {
       λ("g", "n")(TNum -> TNum) {
         ite (n === 0) {
           ENum(1)
@@ -47,6 +47,23 @@ class TypeCheckTests extends TestBase {
         }
       }
     }
-    assert(typeEq(topTypeCheck(e), TFun(TNum, TFun(TNum, TNum))))
+    assert(typeEq(topTypeCheck(e1), TFun(TNum, TFun(TNum, TNum))))
+
+    val e2 = e1(ENum(5))(ENum(3))
+    assert(topTypeCheck(e2) == TNum)
+
+    val e3 = Λ("α"){ λ("id", "x")(α -> α) { x } }
+    assert(typeEq(topTypeCheck(e3), TForall("α", TFun(TVar("α"), TVar("α")))))
+
+    val e4 = e3(TNum)
+    assert(topTypeCheck(e4) == TFun(TNum,TNum))
+  }
+
+  test("typing let") {
+    val e1 = let("x" ∶ TNum ⇐ ENum(42)) { x + 1024 }
+    assert(topTypeCheck(e1) == TNum)
+
+    val e2 = let("x" ⇐ ENum(42)) { x + 1024 }
+    assert(topTypeCheck(e2) == TNum)
   }
 }

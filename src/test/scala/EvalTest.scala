@@ -10,15 +10,11 @@ class TestBase extends AnyFunSuite {
   val ρ0 = Env.empty
   val σ0 = Store.empty
   val Γ0 = TEnv.empty
-  val x = EVar("x")
-  val y = EVar("y")
-  val z = EVar("z")
-  val n = EVar("n")
-  val f = EVar("f")
-  val g = EVar("g")
 }
 
 class EvalTests extends TestBase {
+  import ExprSyntax._
+  
   test("primitive unit value") {
     val (v, σ) = topEval(EUnit)
     assert(v == VUnit)
