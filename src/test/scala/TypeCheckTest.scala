@@ -66,4 +66,41 @@ class TypeCheckTests extends TestBase {
     val e2 = let("x" ⇐ ENum(42)) { x + 1024 }
     assert(topTypeCheck(e2) == TNum)
   }
+
+  test("typing church-bool") {
+    val TBool = ∀("α") { α -> (α -> α) }
+    val True = Λ("α") { λ("_", "x")(α -> (α -> α)) { λ("_", "y")(α -> α) { x } } }
+    val False = Λ("α") { λ("_", "x")(α -> (α -> α)) { λ("_", "y")(α -> α) { y } } }
+    val And = λ("_", "x")(TBool -> (TBool -> TBool)) {
+      λ("_", "y")(TBool -> TBool) { x(TBool)(y)(False) }
+    }
+    val Bool2Num = λ("_", "x")(TBool -> TNum) { x(TNum)(ENum(1))(ENum(0)) }
+
+    assert(typeEq(topTypeCheck(True), TBool))
+    assert(typeEq(topTypeCheck(False), TBool))
+    assert(typeEq(topTypeCheck(And), TBool -> (TBool -> TBool)))
+    assert(typeEq(topTypeCheck(Bool2Num), TBool -> TNum))
+
+    val t = EVar("t")
+    val f = EVar("f")
+    val and = EVar("and")
+    val e1 =
+      let("t" ⇐ True) {
+        let("f" ⇐ False) {
+          let("and" ⇐ And) {
+            Bool2Num(and(t)(f))
+          }
+        }
+      }
+    assert(topTypeCheck(e1) == TNum)
+    val e2 = 
+      let("t" ⇐ True) {
+        let("f" ⇐ False) {
+          let("and" ⇐ And) {
+            Bool2Num(and(t)(t))
+          }
+        }
+      }
+    assert(topTypeCheck(e2) == TNum)
+  }
 }
