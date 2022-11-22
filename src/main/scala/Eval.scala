@@ -44,7 +44,7 @@ def eval(e: Expr, ρ: Env, σ: Store): (Value, Store) = e match {
     val (v1, σ1) = eval(e1, ρ, σ)
     val (v2, σ2) = eval(e2, ρ, σ1)
     (evalBinOp(op, v1, v2), σ2)
-  case ELam(f, x, _, e) =>
+  case ELam(f, x, e, _) =>
     val (ℓ, σ1) = σ.alloc
     val ρ1 = ρ + (f -> ℓ)
     val fv = VFun(f, x, e, ρ1)

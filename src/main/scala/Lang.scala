@@ -5,7 +5,7 @@ package diamond
 // TODO: add algebraic data types
 // TODO: type lambda self-reference?
 // TODO: multi-argument lambdas
-// TODO: ELam has self-reference thus can be recursive, do we need return type annotated?
+// TODO: add effect system
 
 enum Type:
   case TUnit
@@ -14,6 +14,9 @@ enum Type:
   case TVar(x: String)
   case TFun(t1: Type, t2: Type)
   case TForall(x: String, t: Type)
+  case TRef(t: Type)
+
+import Type._
 
 case class QType(t: Type, q: Set[String])
 
@@ -23,9 +26,9 @@ enum Expr:
   case EBool(b: Boolean)
   case EVar(x: String)
   case EBinOp(op: String, e1: Expr, e2: Expr)
-  case ELam(f: String, x: String, t: Type, body: Expr)
+  case ELam(f: String, x: String, body: Expr, ft: TFun)
   case EApp(e1: Expr, e2: Expr)
-  case ELet(x: String, t: Type, rhs: Expr, body: Expr)
+  case ELet(x: String, t: Option[Type], rhs: Expr, body: Expr)
   case ETyLam(tx: String, body: Expr)
   case ETyApp(e: Expr, t: Type)
   case EAlloc(init: Expr)

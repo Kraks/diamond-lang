@@ -48,7 +48,7 @@ class EvalTests extends TestBase {
 
   test("application") {
     // λf(x).x + 3
-    val e1 = ELam("f", "x", TNum, EBinOp("+", x, ENum(3)))
+    val e1 = ELam("f", "x", EBinOp("+", x, ENum(3)), TFun(TNum, TNum))
     val e2 = EBinOp("+", ENum(4), ENum(5))
     // (λf(x).x + 3)(4 + 5)
     val (v, σ) = topEval(EApp(e1, e2))
@@ -58,11 +58,13 @@ class EvalTests extends TestBase {
   test("recursive function - power") {
     // λf(x).λg(n). if (n == 0) 1 else x * f(x)(n-1)
     val e1 =
-      ELam("f", "x", TNum,
-        ELam("g", "n", TNum,
+      ELam("f", "x",
+        ELam("g", "n", 
           ECond(EBinOp("=", n, ENum(0)),
             ENum(1),
-            EBinOp("*", x, EApp(EApp(f, x), EBinOp("-", n, ENum(1)))))))
+            EBinOp("*", x, EApp(EApp(f, x), EBinOp("-", n, ENum(1))))),
+          TFun(TNum, TNum)),
+        TFun(TNum, TFun(TNum, TNum)))
     // power(2, 5)
     val app = EApp(EApp(e1, ENum(2)), ENum(5))
     val (v, σ) = topEval(app)
