@@ -70,13 +70,13 @@ class EvalTests extends TestBase {
   }
 
   test("church bool") {
-    val TBool = ∀("α") { α -> (α -> α) }
-    val True = Λ("α") { λ("_", "x")(α -> (α -> α)) { λ("_", "y")(α -> α) { x } } }
-    val False = Λ("α") { λ("_", "x")(α -> (α -> α)) { λ("_", "y")(α -> α) { y } } }
-    val And = λ("_", "x")(TBool -> (TBool -> TBool)) {
-      λ("_", "y")(TBool -> TBool) { x(TBool)(y)(False) }
+    val TBool = ∀("α") { α ~> (α ~> α) }
+    val True = Λ("α") { λ("_", "x")(α ~> (α ~> α)) { λ("_", "y")(α ~> α) { x } } }
+    val False = Λ("α") { λ("_", "x")(α ~> (α ~> α)) { λ("_", "y")(α ~> α) { y } } }
+    val And = λ("_", "x")(TBool ~> (TBool ~> TBool)) {
+      λ("_", "y")(TBool ~> TBool) { x(TBool)(y)(False) }
     }
-    val Bool2Num = λ("_", "x")(TBool -> TNum) { x(TNum)(ENum(1))(ENum(0)) }
+    val Bool2Num = λ("_", "x")(TBool ~> TNum) { x(TNum)(ENum(1))(ENum(0)) }
 
     val t = EVar("t")
     val f = EVar("f")

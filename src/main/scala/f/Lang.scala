@@ -42,7 +42,7 @@ object TypeSyntax:
   val τ = TVar("τ")
   def ∀(x: String)(t: Type) = TForall(x, t)
   extension (t: Type)
-    def ->(s: Type): TFun = TFun(t, s)
+    def ~>(s: Type): TFun = TFun(t, s)
 
 object ExprSyntax:
   import Expr._

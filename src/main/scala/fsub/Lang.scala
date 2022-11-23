@@ -45,7 +45,7 @@ object TypeSyntax:
     // Note - ∶ and : are different, we use the former
     def <∶(t: Type): TypeBound = TypeBound(id, t)
   extension (t: Type)
-    def ->(s: Type): TFun = TFun(t, s)
+    def ~>(s: Type): TFun = TFun(t, s)
   def ∀(xt: TypeBound)(t: Type) = TForall(xt.id, xt.bound, t)
 
 object ExprSyntax:

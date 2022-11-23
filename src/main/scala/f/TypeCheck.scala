@@ -1,15 +1,11 @@
 package diamond.f
 
+import diamond._
 import Type._
 import Expr._
 
 case class TypeVarNotFound(x: TVar) extends RuntimeException
 case class TypeMismatch(e: Expr, actual: Type, expect: Type) extends RuntimeException
-
-object Counter:
-  var i: Int = 0
-  def reset: Unit = i = 0
-  def fresh: String = try { "#" + i } finally { i += 1 }
 
 object TEnv:
   def empty: TEnv = TEnv(Map(), Set())

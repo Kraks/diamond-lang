@@ -20,7 +20,6 @@ case class Env(m: Map[String, VLoc]):
   def apply(x: String): VLoc = m(x)
   def +(xl: (String, VLoc)): Env = Env(m + xl)
 
-
 object Store:
   def empty: Store = Store(Map())
 

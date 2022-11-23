@@ -38,8 +38,8 @@ class TypeCheckTests extends TestBase {
   }
 
   test("typing lambda") {
-    val e1 = λ("f", "x")(TNum -> (TNum -> TNum)) {
-      λ("g", "n")(TNum -> TNum) {
+    val e1 = λ("f", "x")(TNum ~> (TNum ~> TNum)) {
+      λ("g", "n")(TNum ~> TNum) {
         ite (n === 0) {
           ENum(1)
         }{
@@ -52,7 +52,7 @@ class TypeCheckTests extends TestBase {
     val e2 = e1(ENum(5))(ENum(3))
     assert(topTypeCheck(e2) == TNum)
 
-    val e3 = Λ("α"){ λ("id", "x")(α -> α) { x } }
+    val e3 = Λ("α"){ λ("id", "x")(α ~> α) { x } }
     assert(typeEq(topTypeCheck(e3), TForall("α", TFun(TVar("α"), TVar("α")))))
 
     val e4 = e3(TNum)
@@ -68,18 +68,18 @@ class TypeCheckTests extends TestBase {
   }
 
   test("typing church-bool") {
-    val TBool = ∀("α") { α -> (α -> α) }
-    val True = Λ("α") { λ("_", "x")(α -> (α -> α)) { λ("_", "y")(α -> α) { x } } }
-    val False = Λ("α") { λ("_", "x")(α -> (α -> α)) { λ("_", "y")(α -> α) { y } } }
-    val And = λ("_", "x")(TBool -> (TBool -> TBool)) {
-      λ("_", "y")(TBool -> TBool) { x(TBool)(y)(False) }
+    val TBool = ∀("α") { α ~> (α ~> α) }
+    val True = Λ("α") { λ("_", "x")(α ~> (α ~> α)) { λ("_", "y")(α ~> α) { x } } }
+    val False = Λ("α") { λ("_", "x")(α ~> (α ~> α)) { λ("_", "y")(α ~> α) { y } } }
+    val And = λ("_", "x")(TBool ~> (TBool ~> TBool)) {
+      λ("_", "y")(TBool ~> TBool) { x(TBool)(y)(False) }
     }
-    val Bool2Num = λ("_", "x")(TBool -> TNum) { x(TNum)(ENum(1))(ENum(0)) }
+    val Bool2Num = λ("_", "x")(TBool ~> TNum) { x(TNum)(ENum(1))(ENum(0)) }
 
     assert(typeEq(topTypeCheck(True), TBool))
     assert(typeEq(topTypeCheck(False), TBool))
-    assert(typeEq(topTypeCheck(And), TBool -> (TBool -> TBool)))
-    assert(typeEq(topTypeCheck(Bool2Num), TBool -> TNum))
+    assert(typeEq(topTypeCheck(And), TBool ~> (TBool ~> TBool)))
+    assert(typeEq(topTypeCheck(Bool2Num), TBool ~> TNum))
 
     val t = EVar("t")
     val f = EVar("f")
