@@ -9,7 +9,7 @@ import Value._
 import TypeSyntax._
 import ExprSyntax._
 
-class TypeCheckTests extends TestBase {
+class FTypeCheckTests extends AnyFunSuite {
   test("type eq") {
     assert(typeEq(TVar("x"), TVar("x")))
     assert(!typeEq(TVar("x"), TVar("y")))

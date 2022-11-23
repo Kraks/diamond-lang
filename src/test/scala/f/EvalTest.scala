@@ -6,13 +6,7 @@ import Type._
 import Expr._
 import Value._
 
-class TestBase extends AnyFunSuite {
-  val ρ0 = Env.empty
-  val σ0 = Store.empty
-  val Γ0 = TEnv.empty
-}
-
-class EvalTests extends TestBase {
+class FEvalTests extends AnyFunSuite {
   import ExprSyntax._
   import TypeSyntax._
 
