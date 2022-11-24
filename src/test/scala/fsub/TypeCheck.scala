@@ -7,7 +7,7 @@ import Expr._
 import TypeSyntax._
 import ExprSyntax._
 
-class FSubtypeTest extends AnyFunSuite {
+class FSubTest extends AnyFunSuite {
   test("eq") {
     given Γ: TEnv = TEnv.empty + ("x" <∶ TTop) + ("y" <∶ TTop)
 

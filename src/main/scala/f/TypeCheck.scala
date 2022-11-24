@@ -22,12 +22,12 @@ case class TEnv(m: Map[String, Type], tm: Set[TVar]):
 def typeCheckBinOp(e1: Expr, e2: Expr, op: String, t1: Type, t2: Type): Type =
   op match
     case "+" | "-" | "*" | "/" =>
-      typeCheckEq(e1, t1, TNum)
-      typeCheckEq(e2, t2, TNum)
+      checkTypeEq(e1, t1, TNum)
+      checkTypeEq(e2, t2, TNum)
       TNum
     case "=" =>
-      typeCheckEq(e1, t1, TNum)
-      typeCheckEq(e2, t2, TNum)
+      checkTypeEq(e1, t1, TNum)
+      checkTypeEq(e2, t2, TNum)
       TBool
 
 def typeEq(t1: Type, t2: Type): Boolean = (t1, t2) match {
@@ -78,7 +78,7 @@ def typeApp(t: Type, a: Type): Type =
   val TForall(x, body) = t
   typeSubst(body, x, a)
 
-def typeCheckEq(e: Expr, actual: Type, exp: Type): Type =
+def checkTypeEq(e: Expr, actual: Type, exp: Type): Type =
   if (typeEq(actual, exp)) actual
   else throw TypeMismatch(e, actual, exp)
 
@@ -110,7 +110,7 @@ def typeCheck(e: Expr, Γ: TEnv): Type = e match {
     val ft = TFun(at, rt)
     typeWFCheck(ft, Γ)
     val t = typeCheck(e, Γ + (x -> at) + (f -> ft))
-    typeCheckEq(e, t, rt)
+    checkTypeEq(e, t, rt)
     ft
   case ELam(_, x, at, e, None) =>
     typeWFCheck(at, Γ)
@@ -119,12 +119,12 @@ def typeCheck(e: Expr, Γ: TEnv): Type = e match {
   case EApp(e1, e2) =>
     val TFun(at, rt) = typeCheck(e1, Γ)
     val t2 = typeCheck(e2, Γ)
-    typeCheckEq(e2, t2, at)
+    checkTypeEq(e2, t2, at)
     rt
   case ELet(x, Some(t), rhs, body) =>
     val t1 = typeCheck(rhs, Γ)
     typeWFCheck(t, Γ)
-    typeCheckEq(rhs, t1, t)
+    checkTypeEq(rhs, t1, t)
     typeCheck(body, Γ + (x -> t1))
   case ELet(x, None, rhs, body) =>
     typeCheck(body, Γ + (x -> typeCheck(rhs, Γ)))
@@ -139,17 +139,17 @@ def typeCheck(e: Expr, Γ: TEnv): Type = e match {
   case EAssign(e1, e2) =>
     val TRef(t) = typeCheck(e1, Γ)
     val t2 = typeCheck(e2, Γ)
-    typeCheckEq(e2, t2, t)
+    checkTypeEq(e2, t2, t)
     TUnit
   case EDeref(e) =>
     val TRef(t) = typeCheck(e, Γ)
     t
   case ECond(cnd, thn, els) =>
     val t1 = typeCheck(cnd, Γ)
-    typeCheckEq(cnd, t1, TBool)
+    checkTypeEq(cnd, t1, TBool)
     val t2 = typeCheck(thn, Γ)
     val t3 = typeCheck(els, Γ)
-    typeCheckEq(thn, t2, t3)
+    checkTypeEq(thn, t2, t3)
 }
 
 def topTypeCheck(e: Expr): Type = {

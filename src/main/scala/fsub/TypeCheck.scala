@@ -30,18 +30,18 @@ case class TEnv(m: Map[String, Type], tm: Map[TVar, Type]):
 def typeCheckBinOp(e1: Expr, e2: Expr, op: String, t1: Type, t2: Type)(using Γ: TEnv): Type =
   op match
     case "+" | "-" | "*" | "/" =>
-      typeCheckEq(e1, t1, TNum)
-      typeCheckEq(e2, t2, TNum)
+      checkTypeEq(e1, t1, TNum)
+      checkTypeEq(e2, t2, TNum)
       TNum
     case "=" =>
-      typeCheckEq(e1, t1, TNum)
-      typeCheckEq(e2, t2, TNum)
+      checkTypeEq(e1, t1, TNum)
+      checkTypeEq(e2, t2, TNum)
       TBool
 
 def typeEq(t1: Type, t2: Type)(using Γ: TEnv): Boolean =
   isSubtype(t1, t2) && isSubtype(t2, t1)
 
-def typeCheckEq(e: Expr, actual: Type, exp: Type)(using Γ: TEnv): Type =
+def checkTypeEq(e: Expr, actual: Type, exp: Type)(using Γ: TEnv): Type =
   if (typeEq(actual, exp)) actual
   else throw TypeMismatch(e, actual, exp)
 
@@ -134,7 +134,7 @@ def typeCheck(e: Expr)(using Γ: TEnv): Type = e match {
     val ft = TFun(at, rt)
     typeWFCheck(ft)
     val t = typeCheck(e)(using Γ + (x -> at) + (f -> ft))
-    typeCheckEq(e, t, rt)
+    checkTypeEq(e, t, rt)
     ft
   case ELam(_, x, at, e, None) =>
     typeWFCheck(at)
@@ -166,17 +166,18 @@ def typeCheck(e: Expr)(using Γ: TEnv): Type = e match {
     val t1 = typeCheck(e1)
     val TRef(t) = typeExposure(t1)
     val t2 = typeCheck(e2)
-    typeCheckEq(e2, t2, t)
+    checkTypeEq(e2, t2, t)
     TUnit
   case EDeref(e) =>
     val TRef(t) = typeExposure(typeCheck(e))
     t
   case ECond(cnd, thn, els) =>
+    // XXX: instead of requiring the same type, could compute their join
     val t1 = typeCheck(cnd)
-    typeCheckEq(cnd, t1, TBool)
+    checkTypeEq(cnd, t1, TBool)
     val t2 = typeCheck(thn)
     val t3 = typeCheck(els)
-    typeCheckEq(thn, t2, t3)
+    checkTypeEq(thn, t2, t3)
 }
 
 def topTypeCheck(e: Expr): Type = {
