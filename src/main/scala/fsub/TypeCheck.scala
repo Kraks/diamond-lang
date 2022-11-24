@@ -102,7 +102,8 @@ def typeCheck(e: Expr)(using Γ: TEnv): Type = e match {
   case EVar(x) => Γ(x)
   case EBinOp(op, e1, e2) =>
     typeCheckBinOp(e1, e2, op, typeCheck(e1), typeCheck(e2))
-  case ELam(f, x, e, ft@TFun(at, rt)) => ???
+  case ELam(f, x, at, e, Some(rt)) => ???
+  case ELam(_, x, at, e, None) => ???
   case EApp(e1, e2) => ???
   case ELet(x, xt, rhs, body) => ???
   case ETyLam(tx, ub, e) => ???

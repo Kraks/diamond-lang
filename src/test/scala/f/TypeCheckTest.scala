@@ -10,7 +10,7 @@ import TypeSyntax._
 import ExprSyntax._
 
 class FTypeCheckTests extends AnyFunSuite {
-  test("type eq") {
+  test("eq") {
     assert(typeEq(TVar("x"), TVar("x")))
     assert(!typeEq(TVar("x"), TVar("y")))
 
@@ -37,7 +37,7 @@ class FTypeCheckTests extends AnyFunSuite {
       TForall("z", TRef(TVar("z")))))
   }
 
-  test("typing lambda") {
+  test("lambda") {
     val e1 = λ("f", "x")(TNum ~> (TNum ~> TNum)) {
       λ("g", "n")(TNum ~> TNum) {
         ite (n === 0) {
@@ -59,7 +59,7 @@ class FTypeCheckTests extends AnyFunSuite {
     assert(topTypeCheck(e4) == TFun(TNum,TNum))
   }
 
-  test("typing let") {
+  test("let") {
     val e1 = let("x" ∶ TNum ⇐ ENum(42)) { x + 1024 }
     assert(topTypeCheck(e1) == TNum)
 
@@ -67,7 +67,7 @@ class FTypeCheckTests extends AnyFunSuite {
     assert(topTypeCheck(e2) == TNum)
   }
 
-  test("typing church-bool") {
+  test("church bool") {
     val TBool = ∀("α") { α ~> (α ~> α) }
     val True = Λ("α") { λ("_", "x")(α ~> (α ~> α)) { λ("_", "y")(α ~> α) { x } } }
     val False = Λ("α") { λ("_", "x")(α ~> (α ~> α)) { λ("_", "y")(α ~> α) { y } } }
@@ -102,5 +102,29 @@ class FTypeCheckTests extends AnyFunSuite {
         }
       }
     assert(topTypeCheck(e2) == TNum)
+  }
+
+  test("church pair") {
+    def TPair(t1: Type, t2: Type): Type = ∀("γ") { (t1 ~> (t2 ~> γ)) ~> γ }
+    val mkPair = Λ("α") { Λ("β") { λ("x" ∶ α) {
+      λ("y" ∶ β) { Λ("γ") { λ("f" ∶ (α ~> (β ~> γ))) { f(x)(y) } } } } } }
+    val fst = Λ("α") { Λ("β") { λ("x" ∶ TPair(α, β)) { x(α)(λ("a" ∶ α) { λ("b" ∶ β) { EVar("a") } }) } } }
+    val snd = Λ("α") { Λ("β") { λ("x" ∶ TPair(α, β)) { x(β)(λ("a" ∶ α) { λ("b" ∶ β) { EVar("b") } }) } } }
+
+    val p1 = mkPair(TNum)(TNum)(1)(2)
+    assert(typeEq(
+      topTypeCheck(p1),
+      TPair(TNum, TNum)))
+    assert(typeEq(
+      topTypeCheck(p1),
+      TForall("α",TFun(TFun(TNum,TFun(TNum,α)),α))))
+    assert(topTypeCheck(p1(TNum)) == TFun(TFun(TNum,TFun(TNum,TNum)),TNum))
+    assert(topTypeCheck(fst(TNum)(TNum)(p1)) == TNum)
+
+    val p2 = mkPair(TNum)(TPair(TBool, TBool))(1)(mkPair(TBool)(TBool)(EBool(true))(EBool(false)))
+    assert(typeEq(
+      topTypeCheck(p2),
+      TPair(TNum, TPair(TBool, TBool))))
+    assert(topTypeCheck(snd(TNum)(TPair(TBool, TBool))(p2)) == TPair(TBool, TBool))
   }
 }

@@ -24,7 +24,7 @@ enum Expr:
   case EBool(b: Boolean)
   case EVar(x: String)
   case EBinOp(op: String, e1: Expr, e2: Expr)
-  case ELam(f: String, x: String, body: Expr, ft: TFun)
+  case ELam(f: String, x: String, at: Type, body: Expr, rt: Option[Type])
   case EApp(e1: Expr, e2: Expr)
   case ELet(x: String, t: Option[Type], rhs: Expr, body: Expr)
   case ETyLam(tx: String, ub: Type, body: Expr)
@@ -70,7 +70,8 @@ object ExprSyntax:
     def ∶(t: Type): BindTy = BindTy(id, t)
     def ⇐(e: Expr): Bind = Bind(id, e, None)
 
-  def λ(f: String, x: String)(ft: TFun)(e: => Expr): ELam = ELam(f, x, e, ft)
+  def λ(f: String, x: String)(ft: TFun)(e: => Expr): ELam = ELam(f, x, ft.t1, e, Some(ft.t2))
+  def λ(xt: BindTy)(e: => Expr): ELam = ELam("_", xt.id, xt.ty, e, None)
   def Λ(x: String)(e: => Expr): ETyLam = ETyLam(x, TTop, e)
   def Λ(xt: TypeBound)(e: => Expr): ETyLam = ETyLam(xt.id, xt.bound, e)
   def ite(c: Expr)(thn: Expr)(els: Expr): Expr = ECond(c, thn, els)
@@ -78,6 +79,7 @@ object ExprSyntax:
 
   extension (e: Expr)
     def apply(a: Expr): Expr = EApp(e, a)
+    def apply(n: Int): Expr = EApp(e, ENum(n))
     def apply(t: Type): Expr = ETyApp(e, t)
     def ===(e0: Expr): Expr = EBinOp("=", e, e0)
     def ===(e0: Int): Expr = EBinOp("=", e, ENum(e0))

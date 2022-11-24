@@ -5,7 +5,8 @@ import Type._
 import Expr._
 
 case class TypeVarNotFound(x: TVar) extends RuntimeException
-case class TypeMismatch(e: Expr, actual: Type, expect: Type) extends RuntimeException
+case class TypeMismatch(e: Expr, actual: Type, expect: Type)
+  extends RuntimeException(s"expr:\n  $e\n  expect type: $expect\n  actual type: $actual")
 
 object TEnv:
   def empty: TEnv = TEnv(Map(), Set())
@@ -73,6 +74,10 @@ def typeSubst(t: Type, from: String, to: Type): Type = t match {
   case TRef(t) => TRef(typeSubst(t, from, to))
 }
 
+def typeApp(t: Type, a: Type): Type =
+  val TForall(x, body) = t
+  typeSubst(body, x, a)
+
 def typeCheckEq(e: Expr, actual: Type, exp: Type): Type =
   if (typeEq(actual, exp)) actual
   else throw TypeMismatch(e, actual, exp)
@@ -100,11 +105,17 @@ def typeCheck(e: Expr, Γ: TEnv): Type = e match {
   case EVar(x) => Γ(x)
   case EBinOp(op, e1, e2) =>
     typeCheckBinOp(e1, e2, op, typeCheck(e1, Γ), typeCheck(e2, Γ))
-  case ELam(f, x, e, ft@TFun(at, rt)) =>
+  case ELam(f, x, at, e, Some(rt)) =>
+    // recursive function requires full annotation
+    val ft = TFun(at, rt)
     typeWFCheck(ft, Γ)
     val t = typeCheck(e, Γ + (x -> at) + (f -> ft))
     typeCheckEq(e, t, rt)
     ft
+  case ELam(_, x, at, e, None) =>
+    typeWFCheck(at, Γ)
+    val rt = typeCheck(e, Γ + (x -> at))
+    TFun(at, rt)
   case EApp(e1, e2) =>
     val TFun(at, rt) = typeCheck(e1, Γ)
     val t2 = typeCheck(e2, Γ)
