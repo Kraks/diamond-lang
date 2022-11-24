@@ -47,6 +47,7 @@ object TypeSyntax:
   extension (t: Type)
     def ~>(s: Type): TFun = TFun(t, s)
   def ∀(xt: TypeBound)(t: Type) = TForall(xt.id, xt.bound, t)
+  def ∀(x: String)(t: Type) = TForall(x, TTop, t)
 
 object ExprSyntax:
   import Expr._
@@ -72,8 +73,10 @@ object ExprSyntax:
 
   def λ(f: String, x: String)(ft: TFun)(e: => Expr): ELam = ELam(f, x, ft.t1, e, Some(ft.t2))
   def λ(xt: BindTy)(e: => Expr): ELam = ELam("_", xt.id, xt.ty, e, None)
+
   def Λ(x: String)(e: => Expr): ETyLam = ETyLam(x, TTop, e)
   def Λ(xt: TypeBound)(e: => Expr): ETyLam = ETyLam(xt.id, xt.bound, e)
+
   def ite(c: Expr)(thn: Expr)(els: Expr): Expr = ECond(c, thn, els)
   def let(xv: Bind)(e: Expr): Expr = ELet(xv.id, xv.ty, xv.rhs, e)
 

@@ -6,9 +6,15 @@ import TypeSyntax._
 import Expr._
 import ExprSyntax._
 
-case class TypeVarNotFound(x: TVar) extends RuntimeException
-case class TypeMismatch(e: Expr, actual: Type, expect: Type) extends RuntimeException
-case class NotSubtype(t1: Type, t2: Type) extends RuntimeException
+// Algorithmic typing/subtyping following
+// http://lampwww.epfl.ch/teaching/archive/type_systems/2004/slides/10handout.pdf
+
+case class TypeVarNotFound(x: TVar)
+  extends RuntimeException(s"$x")
+case class TypeMismatch(e: Expr, actual: Type, expect: Type)
+  extends RuntimeException(s"expr:\n  $e\n  expect type: $expect\n  actual type: $actual")
+case class NotSubtype(t1: Type, t2: Type)
+  extends RuntimeException(s"$t1 not subtype of $t2")
 
 object TEnv:
   def empty: TEnv = TEnv(Map(), Map())
@@ -71,8 +77,8 @@ def isSubtype(t1: Type, t2: Type)(using Γ: TEnv): Boolean = (t1, t2) match {
   case (TUnit, TUnit) => true
   case (TNum, TNum) => true
   case (TBool, TBool) => true
-  case (t1, y@TVar(_)) => isSubtype(t1, Γ(y))
-  case (x@TVar(_), t2) => isSubtype(Γ(x), t2)
+  case (TVar(x), TVar(y)) if x == y => true
+  case (x@TVar(_), t) => isSubtype(Γ(x), t)
   case (TFun(t1, t2), TFun(t3, t4)) =>
     isSubtype(t3, t1) && isSubtype(t2, t4)
   case (TForall(x, b1, t1), TForall(y, b2, t2)) =>
@@ -86,14 +92,35 @@ def isSubtype(t1: Type, t2: Type)(using Γ: TEnv): Boolean = (t1, t2) match {
       isSubtype(TForall(z, b1, typeSubst(t1, x, TVar(z))),
         TForall(z, b2, typeSubst(t2, y, TVar(z))))
     }
-  case (TRef(t1), TRef(t2)) =>
-    isSubtype(t1, t2) && isSubtype(t2, t1)
+  case (TRef(t1), TRef(t2)) => typeEq(t1, t2)
   case _ => false
 }
 
 def checkSubtype(t1: Type, t2: Type)(using Γ: TEnv): Unit =
   if (isSubtype(t1, t2)) ()
   else throw NotSubtype(t1, t2)
+
+def typeExposure(t: Type)(using Γ: TEnv): Type = t match {
+  case x@TVar(_) => typeExposure(Γ(x))
+  case _ => t
+}
+
+def typeWFCheck(t: Type)(using Γ: TEnv): Type = t match {
+  case TUnit | TNum | TBool => t
+  case t@TVar(x) =>
+    if (Γ.contains(t)) t
+    else throw TypeVarNotFound(t)
+  case TFun(t1, t2) =>
+    typeWFCheck(t1)
+    typeWFCheck(t2)
+    t
+  case TForall(x, b, t) =>
+    typeWFCheck(b)
+    typeWFCheck(t)(using Γ + (x <∶ b))
+  case TRef(t) =>
+    typeWFCheck(t)
+    t
+}
 
 def typeCheck(e: Expr)(using Γ: TEnv): Type = e match {
   case EUnit => TUnit
@@ -102,16 +129,54 @@ def typeCheck(e: Expr)(using Γ: TEnv): Type = e match {
   case EVar(x) => Γ(x)
   case EBinOp(op, e1, e2) =>
     typeCheckBinOp(e1, e2, op, typeCheck(e1), typeCheck(e2))
-  case ELam(f, x, at, e, Some(rt)) => ???
-  case ELam(_, x, at, e, None) => ???
-  case EApp(e1, e2) => ???
-  case ELet(x, xt, rhs, body) => ???
-  case ETyLam(tx, ub, e) => ???
-  case ETyApp(e, t) => ???
-  case EAlloc(e) => ???
-  case EAssign(e1, e2) => ???
-  case EDeref(e) => ???
-  case ECond(cnd, thn, els) => ???
+  case ELam(f, x, at, e, Some(rt)) =>
+    // recursive function requires full annotation
+    val ft = TFun(at, rt)
+    typeWFCheck(ft)
+    val t = typeCheck(e)(using Γ + (x -> at) + (f -> ft))
+    typeCheckEq(e, t, rt)
+    ft
+  case ELam(_, x, at, e, None) =>
+    typeWFCheck(at)
+    val rt = typeCheck(e)(using Γ + (x -> at))
+    TFun(at, rt)
+  case EApp(e1, e2) =>
+    val t1 = typeCheck(e1)
+    val t2 = typeCheck(e2)
+    val TFun(t3, t4) = typeExposure(t1)
+    checkSubtype(t2, t3)
+    t4
+  case ELet(x, Some(t), rhs, body) =>
+    val t1 = typeCheck(rhs)
+    typeWFCheck(t)
+    checkSubtype(t1, t)
+    typeCheck(body)(using Γ + (x -> t1))
+  case ELet(x, None, rhs, body) =>
+    typeCheck(body)(using Γ + (x -> typeCheck(rhs)))
+  case ETyLam(tx, ub, e) =>
+    TForall(tx, ub, typeCheck(e)(using Γ + (tx <∶ ub)))
+  case ETyApp(e, t) =>
+    val t1 = typeCheck(e)
+    val TForall(x, b, body) = typeExposure(t1)
+    checkSubtype(t, b)
+    typeSubst(body, x, t)
+  case EAlloc(e) =>
+    TRef(typeCheck(e))
+  case EAssign(e1, e2) =>
+    val t1 = typeCheck(e1)
+    val TRef(t) = typeExposure(t1)
+    val t2 = typeCheck(e2)
+    typeCheckEq(e2, t2, t)
+    TUnit
+  case EDeref(e) =>
+    val TRef(t) = typeExposure(typeCheck(e))
+    t
+  case ECond(cnd, thn, els) =>
+    val t1 = typeCheck(cnd)
+    typeCheckEq(cnd, t1, TBool)
+    val t2 = typeCheck(thn)
+    val t3 = typeCheck(els)
+    typeCheckEq(thn, t2, t3)
 }
 
 def topTypeCheck(e: Expr): Type = {

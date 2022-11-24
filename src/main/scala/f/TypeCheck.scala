@@ -121,14 +121,13 @@ def typeCheck(e: Expr, Γ: TEnv): Type = e match {
     val t2 = typeCheck(e2, Γ)
     typeCheckEq(e2, t2, at)
     rt
-  case ELet(x, xt, rhs, body) =>
+  case ELet(x, Some(t), rhs, body) =>
     val t1 = typeCheck(rhs, Γ)
-    val t1c = xt match
-      case Some(t) =>
-        typeWFCheck(t, Γ)
-        typeCheckEq(rhs, t1, t)
-      case None => t1
-    typeCheck(body, Γ + (x -> t1c))
+    typeWFCheck(t, Γ)
+    typeCheckEq(rhs, t1, t)
+    typeCheck(body, Γ + (x -> t1))
+  case ELet(x, None, rhs, body) =>
+    typeCheck(body, Γ + (x -> typeCheck(rhs, Γ)))
   case ETyLam(tx, e) =>
     TForall(tx, typeCheck(e, Γ + tx))
   case ETyApp(e, t) =>
