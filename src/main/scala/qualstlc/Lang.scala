@@ -6,7 +6,7 @@ enum Type:
   case TUnit
   case TNum
   case TBool
-  case TFun(t1: QType, t2: QType)
+  case TFun(id: Option[String], t1: QType, t2: QType)
   case TRef(t: Type)
 
 import Type._
@@ -15,6 +15,8 @@ case class Fresh()
 type QElem = String | Fresh
 object Qual:
   def untrack: Qual = Qual(Set())
+  def fresh: Qual = Qual(Set(Fresh()))
+  def singleton(x: String): Qual = Qual(Set(x))
 case class Qual(q: Set[QElem]):
   def isUntrack: Boolean = q.isEmpty
   def isFresh: Boolean = q.contains(Fresh())
@@ -41,10 +43,14 @@ object TypeSyntax:
   import Type._
   val ◆ = Fresh()
   extension (t: QType)
-    def ~>(s: QType): TFun = TFun(t, s)
+    def ~>(s: QType): TFun = TFun(None, t, s)
+  extension (id: String)
+    def ♯(t: TFun): TFun = TFun(Some(id), t.t1, t.t2)
   extension (t: Type)
     def ^(q: Qual): QType = QType(t, q)
     def ^(q: QElem): QType = QType(t, Qual(Set(q)))
+    def ^(q: Unit): QType = QType(t, Qual(Set()))
+    def ^(q: Tuple): QType = QType(t, Qual(q.toList.asInstanceOf[List[QElem]].toSet))
   // type to qualified type conversion, default is untracked
   given Conversion[Type, QType] = QType(_, Qual.untrack)
 
