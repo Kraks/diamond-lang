@@ -24,6 +24,11 @@ object TEnv:
 case class TEnv(m: Map[String, QType]):
   def apply(x: String): QType = m(x)
   def +(xt: (String, QType)): TEnv = TEnv(m + xt)
+  def ⊇(q: Qual): Boolean = {
+    val Qual(s) = q
+    val dom: Set[QElem] = m.keys.toSet
+    s.subsetOf(dom + ◆)
+  }
 
 def typeCheckBinOp(e1: Expr, e2: Expr, op: String, t1: QType, t2: QType)(using Γ: TEnv): Type =
   op match
@@ -55,7 +60,28 @@ def checkQTypeEq(e: Expr, actual: QType, exp: QType)(using Γ: TEnv): QType =
 def checkUntrackQual(q: Qual): Unit =
   assert(q.isUntrack, "Not support nested reference")
 
-def isSubqual(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean = ???
+def qualVarExposure0(x: String)(using Γ: TEnv): Qual = {
+  // XXX: should use a worklist
+  Γ(x) match {
+    case QType(TFun(_, _, _, _), r) if r.nonFresh => ???
+    case QType(_, r) if r.nonFresh => ???
+  }
+}
+
+def qualExposure(q: Qual)(using Γ: TEnv): Qual = {
+  // compute the maximum upper bound qualifier under Γ,
+  // super inefficient via a fixpoint itervation
+  // XXX: is that upper bound unique?
+  var p: Set[QElem] = Set()
+  for (x <- q.q if !x.isInstanceOf[Fresh]) {
+  }
+  Qual(p)
+}
+
+def isSubqual(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean = {
+  if (q1 ≤ q2 && Γ ⊇ q2) true // Q-Sub
+  else ???
+}
 
 def isSubtype(t1: Type, t2: Type)(using Γ: TEnv): Boolean = ???
 

@@ -6,7 +6,7 @@ enum Type:
   case TUnit
   case TNum
   case TBool
-  case TFun(id: Option[String], t1: QType, t2: QType)
+  case TFun(id: Option[String], arg: Option[String], t1: QType, t2: QType)
   case TRef(t: Type)
 
 import Type._
@@ -20,7 +20,8 @@ object Qual:
 case class Qual(q: Set[QElem]):
   def isUntrack: Boolean = q.isEmpty
   def isFresh: Boolean = q.contains(Fresh())
-
+  def nonFresh: Boolean = !q.contains(Fresh())
+  def ≤(q2: Qual): Boolean = q.subsetOf(q2.q)
 case class QType(t: Type, q: Qual)
 
 enum Expr:
@@ -43,9 +44,9 @@ object TypeSyntax:
   import Type._
   val ◆ = Fresh()
   extension (t: QType)
-    def ~>(s: QType): TFun = TFun(None, t, s)
+    def ~>(s: QType): TFun = TFun(None, None, t, s)
   extension (id: String)
-    def ♯(t: TFun): TFun = TFun(Some(id), t.t1, t.t2)
+    def ♯(t: TFun): TFun = TFun(Some(id), t.arg, t.t1, t.t2)
   extension (t: Type)
     def ^(q: Qual): QType = QType(t, q)
     def ^(q: QElem): QType = QType(t, Qual(Set(q)))
@@ -73,6 +74,7 @@ object ExprSyntax:
 
   case class BindTy(id: String, ty: QType) {
     def ⇐(e: Expr): Bind = Bind(id, e, Some(ty))
+    def ~>(rt: QType): TFun = TFun(None, Some(id), ty, rt)
   }
   case class Bind(id: String, rhs: Expr, ty: Option[QType])
 
