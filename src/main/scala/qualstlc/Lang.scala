@@ -58,11 +58,17 @@ object ExprSyntax:
   import Expr._
   import Type._
 
+  val 𝑥 = "x"
   val x = EVar("x")
+  val 𝑦 = "y"
   val y = EVar("y")
+  val 𝑧 = "z"
   val z = EVar("z")
+  val 𝑛 = "n"
   val n = EVar("n")
+  val 𝑓 = "f"
   val f = EVar("f")
+  val 𝑔 = "g"
   val g = EVar("g")
 
   case class BindTy(id: String, ty: QType) {
