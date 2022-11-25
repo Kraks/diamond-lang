@@ -12,13 +12,13 @@ import ExprSyntax._
 class FSubFullTest extends AnyFunSuite {
   test("undecidable") {
     def ¬(T: Type): Type = ∀("α" <∶ T) { α }
-    // note that Γ ⊢ ¬S <: ¬ T implies T <: T by contravariance
+    // note that Γ ⊢ ¬S <: ¬T implies T <: S by contravariance
     val X = TVar("X")
     val Y = TVar("Y")
     val T = ∀("β" <∶ TTop) { ¬(∀("γ" <∶ β) { ¬(γ) }) }
 
     given Γ: TEnv = TEnv.empty + ("X" <∶ T)
     // Note: this is non-terminating (as it should)
-    isSubtypeFull(X, ∀("Y" <∶ X) { ¬(Y) })
+    //isSubtypeFull(X, ∀("Y" <∶ X) { ¬(Y) })
   }
 }

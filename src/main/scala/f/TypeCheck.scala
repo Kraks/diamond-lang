@@ -4,7 +4,8 @@ import diamond._
 import Type._
 import Expr._
 
-case class TypeVarNotFound(x: TVar) extends RuntimeException
+case class TypeVarNotFound(x: TVar)
+  extends RuntimeException(s"$x")
 case class TypeMismatch(e: Expr, actual: Type, expect: Type)
   extends RuntimeException(s"expr:\n  $e\n  expect type: $expect\n  actual type: $actual")
 

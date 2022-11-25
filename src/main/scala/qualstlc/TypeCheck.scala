@@ -1,0 +1,91 @@
+package diamond.qualstlc
+
+import diamond._
+
+import Type._
+import Expr._
+
+import TypeSyntax._
+import TypeSyntax.given_Conversion_Type_QType
+import ExprSyntax._
+
+case class QualMismatch(actual: Qualifier, expect: Qualifier)
+  extends RuntimeException(s"expect qualifier: $expect\n  actual qualifier: $actual")
+case class TypeMismatch(e: Expr, actual: Type, expect: Type)
+  extends RuntimeException(s"expr:\n  $e\n  expect type: $expect\n  actual type: $actual")
+case class QualTypeMismatch(e: Expr, actual: QType, expect: QType)
+  extends RuntimeException(s"expr:\n  $e\n  expect type: $expect\n  actual type: $actual")
+case class NotSubtype(t1: QType, t2: QType)
+  extends RuntimeException(s"$t1 not subtype of $t2")
+
+object TEnv:
+  def empty: TEnv = TEnv(Map())
+
+case class TEnv(m: Map[String, QType]):
+  def apply(x: String): QType = m(x)
+  def +(xt: (String, QType)): TEnv = TEnv(m + xt)
+
+def typeCheckBinOp(e1: Expr, e2: Expr, op: String, t1: QType, t2: QType)(using Γ: TEnv): Type =
+  op match
+    case "+" | "-" | "*" | "/" =>
+      checkQTypeEq(e1, t1, TNum)
+      checkQTypeEq(e2, t2, TNum)
+      TNum
+    case "=" =>
+      checkQTypeEq(e1, t1, TNum)
+      checkQTypeEq(e2, t2, TNum)
+      TBool
+
+def qualEq(q1: Qualifier, q2: Qualifier)(using Γ: TEnv): Boolean = ???
+def typeEq(t1: Type, t2: Type)(using Γ: TEnv): Boolean = ???
+def qualTypeEq(t1: QType, t2: QType)(using Γ: TEnv): Boolean = ???
+
+def checkQualEq(q1: Qualifier, q2: Qualifier)(using Γ: TEnv): Qualifier =
+  if (qualEq(q1, q2)) q1
+  else throw QualMismatch(q1, q2)
+
+def checkTypeEq(e: Expr, actual: Type, exp: Type)(using Γ: TEnv): Type =
+  if (typeEq(actual, exp)) actual
+  else throw TypeMismatch(e, actual, exp)
+
+def checkQTypeEq(e: Expr, actual: QType, exp: QType)(using Γ: TEnv): QType =
+  if (qualTypeEq(actual, exp)) actual
+  else throw QualTypeMismatch(e, actual, exp)
+
+def checkUntrackQual(q: Qualifier): Unit =
+  assert(q.isUntrack, "Not support nested reference")
+
+def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
+  case EUnit => TUnit
+  case ENum(_) => TNum
+  case EBool(_) => TBool
+  case EVar(x) =>
+    val QType(t, _) = Γ(x)
+    t ^ x
+  case EBinOp(op, e1, e2) =>
+    typeCheckBinOp(e1, e2, op, typeCheck(e1), typeCheck(e2))
+  case ELam(f, x, at, e, Some(rt)) => ???
+  case ELam(_, x, at, e, None) => ???
+  case EApp(e1, e2) => ???
+  case ELet(x, Some(t), rhs, body) => ???
+  case ELet(x, None, rhs, body) => ???
+  case EAlloc(e) =>
+    val QType(t, q) = typeCheck(e)
+    checkUntrackQual(q)
+    TRef(t) ^ ◆
+  case EAssign(e1, e2) =>
+    val QType(TRef(t1), q1) = typeCheck(e1)
+    val QType(t2, q2) = typeCheck(e2)
+    checkUntrackQual(q2)
+    checkTypeEq(e2, t2, t1)
+    TUnit
+  case EDeref(e) =>
+    val QType(TRef(t), q) = typeCheck(e)
+    t
+  case ECond(cnd, thn, els) => ???
+}
+
+def topTypeCheck(e: Expr): QType = {
+  Counter.reset
+  typeCheck(e)(using TEnv.empty)
+}
