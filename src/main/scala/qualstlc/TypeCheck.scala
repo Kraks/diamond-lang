@@ -9,7 +9,7 @@ import TypeSyntax._
 import TypeSyntax.given_Conversion_Type_QType
 import ExprSyntax._
 
-case class QualMismatch(actual: Qualifier, expect: Qualifier)
+case class QualMismatch(actual: Qual, expect: Qual)
   extends RuntimeException(s"expect qualifier: $expect\n  actual qualifier: $actual")
 case class TypeMismatch(e: Expr, actual: Type, expect: Type)
   extends RuntimeException(s"expr:\n  $e\n  expect type: $expect\n  actual type: $actual")
@@ -36,11 +36,11 @@ def typeCheckBinOp(e1: Expr, e2: Expr, op: String, t1: QType, t2: QType)(using �
       checkQTypeEq(e2, t2, TNum)
       TBool
 
-def qualEq(q1: Qualifier, q2: Qualifier)(using Γ: TEnv): Boolean = ???
+def qualEq(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean = ???
 def typeEq(t1: Type, t2: Type)(using Γ: TEnv): Boolean = ???
 def qualTypeEq(t1: QType, t2: QType)(using Γ: TEnv): Boolean = ???
 
-def checkQualEq(q1: Qualifier, q2: Qualifier)(using Γ: TEnv): Qualifier =
+def checkQualEq(q1: Qual, q2: Qual)(using Γ: TEnv): Qual =
   if (qualEq(q1, q2)) q1
   else throw QualMismatch(q1, q2)
 
@@ -52,8 +52,17 @@ def checkQTypeEq(e: Expr, actual: QType, exp: QType)(using Γ: TEnv): QType =
   if (qualTypeEq(actual, exp)) actual
   else throw QualTypeMismatch(e, actual, exp)
 
-def checkUntrackQual(q: Qualifier): Unit =
+def checkUntrackQual(q: Qual): Unit =
   assert(q.isUntrack, "Not support nested reference")
+
+def isSubqual(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean = ???
+
+def isSubtype(t1: Type, t2: Type)(using Γ: TEnv): Boolean = ???
+
+def isSubQType(T: QType, S: QType)(using Γ: TEnv): Boolean =
+  val QType(t1, q1) = T
+  val QType(t2, q2) = S
+  isSubtype(t1, t2) && isSubqual(q1, q2)
 
 def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
   case EUnit => TUnit

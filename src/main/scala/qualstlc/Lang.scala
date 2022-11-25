@@ -1,5 +1,7 @@
 package diamond.qualstlc
 
+/* STLC + Subtyping + Reference + Diamond-flavor reachability types */
+
 enum Type:
   case TUnit
   case TNum
@@ -11,13 +13,13 @@ import Type._
 
 case class Fresh()
 type QElem = String | Fresh
-object Qualifier:
-  def untrack: Qualifier = Qualifier(Set())
-case class Qualifier(q: Set[QElem]):
+object Qual:
+  def untrack: Qual = Qual(Set())
+case class Qual(q: Set[QElem]):
   def isUntrack: Boolean = q.isEmpty
   def isFresh: Boolean = q.contains(Fresh())
 
-case class QType(t: Type, q: Qualifier)
+case class QType(t: Type, q: Qual)
 
 enum Expr:
   case EUnit
@@ -41,10 +43,10 @@ object TypeSyntax:
   extension (t: QType)
     def ~>(s: QType): TFun = TFun(t, s)
   extension (t: Type)
-    def ^(q: Qualifier): QType = QType(t, q)
-    def ^(q: QElem): QType = QType(t, Qualifier(Set(q)))
+    def ^(q: Qual): QType = QType(t, q)
+    def ^(q: QElem): QType = QType(t, Qual(Set(q)))
   // type to qualified type conversion, default is untracked
-  given Conversion[Type, QType] = QType(_, Qualifier.untrack)
+  given Conversion[Type, QType] = QType(_, Qual.untrack)
 
 object ExprSyntax:
   import Expr._

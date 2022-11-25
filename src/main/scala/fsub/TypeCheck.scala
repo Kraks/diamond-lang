@@ -106,7 +106,7 @@ def typeExposure(t: Type)(using Γ: TEnv): Type = t match {
 }
 
 def typeWFCheck(t: Type)(using Γ: TEnv): Type = t match {
-  case TUnit | TNum | TBool => t
+  case TTop | TUnit | TNum | TBool => t
   case t@TVar(x) =>
     if (Γ.contains(t)) t
     else throw TypeVarNotFound(t)
