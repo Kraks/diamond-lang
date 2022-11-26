@@ -24,7 +24,7 @@ object TEnv:
 case class TEnv(m: Map[String, QType]):
   def apply(x: String): QType = m(x)
   def +(xt: (String, QType)): TEnv = TEnv(m + xt)
-  def filter(q: Qual): TEnv = ???
+  def filter(q: Qual): TEnv = TEnv(m.filter((k, v) => q.contains(k)))
 
 extension (q: Qual)
   def contains(x: QElem): Boolean = q.q.contains(x)
@@ -106,12 +106,44 @@ def qualExposure(q: Qual)(using Γ: TEnv): Qual =
   val p = fixQualExposure(Qual(Set()), q - ◆)
   if (q.isFresh) p + ◆ else p
 
-def isSubqual(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean = {
+def isSubqual(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean =
   if (q1 ⊆ q2 && q2 ⊆ Γ) true // Q-Sub
   else isSubqual(qualExposure(q1), qualExposure(q2))
+
+def typeRename(t: Type, from: String, to: String): Type = t match {
+  case TUnit | TNum | TBool => t
+  case TFun(f, x, t1, t2) =>
+    ???
+    //TFun(f, x, typeSubst(t1, from, to), typeSubst(t2, from, to))
+  case TRef(t) =>
+    ???
+    //TRef(typeSubst(t, from, to))
 }
 
-def isSubtype(t1: Type, t2: Type)(using Γ: TEnv): Boolean = ???
+def isSubtype(t1: Type, t2: Type)(using Γ: TEnv): Boolean = (t1, t2) match {
+  case (TUnit, TUnit) => true
+  case (TNum, TNum) => true
+  case (TBool, TBool) => true
+  case (tf@TFun(Some(f), Some(x), t1, t2), tg@TFun(Some(g), Some(y), t3, t4)) =>
+    if (f == g && x == y) {
+      val Γ1 = Γ + (f -> (tf ^ ◆)) + (x -> t3)
+      isSubQType(t3, t1) && isSubQType(t2, t4)(using Γ1)
+    } else {
+      // renaming/subst
+      ???
+    }
+  case (tf@TFun(Some(f), None, t1, t2), tg@TFun(Some(g), None, t3, t4)) =>
+    if (f == g) {
+      ???
+    } else {
+      // renaming/subst
+      ???
+    }
+  case (TFun(None, x, t1, t2), TFun(None, y, t3, t4)) => ???
+  case (TFun(None, None, t1, t2), TFun(None, None, t3, t4)) => ???
+  case (TRef(t1), TRef(t2)) => typeEq(t1, t2)
+  case _ => false
+}
 
 def isSubQType(T: QType, S: QType)(using Γ: TEnv): Boolean =
   val QType(t1, q1) = T
