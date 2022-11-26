@@ -46,4 +46,32 @@ class QualSTLCTests extends AnyFunSuite {
     assert(t10 == QType(TFun(Some("f"),Some("x"),
       QType(TNum,Qual(Set())),QType(TNum,Qual(Set("x")))),Qual(Set(Fresh()))))
   }
+
+  test("subqual") {
+    // x : Int^∅ ⊢ {x} <: ∅
+    val Γ1 = TEnv.empty + ("x" -> TNum)
+    assert(qualExposure(Qual.singleton("x"))(using Γ1) == Qual.untrack)
+    assert(isSubqual(Qual.singleton("x"), Qual.untrack)(using Γ1))
+
+    // y: Int^∅, x : Int^y ⊢ {x} <: ∅
+    val Γ2 = TEnv.empty + ("x" -> (TNum ^ "y")) + ("y" -> TNum)
+    assert(qualExposure(Qual.singleton("x"))(using Γ2) == Qual.untrack)
+    assert(isSubqual(Qual.singleton("x"), Qual.untrack)(using Γ2))
+
+    // y: Int^◆, x : Int^y ⊢ {x} <: {y} but not further
+    val Γ3 = TEnv.empty + ("x" -> (TNum ^ "y")) + ("y" -> (TNum ^ ◆))
+    assert(qualExposure(Qual(Set("x")))(using Γ3) == Qual.singleton("y"))
+    assert(isSubqual(Qual.singleton("x"), Qual.singleton("y"))(using Γ3))
+
+    val Γ4 = TEnv.empty + ("f" -> ((TNum ~> TNum) ^ ("x", "y")))
+    // f : (Int -> Int)^{x,y} ⊢ {z, f} <: {x, y, z}
+    assert(qualElemExposure(Qual(Set("z")), "f")(using Γ4) == Qual(Set("x", "y", "z")))
+
+    val Γ5 = Γ4 + ("z" -> TNum) + ("x" -> TNum) + ("y" -> TNum)
+    assert(isSubqual(Qual(Set("z", "f")), Qual(Set("x", "y", "z")))(using Γ5))
+
+    // f : (Int -> Int)^{x,y} ⊢ {z, f, ◆} <: {x, y, z, ◆}
+    assert(qualElemExposure(Qual(Set("z", ◆)), "f")(using Γ4) == Qual(Set("x", "y", "z", ◆)))
+    assert(isSubqual(Qual(Set("z", "f", ◆)), Qual(Set("x", "y", "z", ◆)))(using Γ5))
+  }
 }

@@ -24,9 +24,22 @@ object TEnv:
 case class TEnv(m: Map[String, QType]):
   def apply(x: String): QType = m(x)
   def +(xt: (String, QType)): TEnv = TEnv(m + xt)
-  def ⊇(q: Qual): Boolean = {
+  def filter(q: Qual): TEnv = ???
+
+extension (q: Qual)
+  def contains(x: QElem): Boolean = q.q.contains(x)
+  def size: Int = q.q.size
+  def isUntrack: Boolean = q.q.isEmpty
+  def isFresh: Boolean = q.q.contains(Fresh())
+  def nonFresh: Boolean = !q.q.contains(Fresh())
+  def -(x: QElem): Qual = Qual(q.q - x)
+  def +(x: QElem): Qual = Qual(q.q + x)
+  def \(q2: Qual): Qual = Qual(q.q -- q2.q)
+  def ∪(q2: Qual): Qual = Qual(q.q ++ q2.q)
+  def ⊆(q2: Qual): Boolean = q.q.subsetOf(q2.q)
+  def ⊆(Γ: TEnv): Boolean = {
     val Qual(s) = q
-    val dom: Set[QElem] = m.keys.toSet
+    val dom: Set[QElem] = Γ.m.keys.toSet
     s.subsetOf(dom + ◆)
   }
 
@@ -60,27 +73,42 @@ def checkQTypeEq(e: Expr, actual: QType, exp: QType)(using Γ: TEnv): QType =
 def checkUntrackQual(q: Qual): Unit =
   assert(q.isUntrack, "Not support nested reference")
 
-def qualVarExposure0(x: String)(using Γ: TEnv): Qual = {
-  // XXX: should use a worklist
-  Γ(x) match {
-    case QType(TFun(_, _, _, _), r) if r.nonFresh => ???
-    case QType(_, r) if r.nonFresh => ???
+// One-step qualifier exposure (i.e. implementing q-self and q-var)
+def qualElemExposure(q: Qual, x: String)(using Γ: TEnv): Qual = {
+  require(!q.contains(x))
+  Γ(x) match
+    case QType(TFun(_, _, _, _), r) if r.nonFresh && r ⊆ q => (q \ r) + x
+    case QType(_, r) if r.nonFresh => q ∪ r
+    case _ => q + x
+}
+
+// One iteration of exposure over the qualifier
+def qualExposure0(q: Qual)(using Γ: TEnv): Qual = {
+  require(!q.isFresh)
+  if (q.isUntrack) q
+  else {
+    val x = q.q.head.asInstanceOf[String]
+    val p = q - x
+    val r = qualElemExposure(p, x)
+    if (r.contains(x)) qualExposure0(r - x) + x
+    else qualExposure0(r)
   }
 }
 
-def qualExposure(q: Qual)(using Γ: TEnv): Qual = {
-  // compute the maximum upper bound qualifier under Γ,
-  // super inefficient via a fixpoint itervation
-  // XXX: is that upper bound unique?
-  var p: Set[QElem] = Set()
-  for (x <- q.q if !x.isInstanceOf[Fresh]) {
-  }
-  Qual(p)
-}
+// Iteratively qualifier exposure via fixpoint iteration.
+// Compute the maximum upper bound qualifier following the subtyping "lattice" under Γ.
+// XXX: is that upper bound unique? eg different traverse order may lead to different result?
+def fixQualExposure(q1: Qual, q2: Qual)(using Γ: TEnv): Qual =
+  if (q1 == q2) q2
+  else fixQualExposure(q2, qualExposure0(q2))
+
+def qualExposure(q: Qual)(using Γ: TEnv): Qual =
+  val p = fixQualExposure(Qual(Set()), q - ◆)
+  if (q.isFresh) p + ◆ else p
 
 def isSubqual(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean = {
-  if (q1 ≤ q2 && Γ ⊇ q2) true // Q-Sub
-  else ???
+  if (q1 ⊆ q2 && q2 ⊆ Γ) true // Q-Sub
+  else isSubqual(qualExposure(q1), qualExposure(q2))
 }
 
 def isSubtype(t1: Type, t2: Type)(using Γ: TEnv): Boolean = ???

@@ -17,11 +17,7 @@ object Qual:
   def untrack: Qual = Qual(Set())
   def fresh: Qual = Qual(Set(Fresh()))
   def singleton(x: String): Qual = Qual(Set(x))
-case class Qual(q: Set[QElem]):
-  def isUntrack: Boolean = q.isEmpty
-  def isFresh: Boolean = q.contains(Fresh())
-  def nonFresh: Boolean = !q.contains(Fresh())
-  def ≤(q2: Qual): Boolean = q.subsetOf(q2.q)
+case class Qual(q: Set[QElem])
 case class QType(t: Type, q: Qual)
 
 enum Expr:
