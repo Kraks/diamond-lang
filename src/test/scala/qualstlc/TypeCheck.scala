@@ -2,6 +2,7 @@ package diamond.qualstlc
 
 import org.scalatest.funsuite.AnyFunSuite
 
+import diamond._
 import Type._
 import Expr._
 import TypeSyntax._
@@ -73,5 +74,40 @@ class QualSTLCTests extends AnyFunSuite {
     // f : (Int -> Int)^{x,y} ⊢ {z, f, ◆} <: {x, y, z, ◆}
     assert(qualElemExposure(Qual(Set("z", ◆)), "f")(using Γ4) == Qual(Set("x", "y", "z", ◆)))
     assert(isSubqual(Qual(Set("z", "f", ◆)), Qual(Set("x", "y", "z", ◆)))(using Γ5))
+  }
+
+  test("type rename") {
+    Counter.reset
+    val t1: QType = (𝑓 ♯ ((𝑥 ∶ TNum) ~> (TNum ^ 𝑥))) ^ ◆
+    assert(qtypeRename(t1, "f", "g") == t1)
+    assert(qtypeRename(t1, "g", "h") == t1)
+    assert(qtypeRename(t1, "x", "y") == t1)
+    assert(qtypeRename(t1, "z", "y") == t1)
+
+    //                         this f is free ↓ 
+    val t2: QType = (𝑔 ♯ (t1 ~> (TRef(TNum) ^ 𝑓))) ^ (𝑦)
+    assert(qtypeRename(t2, "f", "g") ==
+      QType(TFun(Some("#0"),None,
+        QType(TFun(Some("f"),Some("x"),
+          QType(TNum,Qual(Set())),
+          QType(TNum,Qual(Set("x")))),
+          Qual(Set(Fresh()))),
+        QType(TRef(TNum),Qual(Set("g")))),Qual(Set("y"))))
+
+    //                              this y is free ↓
+    val t3: QType = (𝑓 ♯ ((𝑥 ∶ TNum) ~> (TNum ^ (𝑥, 𝑦)))) ^ ◆
+    assert(qtypeRename(t3, "y", "x") ==
+      QType(TFun(Some("f"),Some("#1"),QType(TNum,Qual(Set())),QType(TNum,Qual(Set("#1", "x")))),Qual(Set(Fresh()))))
+
+    //      (𝑔 ♯ ((𝑓 ♯ ((𝑥 ∶ TNum) ~> (TNum ^ 𝑥))) ^ ◆ ~> (TRef(TNum) ^ 𝑓))) ^ (𝑦)
+    // then (𝑔' ♯ ((𝑓 ♯ ((𝑥 ∶ TNum) ~> (TNum ^ 𝑥))) ^ ◆ ~> (TRef(TNum) ^ 𝑔))) ^ (𝑦)
+    // then (𝑔' ♯ ((𝑓' ♯ ((𝑥 ∶ TNum) ~> (TNum ^ 𝑥))) ^ ◆ ~> (TRef(TNum) ^ 𝑓))) ^ (𝑦)
+    assert(qtypeRename(qtypeRename(t2, "f", "g"), "g", "f") ==
+      QType(TFun(Some("#2"),None,
+        QType(TFun(Some("#0"),Some("x"),
+          QType(TNum,Qual(Set())),
+          QType(TNum,Qual(Set("x")))),
+          Qual(Set(Fresh()))),
+        QType(TRef(TNum),Qual(Set("f")))),Qual(Set("y"))))
   }
 }

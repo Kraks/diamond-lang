@@ -110,14 +110,48 @@ def isSubqual(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean =
   if (q1 ⊆ q2 && q2 ⊆ Γ) true // Q-Sub
   else isSubqual(qualExposure(q1), qualExposure(q2))
 
+def qtypeRename(tq: QType, from: String, to: String): QType = {
+  val QType(t, q) = tq
+  val newQual = if (q.contains(from)) q - from + to else q
+  QType(typeRename(t, from, to), newQual)
+}
+
+// Rename free occurrence of `from` in `t` to `to`
 def typeRename(t: Type, from: String, to: String): Type = t match {
   case TUnit | TNum | TBool => t
-  case TFun(f, x, t1, t2) =>
-    ???
-    //TFun(f, x, typeSubst(t1, from, to), typeSubst(t2, from, to))
+  case TFun(Some(f), Some(x), t1, t2) =>
+    if (f == from || x == from) t
+    else if (f == to) {
+      val g = Counter.fresh
+      val argType = qtypeRename(t1, f, g)
+      val retType = qtypeRename(t2, f, g)
+      typeRename(TFun(Some(g), Some(x), argType, retType), from, to)
+    } else if (x == to) {
+      val y = Counter.fresh
+      val argType = qtypeRename(t1, x, y)
+      val retType = qtypeRename(t2, x, y)
+      typeRename(TFun(Some(f), Some(y), argType, retType), from, to)
+    } else TFun(Some(f), Some(x), qtypeRename(t1, from, to), qtypeRename(t2, from, to))
+  case TFun(Some(f), None, t1, t2) =>
+    if (f == from) t
+    else if (f == to) {
+      val g = Counter.fresh
+      val argType = qtypeRename(t1, f, g)
+      val retType = qtypeRename(t2, f, g)
+      typeRename(TFun(Some(g), None, argType, retType), from, to)
+    } else TFun(Some(f), None, qtypeRename(t1, from, to), qtypeRename(t2, from, to))
+  case TFun(None, Some(x), t1, t2) =>
+    if (x == from) t
+    else if (x == to) {
+      val y = Counter.fresh
+      val argType = qtypeRename(t1, x, y)
+      val retType = qtypeRename(t2, x, y)
+      typeRename(TFun(None, Some(y), argType, retType), from, to)
+    } else TFun(None, Some(x), qtypeRename(t1, from, to), qtypeRename(t2, from, to))
+  case TFun(None, None, t1, t2) =>
+    TFun(None, None, qtypeRename(t1, from, to), qtypeRename(t2, from, to))
   case TRef(t) =>
-    ???
-    //TRef(typeSubst(t, from, to))
+    TRef(typeRename(t, from, to))
 }
 
 def isSubtype(t1: Type, t2: Type)(using Γ: TEnv): Boolean = (t1, t2) match {
