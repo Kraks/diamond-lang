@@ -10,6 +10,12 @@ import ExprSyntax._
 
 import TypeSyntax.given_Conversion_Type_QType
 
+class Playground extends AnyFunSuite {
+  // f : (Int -> Int)^{x,y,◆} ⊢ {z, x, y, f} is not subtype of {z, f}
+  val Γ6 = TEnv.empty + ("f" -> ((TNum ~> TNum) ^ ("x", "y", ◆))) + ("x" -> (TNum ^ ◆)) + ("y" -> (TNum ^ ◆))
+  assert(!isSubqual(Qual(Set("x", "y", "f")), Qual(Set("f")))(using Γ6))
+}
+
 class QualSTLCTests extends AnyFunSuite {
   test("syntax") {
     val t1: QType = TNum ^ ()
@@ -65,18 +71,19 @@ class QualSTLCTests extends AnyFunSuite {
     assert(isSubqual(Qual.singleton("x"), Qual.singleton("y"))(using Γ3))
 
     val Γ4 = TEnv.empty + ("f" -> ((TNum ~> TNum) ^ ("x", "y")))
-    // f : (Int -> Int)^{x,y} ⊢ {z, f} <: {x, y, z}
-    assert(qualElemExposure(Qual(Set("z")), "f")(using Γ4) == Qual(Set("x", "y", "z")))
+    assert(qualElemExposure(Qual(Set("z")), "f")(using Γ4) == Qual(Set("f", "z")))
 
+    // f : (Int -> Int)^{x,y} ⊢ {z, x, y, f} <: {f, z}
     val Γ5 = Γ4 + ("z" -> TNum) + ("x" -> TNum) + ("y" -> TNum)
-    assert(isSubqual(Qual(Set("z", "f")), Qual(Set("x", "y", "z")))(using Γ5))
+    assert(isSubqual(Qual(Set("z", "x", "y", "f")), Qual(Set("f", "z")))(using Γ5))
 
-    // f : (Int -> Int)^{x,y} ⊢ {z, f, ◆} <: {x, y, z, ◆}
-    assert(qualElemExposure(Qual(Set("z", ◆)), "f")(using Γ4) == Qual(Set("x", "y", "z", ◆)))
-    assert(isSubqual(Qual(Set("z", "f", ◆)), Qual(Set("x", "y", "z", ◆)))(using Γ5))
+    // f : (Int -> Int)^{x,y} ⊢ {z, f, ◆} <: {z, f, ◆}
+    assert(qualElemExposure(Qual(Set("z", ◆)), "f")(using Γ4) == Qual(Set("z", "f", ◆)))
+    assert(isSubqual(Qual(Set("z", "f", ◆)), Qual(Set("z", "f", ◆)))(using Γ5))
+    assert(isSubqual(Qual(Set("z", "x", "y", "f", ◆)), Qual(Set("z", "f", ◆)))(using Γ5))
   }
 
-  test("type rename") {
+  test("var rename") {
     Counter.reset
     val t1: QType = (𝑓 ♯ ((𝑥 ∶ TNum) ~> (TNum ^ 𝑥))) ^ ◆
     assert(qtypeRename(t1, "f", "g") == t1)
@@ -86,6 +93,7 @@ class QualSTLCTests extends AnyFunSuite {
 
     //                         this f is free ↓ 
     val t2: QType = (𝑔 ♯ (t1 ~> (TRef(TNum) ^ 𝑓))) ^ (𝑦)
+    Counter.reset
     assert(qtypeRename(t2, "f", "g") ==
       QType(TFun(Some("#0"),None,
         QType(TFun(Some("f"),Some("x"),
@@ -96,18 +104,28 @@ class QualSTLCTests extends AnyFunSuite {
 
     //                              this y is free ↓
     val t3: QType = (𝑓 ♯ ((𝑥 ∶ TNum) ~> (TNum ^ (𝑥, 𝑦)))) ^ ◆
+    Counter.reset
     assert(qtypeRename(t3, "y", "x") ==
-      QType(TFun(Some("f"),Some("#1"),QType(TNum,Qual(Set())),QType(TNum,Qual(Set("#1", "x")))),Qual(Set(Fresh()))))
+      QType(TFun(Some("f"),Some("#0"),QType(TNum,Qual(Set())),QType(TNum,Qual(Set("#0", "x")))),Qual(Set(Fresh()))))
 
     //      (𝑔 ♯ ((𝑓 ♯ ((𝑥 ∶ TNum) ~> (TNum ^ 𝑥))) ^ ◆ ~> (TRef(TNum) ^ 𝑓))) ^ (𝑦)
     // then (𝑔' ♯ ((𝑓 ♯ ((𝑥 ∶ TNum) ~> (TNum ^ 𝑥))) ^ ◆ ~> (TRef(TNum) ^ 𝑔))) ^ (𝑦)
     // then (𝑔' ♯ ((𝑓' ♯ ((𝑥 ∶ TNum) ~> (TNum ^ 𝑥))) ^ ◆ ~> (TRef(TNum) ^ 𝑓))) ^ (𝑦)
+    Counter.reset
     assert(qtypeRename(qtypeRename(t2, "f", "g"), "g", "f") ==
-      QType(TFun(Some("#2"),None,
-        QType(TFun(Some("#0"),Some("x"),
+      QType(TFun(Some("#0"),None,
+        QType(TFun(Some("#1"),Some("x"),
           QType(TNum,Qual(Set())),
           QType(TNum,Qual(Set("x")))),
           Qual(Set(Fresh()))),
         QType(TRef(TNum),Qual(Set("f")))),Qual(Set("y"))))
+  }
+
+  test("subtype") {
+    // x : Int^∅ ⊢ Int^{x} <: Int^∅
+    val Γ1 = TEnv.empty + ("x" -> TNum)
+    assert(isSubQType(TNum ^ 𝑥, TNum)(using Γ1))
+
+
   }
 }

@@ -1,6 +1,6 @@
 package diamond.qualstlc
 
-/* STLC + Subtyping + Reference + Diamond-flavor reachability types */
+/* STLC + Subtyping + Reference + Diamond-flavored reachability types */
 
 enum Type:
   case TUnit

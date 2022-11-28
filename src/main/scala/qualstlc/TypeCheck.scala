@@ -78,7 +78,7 @@ def qualElemExposure(q: Qual, x: String)(using Γ: TEnv): Qual = {
   require(!q.contains(x))
   Γ(x) match
     case QType(TFun(_, _, _, _), r) if r.nonFresh && r ⊆ q => (q \ r) + x
-    case QType(_, r) if r.nonFresh => q ∪ r
+    case QType(t, r) if !t.isInstanceOf[TFun] && r.nonFresh => q ∪ r
     case _ => q + x
 }
 
@@ -98,9 +98,11 @@ def qualExposure0(q: Qual)(using Γ: TEnv): Qual = {
 // Iteratively qualifier exposure via fixpoint iteration.
 // Compute the maximum upper bound qualifier following the subtyping "lattice" under Γ.
 // XXX: is that upper bound unique? eg different traverse order may lead to different result?
-def fixQualExposure(q1: Qual, q2: Qual)(using Γ: TEnv): Qual =
+def fixQualExposure(q1: Qual, q2: Qual)(using Γ: TEnv): Qual = {
+  println(s"fixpoint $q1 $q2")
   if (q1 == q2) q2
   else fixQualExposure(q2, qualExposure0(q2))
+}
 
 def qualExposure(q: Qual)(using Γ: TEnv): Qual =
   val p = fixQualExposure(Qual(Set()), q - ◆)
@@ -162,19 +164,45 @@ def isSubtype(t1: Type, t2: Type)(using Γ: TEnv): Boolean = (t1, t2) match {
     if (f == g && x == y) {
       val Γ1 = Γ + (f -> (tf ^ ◆)) + (x -> t3)
       isSubQType(t3, t1) && isSubQType(t2, t4)(using Γ1)
+    } else if (f != g && x == y) {
+      val f1 = Counter.fresh
+      isSubtype(TFun(Some(f1), Some(x), qtypeRename(t1, f, f1), qtypeRename(t2, f, f1)),
+        TFun(Some(f1), Some(x), qtypeRename(t3, g, f1), qtypeRename(t4, g, f1)))
+    } else if (f == g && x != y) {
+      val x1 = Counter.fresh
+      isSubtype(TFun(Some(f), Some(x1), qtypeRename(t1, x, x1), qtypeRename(t2, x, x1)),
+        TFun(Some(f), Some(x1), qtypeRename(t3, y, x1), qtypeRename(t4, y, x1)))
     } else {
-      // renaming/subst
-      ???
+      val f1 = Counter.fresh
+      val x1 = Counter.fresh
+      val tf1 = TFun(Some(f1), Some(x1),
+        qtypeRename(qtypeRename(t1, x, x1), f, f1),
+        qtypeRename(qtypeRename(t2, x, x1), f, f1))
+      val tg1 = TFun(Some(f1), Some(x1),
+        qtypeRename(qtypeRename(t3, y, x1), g, f1),
+        qtypeRename(qtypeRename(t4, y, x1), g, f1))
+      isSubtype(tf1, tg1)
     }
   case (tf@TFun(Some(f), None, t1, t2), tg@TFun(Some(g), None, t3, t4)) =>
     if (f == g) {
-      ???
+      val Γ1 = Γ + (f -> (tf ^ ◆))
+      isSubQType(t3, t1) && isSubQType(t2, t4)(using Γ1)
     } else {
-      // renaming/subst
-      ???
+      val f1 = Counter.fresh
+      isSubtype(TFun(Some(f1), None, qtypeRename(t1, f, f1), qtypeRename(t2, f, f1)),
+        TFun(Some(f1), None, qtypeRename(t3, g, f1), qtypeRename(t4, g, f1)))
     }
-  case (TFun(None, x, t1, t2), TFun(None, y, t3, t4)) => ???
-  case (TFun(None, None, t1, t2), TFun(None, None, t3, t4)) => ???
+  case (TFun(None, Some(x), t1, t2), TFun(None, Some(y), t3, t4)) =>
+    if (x == y) {
+      val Γ1 = Γ + (x -> t3)
+      isSubQType(t3, t1) && isSubQType(t2, t4)(using Γ1)
+    } else {
+      val x1 = Counter.fresh
+      isSubtype(TFun(None, Some(x1), qtypeRename(t1, x, x1), qtypeRename(t2, x, x1)),
+        TFun(None, Some(x1), qtypeRename(t3, y, x1), qtypeRename(t4, y, x1)))
+    }
+  case (TFun(None, None, t1, t2), TFun(None, None, t3, t4)) =>
+    isSubQType(t3, t1) && isSubQType(t2, t4)
   case (TRef(t1), TRef(t2)) => typeEq(t1, t2)
   case _ => false
 }
