@@ -124,10 +124,14 @@ class QualSTLCTests extends AnyFunSuite {
   }
 
   test("subtype") {
-    // x : Int^∅ ⊢ Int^{x} <: Int^∅
+    // x : Int^∅ ⊢ Int^x <: Int^∅
     val Γ1 = TEnv.empty + ("x" -> TNum)
     assert(isSubQType(TNum ^ 𝑥, TNum)(using Γ1))
 
-
+    val Γ2 = TEnv.empty + ("y" -> (TRef(TNum) ^ ◆))
+    // y : Ref[Int]^◆ ⊢ Ref[Int]^y <: Ref[Int]^y
+    assert(isSubQType(TRef(TNum) ^ 𝑦, TRef(TNum) ^ 𝑦)(using Γ2))
+    // y : Ref[Int]^◆ ⊢ Ref[Int]^y is not subtype of Ref[Int]^◆
+    assert(!isSubQType(TRef(TNum) ^ 𝑦, TRef(TNum) ^ ◆)(using Γ2))
   }
 }

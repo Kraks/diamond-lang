@@ -55,8 +55,8 @@ def typeCheckBinOp(e1: Expr, e2: Expr, op: String, t1: QType, t2: QType)(using �
       TBool
 
 def qualEq(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean = ???
-def typeEq(t1: Type, t2: Type)(using Γ: TEnv): Boolean = ???
-def qualTypeEq(t1: QType, t2: QType)(using Γ: TEnv): Boolean = ???
+def typeEq(t1: Type, t2: Type)(using Γ: TEnv): Boolean = isSubtype(t1, t2) && isSubtype(t2, t1)
+def qualTypeEq(t1: QType, t2: QType)(using Γ: TEnv): Boolean = isSubQType(t1, t2) && isSubQType(t2, t1)
 
 def checkQualEq(q1: Qual, q2: Qual)(using Γ: TEnv): Qual =
   if (qualEq(q1, q2)) q1
@@ -99,8 +99,8 @@ def qualExposure0(q: Qual)(using Γ: TEnv): Qual = {
 // Compute the maximum upper bound qualifier following the subtyping "lattice" under Γ.
 // XXX: is that upper bound unique? eg different traverse order may lead to different result?
 def fixQualExposure(q1: Qual, q2: Qual)(using Γ: TEnv): Qual = {
-  println(s"fixpoint $q1 $q2 ${q1 == q2} ${q1.q == q2.q}")
-  if (q1.q == q2.q) q2
+  //println(s"fixpoint $q1 $q2 ${q1 == q2}")
+  if (q1 == q2) q2
   else fixQualExposure(q2, qualExposure0(q2))
 }
 
@@ -216,6 +216,19 @@ def isSubQType(T: QType, S: QType)(using Γ: TEnv): Boolean =
   val QType(t2, q2) = S
   isSubtype(t1, t2) && isSubqual(q1, q2)
 
+def freeVars(e: Expr): Set[String] = e match {
+  case EUnit | ENum(_) | EBool(_) => Set()
+  case EVar(x) => Set(x)
+  case EBinOp(op, e1, e2) => freeVars(e1) ++ freeVars(e2)
+  case ELam(f, x, _, e, _) => freeVars(e) -- Set(f, x)
+  case EApp(e1, e2) => freeVars(e1) ++ freeVars(e2)
+  case ELet(x, _, rhs, body) => freeVars(rhs) ++ (freeVars(body) - x)
+  case EAlloc(e) => freeVars(e)
+  case EAssign(e1, e2) => freeVars(e1) ++ freeVars(e2)
+  case EDeref(e) => freeVars(e)
+  case ECond(cnd, thn, els) => freeVars(cnd) ++ freeVars(thn) ++ freeVars(els)
+}
+
 def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
   case EUnit => TUnit
   case ENum(_) => TNum
@@ -225,7 +238,8 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     t ^ x
   case EBinOp(op, e1, e2) =>
     typeCheckBinOp(e1, e2, op, typeCheck(e1), typeCheck(e2))
-  case ELam(f, x, at, e, Some(rt)) => ???
+  case ELam(f, x, at, e, Some(rt)) =>
+    ???
   case ELam(_, x, at, e, None) => ???
   case EApp(e1, e2) => ???
   case ELet(x, Some(t), rhs, body) => ???
@@ -243,7 +257,13 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
   case EDeref(e) =>
     val QType(TRef(t), q) = typeCheck(e)
     t
-  case ECond(cnd, thn, els) => ???
+  case ECond(cnd, thn, els) =>
+    // XXX: instead of requiring the same type, could compute their join
+    val t1 = typeCheck(cnd)
+    checkTypeEq(cnd, t1, TBool)
+    val t2 = typeCheck(thn)
+    val t3 = typeCheck(els)
+    checkTypeEq(thn, t2, t3)
 }
 
 def topTypeCheck(e: Expr): QType = {
