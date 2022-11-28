@@ -10,11 +10,7 @@ import ExprSyntax._
 
 import TypeSyntax.given_Conversion_Type_QType
 
-class Playground extends AnyFunSuite {
-  // f : (Int -> Int)^{x,y,◆} ⊢ {z, x, y, f} is not subtype of {z, f}
-  val Γ6 = TEnv.empty + ("f" -> ((TNum ~> TNum) ^ ("x", "y", ◆))) + ("x" -> (TNum ^ ◆)) + ("y" -> (TNum ^ ◆))
-  assert(!isSubqual(Qual(Set("x", "y", "f")), Qual(Set("f")))(using Γ6))
-}
+class Playground extends AnyFunSuite {}
 
 class QualSTLCTests extends AnyFunSuite {
   test("syntax") {
@@ -81,6 +77,12 @@ class QualSTLCTests extends AnyFunSuite {
     assert(qualElemExposure(Qual(Set("z", ◆)), "f")(using Γ4) == Qual(Set("z", "f", ◆)))
     assert(isSubqual(Qual(Set("z", "f", ◆)), Qual(Set("z", "f", ◆)))(using Γ5))
     assert(isSubqual(Qual(Set("z", "x", "y", "f", ◆)), Qual(Set("z", "f", ◆)))(using Γ5))
+
+    // f : (Int -> Int)^{x,y,◆} ⊢ {x, y, f} is not subtype of {f}
+    val Γ6 = TEnv.empty + ("f" -> ((TNum ~> TNum) ^ ("x", "y", ◆))) + ("x" -> (TNum ^ ◆)) + ("y" -> (TNum ^ ◆))
+    assert(qualExposure(Qual(Set("x", "y", "f")))(using Γ6) == Qual(Set("x", "y", "f")))
+    assert(qualExposure(Qual(Set("f")))(using Γ6) == Qual.singleton("f"))
+    assert(!isSubqual(Qual(Set("x", "y", "f")), Qual(Set("f")))(using Γ6))
   }
 
   test("var rename") {
