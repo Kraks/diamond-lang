@@ -134,7 +134,7 @@ def typeCheck(e: Expr)(using Γ: TEnv): Type = e match {
     val ft = TFun(at, rt)
     typeWFCheck(ft)
     val t = typeCheck(e)(using Γ + (x -> at) + (f -> ft))
-    checkTypeEq(e, t, rt)
+    checkSubtype(t, rt)
     ft
   case ELam(_, x, at, e, None) =>
     typeWFCheck(at)

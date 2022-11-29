@@ -11,10 +11,13 @@ import ExprSyntax._
 
 case class QualMismatch(actual: Qual, expect: Qual)
   extends RuntimeException(s"expect qualifier: $expect\n  actual qualifier: $actual")
+
 case class TypeMismatch(e: Expr, actual: Type, expect: Type)
   extends RuntimeException(s"expr:\n  $e\n  expect type: $expect\n  actual type: $actual")
+
 case class QualTypeMismatch(e: Expr, actual: QType, expect: QType)
   extends RuntimeException(s"expr:\n  $e\n  expect type: $expect\n  actual type: $actual")
+
 case class NotSubtype(t1: QType, t2: QType)
   extends RuntimeException(s"$t1 not subtype of $t2")
 
@@ -24,7 +27,8 @@ object TEnv:
 case class TEnv(m: Map[String, QType]):
   def apply(x: String): QType = m(x)
   def +(xt: (String, QType)): TEnv = TEnv(m + xt)
-  def filter(q: Qual): TEnv = TEnv(m.filter((k, v) => q.contains(k)))
+  def filter(q: Set[String]): TEnv = TEnv(m.filter((k, v) => q.contains(k)))
+  def dom: Set[String] = m.keys.toSet
 
 extension (q: Qual)
   def contains(x: QElem): Boolean = q.q.contains(x)
@@ -34,6 +38,7 @@ extension (q: Qual)
   def nonFresh: Boolean = !q.q.contains(Fresh())
   def -(x: QElem): Qual = Qual(q.q - x)
   def +(x: QElem): Qual = Qual(q.q + x)
+  def ++(q2: Set[QElem]): Qual = Qual(q.q ++ q2)
   def \(q2: Qual): Qual = Qual(q.q -- q2.q)
   def ∪(q2: Qual): Qual = Qual(q.q ++ q2.q)
   def ⊆(q2: Qual): Boolean = q.q.subsetOf(q2.q)
@@ -160,6 +165,12 @@ def typeRename(t: Type, from: String, to: String): Type = t match {
     TRef(typeRename(t, from, to))
 }
 
+def qtypeSubst(t: QType, from: Option[String], to: Qual): QType =
+  from match {
+    case None => t
+    case Some(x) => ???
+  }
+
 def isSubtype(t1: Type, t2: Type)(using Γ: TEnv): Boolean = (t1, t2) match {
   case (TUnit, TUnit) => true
   case (TNum, TNum) => true
@@ -216,6 +227,10 @@ def isSubQType(T: QType, S: QType)(using Γ: TEnv): Boolean =
   val QType(t2, q2) = S
   isSubtype(t1, t2) && isSubqual(q1, q2)
 
+def checkSubQType(T: QType, S: QType)(using Γ: TEnv): Unit = 
+  if (isSubQType(T, S)) ()
+  else throw NotSubtype(T, S)
+
 def freeVars(e: Expr): Set[String] = e match {
   case EUnit | ENum(_) | EBool(_) => Set()
   case EVar(x) => Set(x)
@@ -239,9 +254,26 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
   case EBinOp(op, e1, e2) =>
     typeCheckBinOp(e1, e2, op, typeCheck(e1), typeCheck(e2))
   case ELam(f, x, at, e, Some(rt)) =>
-    ???
-  case ELam(_, x, at, e, None) => ???
-  case EApp(e1, e2) => ???
+    val ft = TFun(Some(f), Some(x), at, rt)
+    // XXX well-formedness check? at/rt qualifier should be smaller than ctx? or check at call-site?
+    val fv = freeVars(e) -- Set(f, x)
+    val t = typeCheck(e)(using Γ.filter(fv) + (x -> at) + (f -> ft))
+    checkSubQType(t, rt)
+    ft ^ Qual(fv.asInstanceOf[Set[QElem]])
+  case ELam(_, x, at, e, None) =>
+    val fv = freeVars(e) - x
+    val t = typeCheck(e)(using Γ.filter(fv) + (x -> at))
+    TFun(None, Some(x), at, t) ^ Qual(fv.asInstanceOf[Set[QElem]])
+  case EApp(e1, e2) =>
+    val QType(TFun(f, x, atq@QType(at, aq), rtq@QType(rt, rq)), qf) = typeCheck(e1)
+    val codomBound: Qual =
+      Qual(Γ.dom.asInstanceOf[Set[QElem]]) ++ f.toSet ++ x.toSet ++ Set(◆)
+    val t2q@QType(t2, q2) = typeCheck(e2)
+    if (isSubQType(t2q, atq) && !aq.isFresh && rq ⊆ codomBound) {
+      qtypeSubst(qtypeSubst(rtq, x, aq), f, qf)
+    } else {
+      ???
+    }
   case ELet(x, Some(t), rhs, body) => ???
   case ELet(x, None, rhs, body) => ???
   case EAlloc(e) =>
@@ -260,10 +292,10 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
   case ECond(cnd, thn, els) =>
     // XXX: instead of requiring the same type, could compute their join
     val t1 = typeCheck(cnd)
-    checkTypeEq(cnd, t1, TBool)
+    checkQTypeEq(cnd, t1, TBool)
     val t2 = typeCheck(thn)
     val t3 = typeCheck(els)
-    checkTypeEq(thn, t2, t3)
+    checkQTypeEq(thn, t2, t3)
 }
 
 def topTypeCheck(e: Expr): QType = {
