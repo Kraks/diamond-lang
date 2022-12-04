@@ -47,6 +47,9 @@ extension (q: Qual)
     val dom: Set[QElem] = Γ.m.keys.toSet
     s.subsetOf(dom + ◆)
   }
+  def saturated(using Γ: TEnv): Set[String] = ???
+  def ⋒(q2: Qual)(using Γ: TEnv): Qual =
+    Qual(q.saturated.intersect(q2.saturated).asInstanceOf[Set[QElem]]) + Fresh()
 
 def typeCheckBinOp(e1: Expr, e2: Expr, op: String, t1: QType, t2: QType)(using Γ: TEnv): Type =
   op match
@@ -231,6 +234,8 @@ def checkSubQType(T: QType, S: QType)(using Γ: TEnv): Unit =
   if (isSubQType(T, S)) ()
   else throw NotSubtype(T, S)
 
+def typeFreeVars(t: Type): Set[String] = ???
+
 def freeVars(e: Expr): Set[String] = e match {
   case EUnit | ENum(_) | EBool(_) => Set()
   case EVar(x) => Set(x)
@@ -268,11 +273,20 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     val QType(TFun(f, x, atq@QType(at, aq), rtq@QType(rt, rq)), qf) = typeCheck(e1)
     val codomBound: Qual =
       Qual(Γ.dom.asInstanceOf[Set[QElem]]) ++ f.toSet ++ x.toSet ++ Set(◆)
-    val t2q@QType(t2, q2) = typeCheck(e2)
-    if (isSubQType(t2q, atq) && !aq.isFresh && rq ⊆ codomBound) {
+    if (!(rq ⊆ codomBound)) throw RuntimeException("ill-formed qualifier " + rq)
+    val tq2@QType(t2, q2) = typeCheck(e2)
+    if (!aq.isFresh) {
+      // T-App
+      checkSubQType(tq2, atq)
       qtypeSubst(qtypeSubst(rtq, x, aq), f, qf)
     } else {
-      ???
+      // T-App◆
+      // ◆ ∈ q2 ⇒ x ∉ fv(rt)
+      if (q2.isFresh) assert(typeFreeVars(rt).intersect(x.toSet).isEmpty)
+      // ◆ ∈ qf ⇒ f ∉ fv(rt)
+      if (qf.isFresh) assert(typeFreeVars(rt).intersect(f.toSet).isEmpty)
+      checkSubQType(t2 ^ (q2 ⋒ qf), atq)
+      qtypeSubst(qtypeSubst(rtq, x, aq), f, qf)
     }
   case ELet(x, Some(t), rhs, body) => ???
   case ELet(x, None, rhs, body) => ???
