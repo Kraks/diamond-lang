@@ -48,9 +48,18 @@ extension (q: Qual)
     val dom: Set[QElem] = Γ.m.keys.toSet
     s.subsetOf(dom + ◆)
   }
-  def saturated(using Γ: TEnv): Set[String] = ???
+  def saturated(using Γ: TEnv): Set[String] = reach(q.varSet, Set(), Set())
   def ⋒(q2: Qual)(using Γ: TEnv): Qual =
     Qual(q.saturated.intersect(q2.saturated).asInstanceOf[Set[QElem]]) + Fresh()
+
+def reach(worklist: Set[String], seen: Set[String], acc: Set[String])(using Γ: TEnv): Set[String] =
+  if (worklist.isEmpty) acc
+  else {
+    val x = worklist.head
+    val QType(t, q) = Γ(x)
+    val newQual = q.varSet.filter(z => !seen.contains(z))
+    reach((worklist ++ newQual) -- Set(x), seen + x, acc ++ newQual ++ Set(x))
+  }
 
 def typeCheckBinOp(e1: Expr, e2: Expr, op: String, t1: QType, t2: QType)(using Γ: TEnv): Type =
   op match
@@ -63,13 +72,13 @@ def typeCheckBinOp(e1: Expr, e2: Expr, op: String, t1: QType, t2: QType)(using �
       checkQTypeEq(e2, t2, TNum)
       TBool
 
-def qualEq(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean = ???
+//def qualEq(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean = q1 == q2
 def typeEq(t1: Type, t2: Type)(using Γ: TEnv): Boolean = isSubtype(t1, t2) && isSubtype(t2, t1)
 def qualTypeEq(t1: QType, t2: QType)(using Γ: TEnv): Boolean = isSubQType(t1, t2) && isSubQType(t2, t1)
 
-def checkQualEq(q1: Qual, q2: Qual)(using Γ: TEnv): Qual =
-  if (qualEq(q1, q2)) q1
-  else throw QualMismatch(q1, q2)
+//def checkQualEq(q1: Qual, q2: Qual)(using Γ: TEnv): Qual =
+//  if (qualEq(q1, q2)) q1
+//  else throw QualMismatch(q1, q2)
 
 def checkTypeEq(e: Expr, actual: Type, exp: Type)(using Γ: TEnv): Type =
   if (typeEq(actual, exp)) actual

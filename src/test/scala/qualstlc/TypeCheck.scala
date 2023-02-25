@@ -83,6 +83,15 @@ class QualSTLCTests extends AnyFunSuite {
     assert(qualExposure(Qual(Set("x", "y", "f")))(using Γ6) == Qual(Set("x", "y", "f")))
     assert(qualExposure(Qual(Set("f")))(using Γ6) == Qual.singleton("f"))
     assert(!isSubqual(Qual(Set("x", "y", "f")), Qual(Set("f")))(using Γ6))
+
+    // a: Int, z: Int^a, x: Int^z, y: Int^x
+    val Γ7 = TEnv.empty + ("a" -> (TNum ^ ())) + ("z" -> (TNum ^ "a")) + ("x" -> (TNum ^ "z")) + ("y" -> (TNum ^ "x"))
+    assert(isSubqual(Qual(Set("y")), Qual(Set()))(using Γ7))
+    assert(isSubqual(Qual(Set("y")), Qual(Set("x")))(using Γ7))
+    assert(isSubqual(Qual(Set("y")), Qual(Set("z")))(using Γ7))
+    assert(isSubqual(Qual(Set("x")), Qual(Set()))(using Γ7))
+    assert(isSubqual(Qual(Set("x")), Qual(Set("z")))(using Γ7))
+    assert(isSubqual(Qual(Set("z")), Qual(Set()))(using Γ7))
   }
 
   test("var rename") {
@@ -133,5 +142,16 @@ class QualSTLCTests extends AnyFunSuite {
     assert(isSubQType(TRef(TNum) ^ 𝑦, TRef(TNum) ^ 𝑦)(using Γ2))
     // y : Ref[Int]^◆ ⊢ Ref[Int]^y is not subtype of Ref[Int]^◆
     assert(!isSubQType(TRef(TNum) ^ 𝑦, TRef(TNum) ^ ◆)(using Γ2))
+  }
+
+  test("saturation") {
+    val Γ1 = TEnv.empty + ("f" -> (TNum ^ ("x", "y"))) + ("x" -> (TNum ^ ◆)) + ("y" -> (TNum ^ ◆))
+    assert(Qual.singleton("f").saturated(using Γ1) == Set("x", "y", "f"))
+
+    val Γ2 = TEnv.empty + ("f" -> (TNum ^ ("x", "y"))) + ("x" -> (TNum ^ "y")) + ("y" -> (TNum ^ ◆))
+    assert(Qual.singleton("f").saturated(using Γ2) == Set("x", "y", "f"))
+
+    val Γ3 = TEnv.empty + ("a" -> (TNum ^ ())) + ("z" -> (TNum ^ "a")) + ("x" -> (TNum ^ "z")) + ("y" -> (TNum ^ "x"))
+    assert(Qual.singleton("x").saturated(using Γ3) == Set("x", "z", "a"))
   }
 }
