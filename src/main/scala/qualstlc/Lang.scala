@@ -17,7 +17,7 @@ object Qual:
   def untrack: Qual = Qual(Set())
   def fresh: Qual = Qual(Set(Fresh()))
   def singleton(x: String): Qual = Qual(Set(x))
-case class Qual(q: Set[QElem])
+case class Qual(set: Set[QElem])
 case class QType(t: Type, q: Qual)
 
 enum Expr:

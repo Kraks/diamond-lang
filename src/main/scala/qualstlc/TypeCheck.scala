@@ -31,17 +31,18 @@ case class TEnv(m: Map[String, QType]):
   def dom: Set[String] = m.keys.toSet
 
 extension (q: Qual)
-  def contains(x: QElem): Boolean = q.q.contains(x)
-  def size: Int = q.q.size
-  def isUntrack: Boolean = q.q.isEmpty
-  def isFresh: Boolean = q.q.contains(Fresh())
-  def nonFresh: Boolean = !q.q.contains(Fresh())
-  def -(x: QElem): Qual = Qual(q.q - x)
-  def +(x: QElem): Qual = Qual(q.q + x)
-  def ++(q2: Set[QElem]): Qual = Qual(q.q ++ q2)
-  def \(q2: Qual): Qual = Qual(q.q -- q2.q)
-  def ∪(q2: Qual): Qual = Qual(q.q ++ q2.q)
-  def ⊆(q2: Qual): Boolean = q.q.subsetOf(q2.q)
+  def contains(x: QElem): Boolean = q.set.contains(x)
+  def varSet: Set[String] = (q.set - Fresh()).asInstanceOf[Set[String]]
+  def size: Int = q.set.size
+  def isUntrack: Boolean = q.set.isEmpty
+  def isFresh: Boolean = q.set.contains(Fresh())
+  def nonFresh: Boolean = !q.set.contains(Fresh())
+  def -(x: QElem): Qual = Qual(q.set - x)
+  def +(x: QElem): Qual = Qual(q.set + x)
+  def ++(q2: Set[QElem]): Qual = Qual(q.set ++ q2)
+  def \(q2: Qual): Qual = Qual(q.set -- q2.set)
+  def ∪(q2: Qual): Qual = Qual(q.set ++ q2.set)
+  def ⊆(q2: Qual): Boolean = q.set.subsetOf(q2.set)
   def ⊆(Γ: TEnv): Boolean = {
     val Qual(s) = q
     val dom: Set[QElem] = Γ.m.keys.toSet
@@ -95,7 +96,7 @@ def qualExposure0(q: Qual)(using Γ: TEnv): Qual = {
   require(!q.isFresh)
   if (q.isUntrack) q
   else {
-    val x = q.q.head.asInstanceOf[String]
+    val x = q.set.head.asInstanceOf[String]
     val p = q - x
     val r = qualElemExposure(p, x)
     if (r.contains(x)) qualExposure0(r - x) + x
@@ -124,9 +125,28 @@ def isSubqual(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean =
   else if (isSubset(qualExposure(q1), qualExposure(q2))) true
   else false
 
+def qualSubst(q: Qual, from: String, to: Qual): Qual =
+  if (q.contains(from)) q - from ++ to.set else q
+
+def typeSubst(t: Type, from: String, to: Qual): Type = t match {
+  case TUnit | TNum | TBool => t
+  case TFun(f, x, t1, t2) =>
+    // XXX: need capture-free renaming of f and x?
+    TFun(f, x, qtypeSubst(t1, Some(from), to), qtypeSubst(t2, Some(from), to))
+  case TRef(t) => TRef(typeSubst(t, from, to))
+}
+
+def qtypeSubst(qt: QType, from: Option[String], to: Qual): QType =
+  from match {
+    case None => qt
+    case Some(from) =>
+      val QType(t, q) = qt
+      QType(typeSubst(t, from, to), qualSubst(q, from, to))
+  }
+
 def qtypeRename(tq: QType, from: String, to: String): QType = {
   val QType(t, q) = tq
-  val newQual = if (q.contains(from)) q - from + to else q
+  val newQual = qualSubst(q, from, Qual.singleton(to))
   QType(typeRename(t, from, to), newQual)
 }
 
@@ -167,12 +187,6 @@ def typeRename(t: Type, from: String, to: String): Type = t match {
   case TRef(t) =>
     TRef(typeRename(t, from, to))
 }
-
-def qtypeSubst(t: QType, from: Option[String], to: Qual): QType =
-  from match {
-    case None => t
-    case Some(x) => ???
-  }
 
 def isSubtype(t1: Type, t2: Type)(using Γ: TEnv): Boolean = (t1, t2) match {
   case (TUnit, TUnit) => true
@@ -234,7 +248,16 @@ def checkSubQType(T: QType, S: QType)(using Γ: TEnv): Unit =
   if (isSubQType(T, S)) ()
   else throw NotSubtype(T, S)
 
-def typeFreeVars(t: Type): Set[String] = ???
+def qtypeFreeVars(qt: QType): Set[String] = {
+  val QType(t, q) = qt
+  typeFreeVars(t) ++ q.varSet
+}
+
+def typeFreeVars(t: Type): Set[String] = t match
+  case TUnit | TNum | TBool => Set()
+  case TFun(f, x, t1, t2) =>
+    (qtypeFreeVars(t1) ++ qtypeFreeVars(t2)) -- (f.toSet ++ x.toSet)
+  case TRef(t) => typeFreeVars(t)
 
 def freeVars(e: Expr): Set[String] = e match {
   case EUnit | ENum(_) | EBool(_) => Set()
@@ -278,6 +301,7 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     if (!aq.isFresh) {
       // T-App
       checkSubQType(tq2, atq)
+      if (q2.contains(◆)) throw RuntimeException(s"${tq2} is possibly fresh")
       qtypeSubst(qtypeSubst(rtq, x, aq), f, qf)
     } else {
       // T-App◆
