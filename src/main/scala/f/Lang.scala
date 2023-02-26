@@ -1,12 +1,5 @@
 package diamond.f
 
-// TODO: add F-sub style subtyping
-// TODO: add qualified types (QType)
-// TODO: add algebraic data types
-// TODO: type lambda self-reference?
-// TODO: multi-argument lambdas
-// TODO: add effect system
-
 enum Type:
   case TUnit
   case TNum
