@@ -48,6 +48,7 @@ extension (q: Qual)
     val dom: Set[QElem] = Γ.m.keys.toSet
     s.subsetOf(dom + ◆)
   }
+  // saturated is supposed to be called only within ⋒
   def saturated(using Γ: TEnv): Set[String] = reach(q.varSet, Set(), Set())
   def ⋒(q2: Qual)(using Γ: TEnv): Qual =
     Qual(q.saturated.intersect(q2.saturated).asInstanceOf[Set[QElem]]) + Fresh()
