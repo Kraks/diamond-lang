@@ -86,11 +86,14 @@ class QualSTLCTests extends AnyFunSuite {
 
     // a: Int, z: Int^a, x: Int^z, y: Int^x
     val Γ7 = TEnv.empty + ("a" -> (TNum ^ ())) + ("z" -> (TNum ^ "a")) + ("x" -> (TNum ^ "z")) + ("y" -> (TNum ^ "x"))
-    assert(isSubqual(Qual(Set("y")), Qual(Set()))(using Γ7))
     assert(isSubqual(Qual(Set("y")), Qual(Set("x")))(using Γ7))
     assert(isSubqual(Qual(Set("y")), Qual(Set("z")))(using Γ7))
-    assert(isSubqual(Qual(Set("x")), Qual(Set()))(using Γ7))
+    assert(isSubqual(Qual(Set("y")), Qual(Set("a")))(using Γ7))
+    assert(isSubqual(Qual(Set("y")), Qual(Set()))(using Γ7))
     assert(isSubqual(Qual(Set("x")), Qual(Set("z")))(using Γ7))
+    assert(isSubqual(Qual(Set("x")), Qual(Set("a")))(using Γ7))
+    assert(isSubqual(Qual(Set("x")), Qual(Set()))(using Γ7))
+    assert(isSubqual(Qual(Set("z")), Qual(Set("a")))(using Γ7))
     assert(isSubqual(Qual(Set("z")), Qual(Set()))(using Γ7))
 
     val Γ8 = TEnv.empty + ("a" -> (TNum ^ ("b", ◆))) + ("b" -> TNum) + ("c" -> (TNum ^ "d")) + ("d" -> TNum)
@@ -100,6 +103,20 @@ class QualSTLCTests extends AnyFunSuite {
     assert(!isSubqual(Qual(Set("a", "c")), Qual(Set()))(using Γ8))
     // a: Int^{b, ◆}, b: Int^∅, c: Int^d, d: Int^∅ ⊢ {a, c} ¬<: {◆}
     assert(!isSubqual(Qual(Set("a", "c")), Qual(Set(◆)))(using Γ8))
+
+    val Γ9 = TEnv.empty + ("a" -> TNum) + ("b" -> TNum)
+    /*
+     Γ = a: Int^∅, b: Int^∅
+     a: Int^∅ ∈ Γ
+     ------------- [Q-Var]     ------------- [Q-Sub]
+     Γ ⊢ {a} <: ∅             Γ ⊢ ∅ <: {b}
+     ------------------------------------------- [Q-Trans]
+                  Γ ⊢ {a} <: {b}
+    */
+    assert(isSubqual(Qual(Set("a")), Qual(Set("b")))(using Γ9))
+    // a: Int^∅, b: Int^∅ ⊢ {b} <: {a}
+    assert(isSubqual(Qual(Set("b")), Qual(Set("a")))(using Γ9))
+
   }
 
   test("var rename") {
