@@ -11,14 +11,20 @@ enum Type:
 
 import Type._
 
-case class Fresh()
+case class Fresh():
+  override def toString = "◆"
 type QElem = String | Fresh
 object Qual:
   def untrack: Qual = Qual(Set())
   def fresh: Qual = Qual(Set(Fresh()))
   def singleton(x: String): Qual = Qual(Set(x))
-case class Qual(set: Set[QElem])
-case class QType(t: Type, q: Qual)
+case class Qual(set: Set[QElem]):
+  override def toString =
+    if (set.isEmpty) "∅"
+    else if (set.size == 1) set.head.toString
+    else s"""{${set.mkString(",")}}"""
+case class QType(t: Type, q: Qual):
+  override def toString = if (q.toString == "") t.toString else s"$t^$q"
 
 enum Expr:
   case EUnit

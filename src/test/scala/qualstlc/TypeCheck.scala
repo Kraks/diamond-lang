@@ -10,7 +10,10 @@ import ExprSyntax._
 
 import TypeSyntax.given_Conversion_Type_QType
 
-class Playground extends AnyFunSuite {}
+class Playground extends AnyFunSuite {
+  test("playground") {
+  }
+}
 
 class QualSTLCTests extends AnyFunSuite {
   test("syntax") {
@@ -117,6 +120,10 @@ class QualSTLCTests extends AnyFunSuite {
     // a: Int^∅, b: Int^∅ ⊢ {b} <: {a}
     assert(isSubqual(Qual(Set("b")), Qual(Set("a")))(using Γ9))
 
+    val Γ10 = TEnv.empty + ("x1" -> (TNum ^ ◆)) + ("x2" -> (TNum ^ ◆)) + ("x3" -> (TNum ^ ◆))
+        + ("f" -> ((TNum ~> TNum) ^ ("x1", "x2")))
+        + ("g" -> ((TNum ~> TNum) ^ ("x1", "x3")))
+    assert(qualExposure(Qual(Set("x1", "x2", "x3", "f", "g")))(using Γ10) == Qual(Set("f", "g")))
   }
 
   test("var rename") {

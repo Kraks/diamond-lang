@@ -9,6 +9,8 @@ import TypeSyntax._
 import TypeSyntax.given_Conversion_Type_QType
 import ExprSyntax._
 
+given Conversion[Set[String], Set[QElem]] = _.asInstanceOf[Set[QElem]]
+
 case class QualMismatch(actual: Qual, expect: Qual)
   extends RuntimeException(s"expect qualifier: $expect\n  actual qualifier: $actual")
 
@@ -29,6 +31,7 @@ case class TEnv(m: Map[String, QType]):
   def +(xt: (String, QType)): TEnv = TEnv(m + xt)
   def filter(q: Set[String]): TEnv = TEnv(m.filter((k, v) => q.contains(k)))
   def dom: Set[String] = m.keys.toSet
+  override def toString = s"""[${m.mkString("; ")}]"""
 
 extension (q: Qual)
   def contains(x: QElem): Boolean = q.set.contains(x)
@@ -96,12 +99,34 @@ def checkUntrackQual(q: Qual): Unit =
 def qualElemExposure(q: Qual, x: String)(using Γ: TEnv): Qual = {
   require(!q.contains(x))
   Γ(x) match
-    case QType(TFun(_, _, _, _), r) if r.nonFresh && r ⊆ q => (q \ r) + x
-    case QType(t, r) if !t.isInstanceOf[TFun] && r.nonFresh => q ∪ r
-    case _ => q + x
+    case QType(TFun(_, _, _, _), r) if r.nonFresh && r ⊆ Γ =>
+      val res = (q \ r) + x
+      //println(s"exposing function $Γ ⊢ $x ^ $r -> $res")
+      res
+    case QType(t, r) if !t.isInstanceOf[TFun] && r.nonFresh =>
+      val res = q ∪ r
+      //println(s"exposing variable $Γ ⊢ $x ^ $r -> $res")
+      res
+    case _ =>
+      val res = q + x
+      //println(s"remaining unchanged $Γ ⊢ $x -> $res")
+      res
 }
 
 // One iteration of exposure over the qualifier
+def qualExposure0(q: Qual)(using Γ: TEnv): Qual = {
+  require(!q.isFresh)
+  if (q.isUntrack) q
+  else {
+    val ps: Set[Set[String]] = q.set.asInstanceOf[Set[String]].map { x =>
+        qualElemExposure(q - x, x).set.asInstanceOf[Set[String]]
+    }
+    Qual(ps.tail.foldLeft(ps.head)((a, b) => a.intersect(b)))
+  }
+}
+
+/*
+Note: this one is buggy
 def qualExposure0(q: Qual)(using Γ: TEnv): Qual = {
   require(!q.isFresh)
   if (q.isUntrack) q
@@ -113,6 +138,7 @@ def qualExposure0(q: Qual)(using Γ: TEnv): Qual = {
     else qualExposure0(r)
   }
 }
+*/
 
 // Iteratively qualifier exposure via fixpoint iteration.
 // Compute the maximum upper bound qualifier following the subtyping "lattice" under Γ.
