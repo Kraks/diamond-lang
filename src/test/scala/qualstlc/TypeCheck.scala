@@ -124,6 +124,15 @@ class QualSTLCTests extends AnyFunSuite {
         + ("f" -> ((TNum ~> TNum) ^ ("x1", "x2")))
         + ("g" -> ((TNum ~> TNum) ^ ("x1", "x3")))
     assert(qualExposure(Qual(Set("x1", "x2", "x3", "f", "g")))(using Γ10) == Qual(Set("f", "g")))
+    assert(isSubqual(Qual(Set("x1", "x2", "x3", "f", "g")), Qual(Set("f", "g")))(using Γ10))
+    assert(!isSubqual(Qual(Set("f")), Qual(Set("g")))(using Γ10))
+    assert(!isSubqual(Qual(Set("g")), Qual(Set("f")))(using Γ10))
+    assert(isSubqual(Qual(Set("x1", "x3", "g")), Qual(Set("g")))(using Γ10))
+    // FIXME: these should be derivable
+    // eg {x1, x3} <: {x1, x3, g} <: {g}
+    assert(isSubqual(Qual(Set("x1", "x3")), Qual(Set("g")))(using Γ10))
+    assert(isSubqual(Qual(Set("x1", "x2")), Qual(Set("f")))(using Γ10))
+    assert(isSubqual(Qual(Set("x1", "x2", "x3")), Qual(Set("f", "g")))(using Γ10))
   }
 
   test("var rename") {
