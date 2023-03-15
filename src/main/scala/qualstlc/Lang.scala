@@ -88,6 +88,7 @@ object ExprSyntax:
   def λ(xt: BindTy)(e: => Expr): ELam = ELam("_", xt.id, xt.ty, e, None)
   def ite(c: Expr)(thn: Expr)(els: Expr): Expr = ECond(c, thn, els)
   def let(xv: Bind)(e: Expr): Expr = ELet(xv.id, xv.ty, xv.rhs, e)
+  def alloc(e: Expr): Expr = EAlloc(e)
 
   extension (e: Expr)
     def apply(a: Expr): Expr = EApp(e, a)
@@ -102,3 +103,5 @@ object ExprSyntax:
     def *(e0: Int): Expr = EBinOp("*", e, ENum(e0))
     def /(e0: Expr): Expr = EBinOp("/", e, e0)
     def /(e0: Int): Expr = EBinOp("/", e, ENum(e0))
+  
+  given Conversion[Int, ENum] = ENum(_)

@@ -76,13 +76,13 @@ def typeCheckBinOp(e1: Expr, e2: Expr, op: String, t1: QType, t2: QType)(using �
       checkQTypeEq(e2, t2, TNum)
       TBool
 
-//def qualEq(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean = q1 == q2
+def qualEq(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean = isSubqual(q1, q2) && isSubqual(q2, q1)
 def typeEq(t1: Type, t2: Type)(using Γ: TEnv): Boolean = isSubtype(t1, t2) && isSubtype(t2, t1)
 def qualTypeEq(t1: QType, t2: QType)(using Γ: TEnv): Boolean = isSubQType(t1, t2) && isSubQType(t2, t1)
 
-//def checkQualEq(q1: Qual, q2: Qual)(using Γ: TEnv): Qual =
-//  if (qualEq(q1, q2)) q1
-//  else throw QualMismatch(q1, q2)
+def checkQualEq(q1: Qual, q2: Qual)(using Γ: TEnv): Qual =
+  if (qualEq(q1, q2)) q1
+  else throw QualMismatch(q1, q2)
 
 def checkTypeEq(e: Expr, actual: Type, exp: Type)(using Γ: TEnv): Type =
   if (typeEq(actual, exp)) actual
@@ -92,8 +92,7 @@ def checkQTypeEq(e: Expr, actual: QType, exp: QType)(using Γ: TEnv): QType =
   if (qualTypeEq(actual, exp)) actual
   else throw QualTypeMismatch(e, actual, exp)
 
-def checkUntrackQual(q: Qual): Unit =
-  assert(q.isUntrack, "Not support nested reference")
+def checkUntrackQual(q: Qual)(using Γ: TEnv): Unit = checkQualEq(q, Qual(Set()))
 
 // One-step qualifier exposure (i.e. implementing q-self and q-var)
 def qualElemExposure(q: Qual, x: String)(using Γ: TEnv): Qual = {
