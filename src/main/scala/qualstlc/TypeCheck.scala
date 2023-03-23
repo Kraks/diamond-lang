@@ -156,9 +156,27 @@ def qualExposure(q: Qual)(using Γ: TEnv): Qual =
 def isSubset(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean = q1 ⊆ q2 && q2 ⊆ Γ
 
 def isSubqual(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean =
-  if (isSubset(q1, q2)) true
-  else if (isSubset(qualExposure(q1), qualExposure(q2))) true
-  else false
+  // if (isSubset(q1, q2)) true
+  // else if (isSubset(qualExposure(q1), qualExposure(q2))) true
+  // else false
+  def expand(q2: Set[QElem]): Set[QElem] =
+    val ext = q2.flatMap { 
+      case x: String => Γ(x) match
+        case QType(TFun(_, _, _, _), q) if !q.isFresh => q.set
+        case _ => Set[QElem]()
+      case _ => Set[QElem]()
+    }
+    if (ext subsetOf q2) q2 else expand(q2 | ext)
+  val q2ext = expand(q2.set)
+  def bounded(e: QElem): Boolean =
+    q2ext.contains(e) || { e match
+      case x: String => Γ(x) match
+        case QType(TFun(_, _, _, _), _) => false
+        case QType(_, q) if !q.isFresh => q.set.forall(bounded)
+        case _ => false
+      case _ => false
+    }
+  q1.set.forall(bounded)
 
 def qualSubst(q: Qual, from: String, to: Qual): Qual =
   if (q.contains(from)) q - from ++ to.set else q
