@@ -160,13 +160,13 @@ def isSubqual(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean =
   // else if (isSubset(qualExposure(q1), qualExposure(q2))) true
   // else false
   def expand(q2: Set[QElem]): Set[QElem] =
-    val ext = q2.flatMap { 
+    val ext = q2.flatMap {
       case x: String => Γ(x) match
         case QType(TFun(_, _, _, _), q) if !q.isFresh => q.set
         case _ => Set[QElem]()
       case _ => Set[QElem]()
     }
-    if (ext subsetOf q2) q2 else expand(q2 | ext)
+    if (ext.subsetOf(q2)) q2 else expand(q2 ++ ext)
   val q2ext = expand(q2.set)
   def bounded(e: QElem): Boolean =
     q2ext.contains(e) || { e match
@@ -297,7 +297,7 @@ def isSubQType(T: QType, S: QType)(using Γ: TEnv): Boolean =
   val QType(t2, q2) = S
   isSubtype(t1, t2) && isSubqual(q1, q2)
 
-def checkSubQType(T: QType, S: QType)(using Γ: TEnv): Unit = 
+def checkSubQType(T: QType, S: QType)(using Γ: TEnv): Unit =
   if (isSubQType(T, S)) ()
   else throw NotSubtype(T, S)
 

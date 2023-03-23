@@ -129,11 +129,9 @@ class QualSTLCTests extends AnyFunSuite {
     assert(!isSubqual(Qual(Set("f")), Qual(Set("g")))(using Γ10))
     assert(!isSubqual(Qual(Set("g")), Qual(Set("f")))(using Γ10))
     assert(isSubqual(Qual(Set("x1", "x3", "g")), Qual(Set("g")))(using Γ10))
-    // FIXME: these should be derivable
-    // eg {x1, x3} <: {x1, x3, g} <: {g}
-    // assert(isSubqual(Qual(Set("x1", "x3")), Qual(Set("g")))(using Γ10))
-    // assert(isSubqual(Qual(Set("x1", "x2")), Qual(Set("f")))(using Γ10))
-    // assert(isSubqual(Qual(Set("x1", "x2", "x3")), Qual(Set("f", "g")))(using Γ10))
+    assert(isSubqual(Qual(Set("x1", "x3")), Qual(Set("g")))(using Γ10))
+    assert(isSubqual(Qual(Set("x1", "x2")), Qual(Set("f")))(using Γ10))
+    assert(isSubqual(Qual(Set("x1", "x2", "x3")), Qual(Set("f", "g")))(using Γ10))
   }
 
   test("alloc") {
@@ -157,7 +155,7 @@ class QualSTLCTests extends AnyFunSuite {
     assert(qtypeRename(t1, "x", "y") == t1)
     assert(qtypeRename(t1, "z", "y") == t1)
 
-    //                         this f is free ↓ 
+    //                         this f is free ↓
     val t2: QType = (𝑔 ♯ (t1 ~> (TRef(TNum) ^ 𝑓))) ^ (𝑦)
     Counter.reset
     assert(qtypeRename(t2, "f", "g") ==
