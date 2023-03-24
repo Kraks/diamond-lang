@@ -36,6 +36,9 @@ case class TEnv(m: Map[String, QType]):
 extension (q: Qual)
   def contains(x: QElem): Boolean = q.set.contains(x)
   def varSet: Set[String] = (q.set - Fresh()).asInstanceOf[Set[String]]
+  def withVarSet[T](f: Set[String] => Qual): Qual =
+    val res = f(varSet)
+    if (q.isFresh) res + Fresh() else res
   def size: Int = q.set.size
   def isUntrack: Boolean = q.set.isEmpty
   def isFresh: Boolean = q.set.contains(Fresh())
@@ -155,24 +158,25 @@ def qualExposure(q: Qual)(using Γ: TEnv): Qual =
 // the Q-Sub rule
 def isSubset(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean = q1 ⊆ q2 && q2 ⊆ Γ
 
-def isSubqual(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean =
+//def isSubqual(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean =
   // if (isSubset(q1, q2)) true
   // else if (isSubset(qualExposure(q1), qualExposure(q2))) true
   // else false
-  def expand(q2: Set[QElem]): Set[QElem] =
-    val ext = q2.flatMap {
+
+def isSubqual(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean =
+  // TODO: some well-formedness condition seems missing
+  def qSelf(q: Set[QElem]): Set[QElem] =
+    q.flatMap {
       case x: String => Γ(x) match
-        case QType(TFun(_, _, _, _), q) if !q.isFresh => q.set
-        case _ => Set[QElem]()
-      case _ => Set[QElem]()
+        case QType(TFun(_, _, _, _), q) if !q.isFresh => Set(x) ++ q.set
+        case _ => Set(x)
+      case d => Set(d)
     }
-    if (ext.subsetOf(q2)) q2 else expand(q2 ++ ext)
-  val q2ext = expand(q2.set)
+  val q2ext = fix(qSelf)(q2.set)
   def bounded(e: QElem): Boolean =
-    q2ext.contains(e) || { e match
+    q2ext(e) || { e match
       case x: String => Γ(x) match
-        case QType(TFun(_, _, _, _), _) => false
-        case QType(_, q) if !q.isFresh => q.set.forall(bounded)
+        case QType(t, q) if !t.isInstanceOf[TFun] && !q.isFresh => q.set.forall(bounded)
         case _ => false
       case _ => false
     }
