@@ -78,6 +78,21 @@ Fixpoint retrieve (ctx: context) (x: string) : option symbol :=
       if (x =? x')%string then Some s else retrieve tl x
   end.
 
+Lemma retrieve_is_well_formed: forall G x fn fr q,
+  retrieve G x = Some (Sym fn fr q) -> wf_context G -> StrSet.In x (ddomain G) /\ StrSet.Subset q (ddomain G).
+Proof.
+  intros.
+  induction G; simpl in *; try discriminate.
+  inversion H0; subst.
+  simpl in *.
+  destruct (x =? n)%string eqn:?.
+  - inversion H; subst.
+    apply String.eqb_eq in Heqb; subst.
+    destruct fn; split; SDecide.fsetdec.
+  - apply IHG in H; auto.
+    split; SDecide.fsetdec.
+Qed.
+
 Inductive subQual: context -> qualset -> qualset -> Prop :=
 | q_sub: forall G p q,
     wf_context G -> StrSet.Subset p q -> StrSet.Subset q (ddomain G)
@@ -104,11 +119,13 @@ Proof.
   - destruct IHsubQual1; destruct H2.
     destruct IHsubQual2; destruct H5.
     split; try split; auto; SDecide.fsetdec.
-  - admit.
-  - admit.
+  - apply retrieve_is_well_formed in H0; auto. destruct H0.
+    split; try split; auto; SDecide.fsetdec.
+  - apply retrieve_is_well_formed in H0; auto. destruct H0.
+    split; try split; auto; SDecide.fsetdec.
   - destruct IHsubQual; destruct H2.
     split; try split; auto; SDecide.fsetdec.
-Admitted.
+Qed.
 
 Lemma q_cong': forall G p1 p2 q,
   subQual G p1 q -> subQual G p2 q -> subQual G (StrSet.union p1 p2) q.
