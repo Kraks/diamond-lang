@@ -7,6 +7,7 @@ Require Import Coq.MSets.MSetProperties.
 Require Import Coq.MSets.MSetDecide.
 Require Import Coq.Structures.OrdersEx.
 Require Import Coq.Program.Wf.
+Require Import Coq.Logic.Classical.
 Local Open Scope string_scope.
 Local Open Scope nat_scope.
 
@@ -195,7 +196,25 @@ Program Fixpoint expand (ctx: context) (qual: qualset)
   | None => None
   end.
 Next Obligation.
-Admitted.
+  symmetry in Heq_anonymous0.
+  apply expand_one_step_is_sound in Heq_anonymous0 as ?.
+  apply expand_one_step_is_monotonic in Heq_anonymous0.
+  apply subQual_is_well_formed in H.
+  destruct H; destruct H0.
+  assert (~StrSet.Subset qual' qual).
+  {
+    intro.
+    symmetry in Heq_anonymous.
+    apply not_true_iff_false in Heq_anonymous.
+    apply Heq_anonymous.
+    apply SFacts.subset_iff.
+    assumption.
+  }
+  unfold StrSet.Subset in H2.
+  apply not_all_ex_not in H2.
+  destruct H2.
+  apply SProps.subset_cardinal_lt with (x := x); SDecide.fsetdec.
+Qed.
 
 Lemma expand_is_sound: forall G q1 q2, expand G q1 = Some q2 -> subQual G q2 q1.
 Admitted.
