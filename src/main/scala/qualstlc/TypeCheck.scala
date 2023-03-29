@@ -339,6 +339,7 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
   case EBinOp(op, e1, e2) =>
     typeCheckBinOp(e1, e2, op, typeCheck(e1), typeCheck(e2))
   case ELam(f, x, at, e, Some(rt)) =>
+    // XXX allow annotating observable filter?
     val ft = TFun(Some(f), Some(x), at, rt)
     // XXX well-formedness check? at/rt qualifier should be smaller than ctx? or check at call-site?
     val fv = freeVars(e) -- Set(f, x)
@@ -369,8 +370,13 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
       checkSubQType(t2 ^ (q2 ⋒ qf), atq)
       qtypeSubst(qtypeSubst(rtq, x, aq), f, qf)
     }
-  case ELet(x, Some(t), rhs, body) => ???
-  case ELet(x, None, rhs, body) => ???
+  case ELet(x, Some(qt1), rhs, body) =>
+    val qt2 = typeCheck(rhs)
+    checkSubQType(qt2, qt1)
+    typeCheck(body)(using Γ + (x -> qt1))
+  case ELet(x, None, rhs, body) =>
+    val qt = typeCheck(rhs)
+    typeCheck(body)(using Γ + (x -> qt))
   case EAlloc(e) =>
     val QType(t, q) = typeCheck(e)
     checkUntrackQual(q)

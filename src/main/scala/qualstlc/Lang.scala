@@ -103,5 +103,8 @@ object ExprSyntax:
     def *(e0: Int): Expr = EBinOp("*", e, ENum(e0))
     def /(e0: Expr): Expr = EBinOp("/", e, e0)
     def /(e0: Int): Expr = EBinOp("/", e, ENum(e0))
-  
+    def deref: Expr = EDeref(e)
+    def assign(e0: Expr): Expr = EAssign(e, e0)
+
+
   given Conversion[Int, ENum] = ENum(_)

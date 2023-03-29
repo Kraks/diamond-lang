@@ -147,6 +147,34 @@ class QualSTLCTests extends AnyFunSuite {
     assert(thrown == QualMismatch(Qual(Set("x")), Qual(Set())))
   }
 
+  test("let") {
+    val e1 = let("x" ∶ TNum ⇐ 42) { x + 1024 }
+    assert(topTypeCheck(e1) == (TNum ^ ()))
+
+    val e2 = let("x" ⇐ 42) { x + 1024 }
+    assert(topTypeCheck(e2) == (TNum ^ ()))
+
+    val e3 = let("x" ⇐ alloc(3)) { x }
+    assert(topTypeCheck(e3) == (TRef(TNum) ^ Qual(Set("x"))))
+
+    val e4 = let("x" ⇐ alloc(3)) { x.deref }
+    assert(topTypeCheck(e4) == (TNum ^ ()))
+
+    val e5 =
+      let("x" ⇐ alloc(3)) {
+        let("_" ⇐ x.assign(4)) {
+          x.deref
+        }
+      }
+    assert(topTypeCheck(e5) == (TNum ^ ()))
+
+    val e6 =
+      let("x" ⇐ alloc(3)) {
+        let("y" ⇐ x) { y }
+      }
+    assert(topTypeCheck(e6) == (TRef(TNum) ^ "y"))
+  }
+
   test("var rename") {
     Counter.reset
     val t1: QType = (𝑓 ♯ ((𝑥 ∶ TNum) ~> (TNum ^ 𝑥))) ^ ◆
