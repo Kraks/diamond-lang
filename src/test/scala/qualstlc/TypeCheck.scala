@@ -176,7 +176,11 @@ class QualSTLCTests extends AnyFunSuite {
   }
 
   test("id") {
-    val id = λ("x" ∶ (TRef(TNum) ^ ◆)) { x }
+    val id0 = λ("x" ∶ (TRef(TNum) ^ ◆)) { x }
+    assert(topTypeCheck(id0) == (TFun(None, Some("x"), TRef(TNum)^ ◆, TRef(TNum)^"x") ^ ()))
+
+    val id = λ("id", "x")("id"♯((TRef(TNum) ^ ◆) ~> (TRef(TNum)^"x"))) { x }
+    assert(topTypeCheck(id) == (TFun(Some("id"), Some("x"), TRef(TNum)^ ◆, TRef(TNum)^"x") ^ ()))
 
     val e1 = id(alloc(42))
     assert(topTypeCheck(e1) == (TRef(TNum) ^ ◆))
@@ -188,7 +192,7 @@ class QualSTLCTests extends AnyFunSuite {
     assert(thrown == NotSubtype(TRef(TNum) ^ ◆, TRef(TNum) ^ "x"))
 
     val Γ1 = TEnv.empty + ("y" -> (TRef(TNum) ^ ◆))
-    assert(topTypeCheck(id(y))(using Γ1) == (TRef(TNum) ^ "y"))
+    assert(typeCheck(id(y))(using Γ1) == (TRef(TNum) ^ "y"))
 
     // TODO: this can be checked in the polymorphic version
     //val e2 = id(42)

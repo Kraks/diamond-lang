@@ -363,7 +363,7 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
       // T-App
       checkSubQType(tq2, atq)
       if (q2.contains(◆)) throw RuntimeException(s"${tq2} is possibly fresh")
-      qtypeSubst(qtypeSubst(rtq, x, aq), f, qf)
+      qtypeSubst(qtypeSubst(rtq, x, q2), f, qf)
     } else {
       // println(s"tq2: $tq2 rt: $rt fv(rt): ${typeFreeVars(rt)}")
       // T-App◆
@@ -372,7 +372,7 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
       // ◆ ∈ qf ⇒ f ∉ fv(rt)
       if (qf.isFresh) assert(typeFreeVars(rt).intersect(f.toSet).isEmpty)
       checkSubQType(t2 ^ (q2 ⋒ qf), atq)
-      qtypeSubst(qtypeSubst(rtq, x, aq), f, qf)
+      qtypeSubst(qtypeSubst(rtq, x, q2), f, qf)
     }
   case ELet(x, Some(qt1), rhs, body) =>
     val QType(t1, q1) = qt1
