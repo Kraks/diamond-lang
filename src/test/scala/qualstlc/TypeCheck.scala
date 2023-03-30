@@ -175,29 +175,47 @@ class QualSTLCTests extends AnyFunSuite {
     assert(topTypeCheck(e6) == (TRef(TNum) ^ ◆))
   }
 
+  test("id") {
+    val id = λ("x" ∶ (TRef(TNum) ^ ◆)) { x }
+
+    val e1 = id(alloc(42))
+    assert(topTypeCheck(e1) == (TRef(TNum) ^ ◆))
+
+    val fakeid = λ("fakeid", "x")("fakeid"♯((TRef(TNum) ^ ◆) ~> (TRef(TNum)^"x"))) { alloc(42) }
+    val thrown = intercept[NotSubtype] {
+      topTypeCheck(fakeid)
+    }
+    assert(thrown == NotSubtype(TRef(TNum) ^ ◆, TRef(TNum) ^ "x"))
+
+    // TODO: this can be checked in the polymorphic version
+    //val e2 = id(42)
+    //println(topTypeCheck(e2))
+  }
+
   test("escaping closures") {
-    // TODO
     val e1 = 
       let("x" ⇐ alloc(3)) {
         λ("f", "z")("f"♯(TNum ~> TNum)) { x.deref }
       }
-    println(e1)
-    println(topTypeCheck(e1))
+    assert(topTypeCheck(e1) == (TFun(Some("f"), Some("z"), TNum^(), TNum^()) ^ ◆))
 
     val e2 =
       (λ("x" ∶ (TRef(TNum) ^ ◆)) { λ("f", "z")("f"♯(TNum ~> TNum)) { x.deref } })(alloc(3))
-    println(e2)
-    println(topTypeCheck(e2))
+    //println(e2)
+    assert(topTypeCheck(e2) == (TFun(Some("f"), Some("z"), TNum^(), TNum^()) ^ ◆))
 
     val e3 =
       (λ("x" ∶ (TRef(TNum) ^ ◆)) { λ("f", "z")("f"♯(TNum ~> (TRef(TNum) ^ "x"))) { x } })(alloc(3))
-    //println(e3)
-    //println(topTypeCheck(e3))
+    val thrown = intercept[AssertionError] {
+      topTypeCheck(e3)
+    }
+    // TODO: improve the error message -- cannot have deep dependency for fresh resource
+    assert(thrown.isInstanceOf[AssertionError])
 
     val e4 =
       (λ("x" ∶ (TRef(TNum) ^ ◆)) { λ("f", "z")("f"♯(TNum ~> (TRef(TNum) ^ "f"))) { x } })(alloc(3))
-    println(e4)
-    println(topTypeCheck(e4))
+    //println(e4)
+    assert(topTypeCheck(e4) == (TFun(Some("f"), Some("z"), TNum^(), TRef(TNum)^"f") ^ ◆))
   }
 
   test("var rename") {
