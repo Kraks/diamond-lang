@@ -373,12 +373,15 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
       qtypeSubst(qtypeSubst(rtq, x, aq), f, qf)
     }
   case ELet(x, Some(qt1), rhs, body) =>
+    val QType(t1, q1) = qt1
     val qt2 = typeCheck(rhs)
     checkSubQType(qt2, qt1)
-    typeCheck(body)(using Γ + (x -> qt1))
+    val rt = typeCheck(body)(using Γ + (x -> qt1))
+    qtypeSubst(rt, Some(x), q1)
   case ELet(x, None, rhs, body) =>
-    val qt = typeCheck(rhs)
-    typeCheck(body)(using Γ + (x -> qt))
+    val qt@QType(t, q) = typeCheck(rhs)
+    val rt = typeCheck(body)(using Γ + (x -> qt))
+    qtypeSubst(rt, Some(x), q)
   case EAlloc(e) =>
     val QType(t, q) = typeCheck(e)
     checkUntrackQual(q)

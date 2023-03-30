@@ -155,7 +155,7 @@ class QualSTLCTests extends AnyFunSuite {
     assert(topTypeCheck(e2) == (TNum ^ ()))
 
     val e3 = let("x" ⇐ alloc(3)) { x }
-    assert(topTypeCheck(e3) == (TRef(TNum) ^ Qual(Set("x"))))
+    assert(topTypeCheck(e3) == (TRef(TNum) ^ ◆))
 
     val e4 = let("x" ⇐ alloc(3)) { x.deref }
     assert(topTypeCheck(e4) == (TNum ^ ()))
@@ -172,7 +172,7 @@ class QualSTLCTests extends AnyFunSuite {
       let("x" ⇐ alloc(3)) {
         let("y" ⇐ x) { y }
       }
-    assert(topTypeCheck(e6) == (TRef(TNum) ^ "y"))
+    assert(topTypeCheck(e6) == (TRef(TNum) ^ ◆))
   }
 
   test("escaping closures") {
