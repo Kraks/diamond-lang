@@ -351,7 +351,8 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     val t = typeCheck(e)(using Γ.filter(fv) + (x -> at))
     TFun(None, Some(x), at, t) ^ Qual(fv.asInstanceOf[Set[QElem]])
   case EApp(e1, e2) =>
-    val QType(TFun(f, x, atq@QType(at, aq), rtq@QType(rt, rq)), qf) = typeCheck(e1)
+    val t1@QType(TFun(f, x, atq@QType(at, aq), rtq@QType(rt, rq)), qf) = typeCheck(e1)
+    //println(t1)
     val codomBound: Qual =
       Qual(Γ.dom.asInstanceOf[Set[QElem]]) ++ f.toSet ++ x.toSet ++ Set(◆)
     if (!(rq ⊆ codomBound)) throw RuntimeException("ill-formed qualifier " + rq)
@@ -362,6 +363,7 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
       if (q2.contains(◆)) throw RuntimeException(s"${tq2} is possibly fresh")
       qtypeSubst(qtypeSubst(rtq, x, aq), f, qf)
     } else {
+      // println(s"tq2: $tq2 rt: $rt fv(rt): ${typeFreeVars(rt)}")
       // T-App◆
       // ◆ ∈ q2 ⇒ x ∉ fv(rt)
       if (q2.isFresh) assert(typeFreeVars(rt).intersect(x.toSet).isEmpty)

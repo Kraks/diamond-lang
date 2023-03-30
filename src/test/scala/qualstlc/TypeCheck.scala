@@ -175,6 +175,21 @@ class QualSTLCTests extends AnyFunSuite {
     assert(topTypeCheck(e6) == (TRef(TNum) ^ "y"))
   }
 
+  test("escaping closures") {
+    // TODO
+    val e1 = 
+      let("x" ⇐ alloc(3)) {
+        λ("f", "z")("f"♯(TNum ~> TNum)) { x.deref }
+      }
+    println(e1)
+    println(topTypeCheck(e1))
+
+    val e2 =
+      (λ("x" ∶ (TRef(TNum) ^ ◆)) { λ("f", "z")("f"♯(TNum ~> TNum)) { x.deref } })(alloc(3))
+    println(e2)
+    println(topTypeCheck(e2))
+  }
+
   test("var rename") {
     Counter.reset
     val t1: QType = (𝑓 ♯ ((𝑥 ∶ TNum) ~> (TNum ^ 𝑥))) ^ ◆
