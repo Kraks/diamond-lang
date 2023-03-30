@@ -187,6 +187,9 @@ class QualSTLCTests extends AnyFunSuite {
     }
     assert(thrown == NotSubtype(TRef(TNum) ^ ◆, TRef(TNum) ^ "x"))
 
+    val Γ1 = TEnv.empty + ("y" -> (TRef(TNum) ^ ◆))
+    assert(topTypeCheck(id(y))(using Γ1) == (TRef(TNum) ^ "y"))
+
     // TODO: this can be checked in the polymorphic version
     //val e2 = id(42)
     //println(topTypeCheck(e2))
