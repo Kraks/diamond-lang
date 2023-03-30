@@ -188,6 +188,16 @@ class QualSTLCTests extends AnyFunSuite {
       (λ("x" ∶ (TRef(TNum) ^ ◆)) { λ("f", "z")("f"♯(TNum ~> TNum)) { x.deref } })(alloc(3))
     println(e2)
     println(topTypeCheck(e2))
+
+    val e3 =
+      (λ("x" ∶ (TRef(TNum) ^ ◆)) { λ("f", "z")("f"♯(TNum ~> (TRef(TNum) ^ "x"))) { x } })(alloc(3))
+    //println(e3)
+    //println(topTypeCheck(e3))
+
+    val e4 =
+      (λ("x" ∶ (TRef(TNum) ^ ◆)) { λ("f", "z")("f"♯(TNum ~> (TRef(TNum) ^ "f"))) { x } })(alloc(3))
+    println(e4)
+    println(topTypeCheck(e4))
   }
 
   test("var rename") {

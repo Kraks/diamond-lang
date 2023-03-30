@@ -302,6 +302,7 @@ def isSubQType(T: QType, S: QType)(using Γ: TEnv): Boolean =
   isSubtype(t1, t2) && isSubqual(q1, q2)
 
 def checkSubQType(T: QType, S: QType)(using Γ: TEnv): Unit =
+  //println(s"$Γ ⊢ $T <: $S")
   if (isSubQType(T, S)) ()
   else throw NotSubtype(T, S)
 
@@ -343,8 +344,9 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     val ft = TFun(Some(f), Some(x), at, rt)
     // XXX well-formedness check? at/rt qualifier should be smaller than ctx? or check at call-site?
     val fv = freeVars(e) -- Set(f, x)
-    val t = typeCheck(e)(using Γ.filter(fv) + (x -> at) + (f -> ft))
-    checkSubQType(t, rt)
+    val Γ1 = Γ.filter(fv) + (x -> at) + (f -> (ft ^ Qual(fv.asInstanceOf[Set[QElem]])))
+    val t = typeCheck(e)(using Γ1)
+    checkSubQType(t, rt)(using Γ1)
     ft ^ Qual(fv.asInstanceOf[Set[QElem]])
   case ELam(_, x, at, e, None) =>
     val fv = freeVars(e) - x

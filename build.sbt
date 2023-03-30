@@ -12,3 +12,4 @@ lazy val root = project
   )
 
 Test / parallelExecution := false
+Test / testOptions += Tests.Argument("-oF")
