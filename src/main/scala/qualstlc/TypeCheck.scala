@@ -55,8 +55,9 @@ extension (q: Qual)
     s.subsetOf(dom + ◆)
   }
   // saturated is supposed to be called only within ⋒
-  def saturated(using Γ: TEnv): Set[String] = reach(q.varSet, Set(), Set())
+  private def saturated(using Γ: TEnv): Set[String] = reach(q.varSet, Set(), Set())
   def ⋒(q2: Qual)(using Γ: TEnv): Qual =
+    println(s"${q.saturated} ⋒ ${q2.saturated}")
     Qual(q.saturated.intersect(q2.saturated).asInstanceOf[Set[QElem]]) + Fresh()
 
 def reach(worklist: Set[String], seen: Set[String], acc: Set[String])(using Γ: TEnv): Set[String] =

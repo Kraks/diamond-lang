@@ -225,6 +225,62 @@ class QualSTLCTests extends AnyFunSuite {
     assert(topTypeCheck(e4) == (TFun(Some("f"), Some("z"), TNum^(), TRef(TNum)^"f") ^ ◆))
   }
 
+  test("separation") {
+    val c1 = EVar("c1")
+    val c2 = EVar("c2")
+
+    // Not allowing argument that has overlapped with c1
+    val e1 =
+      let("c1" ⇐ alloc(3)) {
+        let("f" ⇐ (λ("f", "x")("f"♯((TRef(TNum)^ ◆) ~> TNum)) { x.deref + c1.deref })) {
+          EVar("f")(c1)
+        }
+      }
+    val thrown = intercept[NotSubtype] { topTypeCheck(e1) }
+
+    // permitted overlap
+    val e2 =
+      let("c1" ⇐ alloc(3)) {
+        let("f" ⇐ (λ("f", "x")("f"♯((TRef(TNum)^(◆, "c1")) ~> TNum)) { x.deref + c1.deref })) {
+          EVar("f")(c1)
+        }
+      }
+    assert(topTypeCheck(e2) == (TNum ^ ()))
+
+    // c1, c2 are aliased, therefore f(c2) not allowed
+    val e3 =
+      let("c1" ⇐ alloc(3)) {
+        let("c2" ⇐ c1) {
+          let("f" ⇐ (λ("f", "x")("f"♯((TRef(TNum)^(◆)) ~> TNum)) { x.deref + c1.deref })) {
+            EVar("f")(c2)
+          }
+        }
+      }
+    intercept[NotSubtype] { topTypeCheck(e3) }
+
+    // FIXME: this seems to be okay
+    val e4 =
+      let("c1" ⇐ alloc(3)) {
+        let("c2" ⇐ c1) {
+          let("f" ⇐ (λ("f", "x")("f"♯((TRef(TNum)^(◆, "c2")) ~> TNum)) { x.deref + c1.deref })) {
+            EVar("f")(c2)
+          }
+        }
+      }
+    //topTypeCheck(e4)
+
+    // FIXME: and this
+    val e5 =
+      let("c1" ⇐ alloc(3)) {
+        let("c2" ⇐ c1) {
+          let("f" ⇐ (λ("f", "x")("f"♯((TRef(TNum)^(◆, "c2")) ~> TNum)) { x.deref + c1.deref })) {
+            EVar("f")(c1)
+          }
+        }
+      }
+    //topTypeCheck(e5)
+  }
+
   test("var rename") {
     Counter.reset
     val t1: QType = (𝑓 ♯ ((𝑥 ∶ TNum) ~> (TNum ^ 𝑥))) ^ ◆
