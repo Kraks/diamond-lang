@@ -29,7 +29,7 @@ case class NotSubQType(t1: QType, t2: QType)
 case class NonOverlap(permitted: Qual, overlap: Qual)
   extends RuntimeException(s"permit $permitted, but found overlap $overlap")
 
-case class DeepDependency(t: QType, vbl: String)
+case class DeepDependency(t: Type, vbl: String)
   extends RuntimeException(s"$t cannot deeply depend on $vbl")
 
 object TEnv:

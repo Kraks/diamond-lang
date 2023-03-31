@@ -24,7 +24,7 @@ case class Qual(set: Set[QElem]):
     else if (set.size == 1) set.head.toString
     else s"""{${set.mkString(",")}}"""
 case class QType(t: Type, q: Qual):
-  override def toString = if (q.toString == "") t.toString else s"$t^$q"
+  override def toString = s"$t^$q"
 
 enum Expr:
   case EUnit
