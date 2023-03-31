@@ -20,8 +20,17 @@ case class TypeMismatch(e: Expr, actual: Type, expect: Type)
 case class QualTypeMismatch(e: Expr, actual: QType, expect: QType)
   extends RuntimeException(s"expr:\n  $e\n  expect type: $expect\n  actual type: $actual")
 
-case class NotSubtype(t1: QType, t2: QType)
+case class NotSubtype(t1: Type, t2: Type)
   extends RuntimeException(s"$t1 not subtype of $t2")
+
+case class NotSubQType(t1: QType, t2: QType)
+  extends RuntimeException(s"$t1 not qualified subtype of $t2")
+
+case class NonOverlap(permitted: Qual, overlap: Qual)
+  extends RuntimeException(s"permit $permitted, but found overlap $overlap")
+
+case class DeepDependency(t: QType, vbl: String)
+  extends RuntimeException(s"$t cannot deeply depend on $vbl")
 
 object TEnv:
   def empty: TEnv = TEnv(Map())
@@ -55,9 +64,9 @@ extension (q: Qual)
     s.subsetOf(dom + ◆)
   }
   // saturated is supposed to be called only within ⋒
-  private def saturated(using Γ: TEnv): Set[String] = reach(q.varSet, Set(), Set())
+  def saturated(using Γ: TEnv): Set[String] = reach(q.varSet, Set(), Set())
   def ⋒(q2: Qual)(using Γ: TEnv): Qual =
-    println(s"${q.saturated} ⋒ ${q2.saturated}")
+    //println(s"${q.saturated} ⋒ ${q2.saturated}")
     Qual(q.saturated.intersect(q2.saturated).asInstanceOf[Set[QElem]]) + Fresh()
 
 def reach(worklist: Set[String], seen: Set[String], acc: Set[String])(using Γ: TEnv): Set[String] =
@@ -305,7 +314,22 @@ def isSubQType(T: QType, S: QType)(using Γ: TEnv): Boolean =
 def checkSubQType(T: QType, S: QType)(using Γ: TEnv): Unit =
   //println(s"$Γ ⊢ $T <: $S")
   if (isSubQType(T, S)) ()
-  else throw NotSubtype(T, S)
+  else throw NotSubQType(T, S)
+
+def checkSubtypeOverlap(T: QType, S: QType)(using Γ: TEnv): Unit =
+  val QType(t1, q1) = T
+  val QType(t2, q2) = S
+  if (isSubtype(t1, t2)) {
+    // XXX: why require saturation here?
+    val sq1 = Qual(q1.saturated)
+    val sq2 = Qual(q2.saturated)
+    if (isSubqual(sq1, sq2)) ()
+    else throw NonOverlap(sq2, sq1 \ sq2)
+  } else throw NotSubtype(t1, t2)
+
+def checkDeepDep(t: Type, x: Option[String]): Unit =
+  if (typeFreeVars(t).intersect(x.toSet).isEmpty) ()
+  else throw DeepDependency(t, x.get)
 
 def qtypeFreeVars(qt: QType): Set[String] = {
   val QType(t, q) = qt
@@ -369,10 +393,10 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
       // println(s"tq2: $tq2 rt: $rt fv(rt): ${typeFreeVars(rt)}")
       // T-App◆
       // ◆ ∈ q2 ⇒ x ∉ fv(rt)
-      if (q2.isFresh) assert(typeFreeVars(rt).intersect(x.toSet).isEmpty)
+      if (q2.isFresh) checkDeepDep(rt, x)
       // ◆ ∈ qf ⇒ f ∉ fv(rt)
-      if (qf.isFresh) assert(typeFreeVars(rt).intersect(f.toSet).isEmpty)
-      checkSubQType(t2 ^ (q2 ⋒ qf), atq)
+      if (qf.isFresh) checkDeepDep(rt, f)
+      checkSubtypeOverlap(t2 ^ (q2 ⋒ qf), atq)
       qtypeSubst(qtypeSubst(rtq, x, q2), f, qf)
     }
   case ELet(x, Some(qt1), rhs, body) =>

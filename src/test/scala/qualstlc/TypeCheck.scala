@@ -186,10 +186,10 @@ class QualSTLCTests extends AnyFunSuite {
     assert(topTypeCheck(e1) == (TRef(TNum) ^ ◆))
 
     val fakeid = λ("fakeid", "x")("fakeid"♯((TRef(TNum) ^ ◆) ~> (TRef(TNum)^"x"))) { alloc(42) }
-    val thrown = intercept[NotSubtype] {
+    val thrown = intercept[NotSubQType] {
       topTypeCheck(fakeid)
     }
-    assert(thrown == NotSubtype(TRef(TNum) ^ ◆, TRef(TNum) ^ "x"))
+    assert(thrown == NotSubQType(TRef(TNum) ^ ◆, TRef(TNum) ^ "x"))
 
     val Γ1 = TEnv.empty + ("y" -> (TRef(TNum) ^ ◆))
     assert(typeCheck(id(y))(using Γ1) == (TRef(TNum) ^ "y"))
@@ -213,11 +213,8 @@ class QualSTLCTests extends AnyFunSuite {
 
     val e3 =
       (λ("x" ∶ (TRef(TNum) ^ ◆)) { λ("f", "z")("f"♯(TNum ~> (TRef(TNum) ^ "x"))) { x } })(alloc(3))
-    val thrown = intercept[AssertionError] {
-      topTypeCheck(e3)
-    }
-    // TODO: improve the error message -- cannot have deep dependency for fresh resource
-    assert(thrown.isInstanceOf[AssertionError])
+    assert(intercept[DeepDependency] { topTypeCheck(e3) } ==
+      DeepDependency(TFun(Some("f"), Some("z"), TNum^(), TRef(TNum)^"x"), "x"))
 
     val e4 =
       (λ("x" ∶ (TRef(TNum) ^ ◆)) { λ("f", "z")("f"♯(TNum ~> (TRef(TNum) ^ "f"))) { x } })(alloc(3))
@@ -236,7 +233,8 @@ class QualSTLCTests extends AnyFunSuite {
           EVar("f")(c1)
         }
       }
-    val thrown = intercept[NotSubtype] { topTypeCheck(e1) }
+    assert(intercept[NonOverlap] { topTypeCheck(e1) } ==
+      NonOverlap(Qual(Set()), Qual(Set("c1"))))
 
     // permitted overlap
     val e2 =
@@ -256,9 +254,11 @@ class QualSTLCTests extends AnyFunSuite {
           }
         }
       }
-    intercept[NotSubtype] { topTypeCheck(e3) }
+    assert(intercept[NonOverlap] { topTypeCheck(e3) } ==
+      NonOverlap(Qual(Set()), Qual(Set("c1"))))
 
-    // FIXME: this seems to be okay
+    // permitted overlap with c2, function body captures c1
+    // applying with c2, okay
     val e4 =
       let("c1" ⇐ alloc(3)) {
         let("c2" ⇐ c1) {
@@ -267,9 +267,10 @@ class QualSTLCTests extends AnyFunSuite {
           }
         }
       }
-    //topTypeCheck(e4)
+    assert(topTypeCheck(e4) == (TNum^()))
 
-    // FIXME: and this
+    // permitted overlap with c2, function body captures c1
+    // applying with c1, okay
     val e5 =
       let("c1" ⇐ alloc(3)) {
         let("c2" ⇐ c1) {
@@ -278,7 +279,7 @@ class QualSTLCTests extends AnyFunSuite {
           }
         }
       }
-    //topTypeCheck(e5)
+    assert(topTypeCheck(e5) == (TNum^()))
   }
 
   test("var rename") {
