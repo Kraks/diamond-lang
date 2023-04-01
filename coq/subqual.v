@@ -284,6 +284,30 @@ Proof.
     apply q_trans with (q := q); assumption.
 Qed.
 
+Lemma expand_is_increasing: forall G q1 q2,
+  Expand G q1 q2 -> StrSet.Subset q1 q2.
+Proof.
+  intros.
+  induction H.
+  - apply expand_one_step_is_increasing in H.
+    assumption.
+  - apply expand_one_step_is_increasing in H.
+    SDecide.fsetdec.
+Qed.
+
+Lemma expand_is_terminating: forall G q, wf_context G -> StrSet.Subset q (ddomain G)
+  -> exists q', Expand G q q'.
+Admitted.
+
+Lemma expand_is_well_formed: forall G q1 q2,
+  Expand G q1 q2 -> StrSet.Subset q2 (ddomain G).
+Proof.
+  intros.
+  apply expand_is_sound in H.
+  apply subQual_is_well_formed in H.
+  SDecide.fsetdec.
+Qed.
+
 Inductive Bounded: context -> string -> qualset -> Prop :=
 | bd_base: forall ctx x q, wf_context ctx -> StrSet.Subset q (ddomain ctx)
   -> StrSet.In x q -> Bounded ctx x q
@@ -303,11 +327,21 @@ Proof.
     apply q_cong_fold; auto.
 Qed.
 
+Lemma bounded_is_transitive: forall G x q1 q2, StrSet.Subset q2 (ddomain G) ->
+  Bounded G x q1 -> StrSet.For_all (fun x => Bounded G x q2) q1 -> Bounded G x q2.
+Proof.
+  intros.
+  induction H0; auto.
+  apply bd_ind with (q' := q'); auto.
+  unfold StrSet.For_all in *; intros.
+  apply H5; auto.
+Qed.
+
 Inductive algorithmic: context -> qualset -> qualset -> Prop :=
 | algo: forall G p q q', Expand G q q' -> StrSet.For_all (fun x => Bounded G x q') p
   -> algorithmic G p q.
 
-Lemma algorithmic_is_sound: forall G p q,
+Theorem algorithmic_is_sound: forall G p q,
   algorithmic G p q -> subQual G p q.
 Proof.
   intros.
@@ -324,3 +358,42 @@ Proof.
   apply bounded_is_sound.
   assumption.
 Qed.
+
+Lemma algorithmic_is_complete: forall G p q,
+  subQual G p q -> algorithmic G p q.
+Proof.
+  intros.
+  induction H.
+  3,4: apply retrieve_is_well_formed in H0 as H1; auto; destruct H1.
+  1,3: assert (exists q', Expand G q q') as Hexterm.
+  6: assert (exists q', Expand G (StrSet.singleton f) q') as Hexterm.
+  1,3,6: apply expand_is_terminating; auto; SDecide.fsetdec.
+  1,2,4: destruct Hexterm as [q' Hex];
+         apply expand_is_well_formed in Hex as ?;
+         apply expand_is_increasing in Hex as ?;
+         apply algo with (q' := q'); auto;
+         unfold StrSet.For_all; intros.
+  - apply bd_base; auto.
+  - apply SFacts.singleton_iff in H5; subst.
+    apply bd_ind with (q' := q); auto.
+    unfold StrSet.For_all; intros.
+    apply bd_base; auto.
+  - apply bd_base; auto.
+    admit.
+  - destruct IHsubQual1; destruct IHsubQual2; subst.
+    apply algo with (q' := q'0); auto.
+    apply expand_is_well_formed in H3 as ?.
+    unfold StrSet.For_all in *; intros.
+    apply bounded_is_transitive with (q1 := q'); auto.
+    unfold StrSet.For_all in *; intros.
+    destruct (StrSet.mem x0 p0) eqn:?.
+    * apply SFacts.mem_iff in Heqb.
+      auto.
+    * apply SFacts.not_mem_iff in Heqb.
+      apply subQual_is_well_formed in H as ?.
+      destruct H8.
+      apply bd_base; auto.
+      clear - H1 H3 H4 H7 Heqb.
+      admit.
+  - admit.
+Admitted.
