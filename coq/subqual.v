@@ -146,6 +146,41 @@ Proof.
   - apply q_sub; auto; SDecide.fsetdec.
 Qed.
 
+Lemma q_cong_fold: forall G p q,
+  wf_context G -> StrSet.Subset q (ddomain G)
+  -> (forall x, StrSet.In x p -> subQual G (StrSet.singleton x) q)
+  -> subQual G p q.
+Proof.
+  intros.
+  remember (StrSet.fold StrSet.add p StrSet.empty).
+  apply q_trans with (q := t).
+  * assert (StrSet.Equal t p).
+    { subst. apply SProps.fold_identity. }
+    assert (StrSet.Subset p (ddomain G)).
+    {
+      unfold StrSet.Subset.
+      intros.
+      apply H1 in H3.
+      apply subQual_is_well_formed in H3.
+      SDecide.fsetdec.
+    }
+    apply q_sub; auto.
+    all: SDecide.fsetdec.
+  * subst.
+    apply SProps.fold_rec.
+    + intros.
+      apply q_sub; auto.
+      SDecide.fsetdec.
+    + intros.
+      apply H1 in H2.
+      apply q_trans with (q := StrSet.union (StrSet.singleton x) a).
+      --  apply subQual_is_well_formed in H2.
+          apply subQual_is_well_formed in H5.
+          apply q_sub; auto.
+          all: SDecide.fsetdec.
+      --  apply q_cong'; auto.
+Qed.
+
 Definition expand_one_step (ctx: context) (qual: qualset) : option qualset :=
   match is_well_formed ctx && StrSet.subset qual (ddomain ctx) with
   | true => Some (StrSet.union qual (StrSet.fold (fun x p =>
@@ -156,7 +191,7 @@ Definition expand_one_step (ctx: context) (qual: qualset) : option qualset :=
   | false => None
   end.
 
-Lemma expand_one_step_is_monotonic : forall G q1 q2,
+Lemma expand_one_step_is_increasing : forall G q1 q2,
   expand_one_step G q1 = Some q2 -> StrSet.Subset q1 q2.
 Proof.
   intros.
@@ -215,7 +250,7 @@ Program Fixpoint expand (ctx: context) (qual: qualset)
 Next Obligation.
   symmetry in Heq_anonymous0.
   apply expand_one_step_is_sound in Heq_anonymous0 as ?.
-  apply expand_one_step_is_monotonic in Heq_anonymous0.
+  apply expand_one_step_is_increasing in Heq_anonymous0.
   apply subQual_is_well_formed in H.
   destruct H; destruct H0.
   assert (~StrSet.Subset qual' qual).
@@ -233,8 +268,59 @@ Next Obligation.
   apply SProps.subset_cardinal_lt with (x := x); SDecide.fsetdec.
 Qed.
 
-Lemma expand_is_sound: forall G q1 q2, expand G q1 = Some q2 -> subQual G q2 q1.
-Admitted.
+Inductive Expand: context -> qualset -> qualset -> Prop :=
+| ex_top: forall ctx q1 q2, expand_one_step ctx q1 = Some q2
+  -> StrSet.Subset q2 q1 -> Expand ctx q1 q2
+| ex_ind: forall ctx q1 q q2, expand_one_step ctx q1 = Some q
+  -> ~StrSet.Subset q q1 -> Expand ctx q q2 -> Expand ctx q1 q2.
 
-Lemma expand_is_saturated: forall G q1 q2, expand G q1 = Some q2 -> expand G q2 = Some q2.
-Admitted.
+Lemma expand_is_sound: forall G q1 q2, Expand G q1 q2 -> subQual G q2 q1.
+Proof.
+  intros.
+  induction H.
+  - apply expand_one_step_is_sound in H.
+    assumption.
+  - apply expand_one_step_is_sound in H.
+    apply q_trans with (q := q); assumption.
+Qed.
+
+Inductive Bounded: context -> string -> qualset -> Prop :=
+| bd_base: forall ctx x q, wf_context ctx -> StrSet.Subset q (ddomain ctx)
+  -> StrSet.In x q -> Bounded ctx x q
+| bd_ind: forall ctx x q' q, wf_context ctx -> StrSet.Subset q (ddomain ctx)
+  -> retrieve ctx x = Some (Sym false false q')
+  -> StrSet.For_all (fun x' => Bounded ctx x' q) q'
+  -> Bounded ctx x q .
+
+Lemma bounded_is_sound: forall G x q, Bounded G x q -> subQual G (StrSet.singleton x) q.
+Proof.
+  intros.
+  induction H.
+  - apply q_sub; auto.
+    SDecide.fsetdec.
+  - apply q_trans with (q := q').
+    apply q_var; auto.
+    apply q_cong_fold; auto.
+Qed.
+
+Inductive algorithmic: context -> qualset -> qualset -> Prop :=
+| algo: forall G p q q', Expand G q q' -> StrSet.For_all (fun x => Bounded G x q') p
+  -> algorithmic G p q.
+
+Lemma algorithmic_is_sound: forall G p q,
+  algorithmic G p q -> subQual G p q.
+Proof.
+  intros.
+  destruct H.
+  apply expand_is_sound in H as ?.
+  unfold StrSet.For_all in H0.
+  apply subQual_is_well_formed in H1 as ?.
+  destruct H2.
+  destruct H3.
+  apply q_trans with (q := q'); auto.
+  apply q_cong_fold; auto.
+  intros.
+  apply H0 in H5.
+  apply bounded_is_sound.
+  assumption.
+Qed.
