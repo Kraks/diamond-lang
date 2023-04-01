@@ -237,6 +237,55 @@ Proof.
         apply q_sub; auto; SDecide.fsetdec.
 Qed.
 
+Lemma expand_one_step_is_monotonic : forall G q1 q1' q2 q2',
+  StrSet.Subset q1 q2 -> expand_one_step G q1 = Some q1' -> expand_one_step G q2 = Some q2'
+  -> StrSet.Subset q1' q2'.
+Proof.
+  intros.
+  unfold expand_one_step in *.
+  destruct (is_well_formed G) eqn:?; simpl in *; try discriminate.
+  destruct (StrSet.subset q1 (ddomain G)) eqn:?; simpl in *; try discriminate.
+  destruct (StrSet.subset q2 (ddomain G)) eqn:?; simpl in *; try discriminate.
+  inversion H0; clear H0.
+  inversion H1; clear H1.
+  assert (StrSet.Subset q1' q2'); try SDecide.fsetdec.
+  rewrite <- H3.
+  apply SProps.fold_rec. {
+    intros.
+    SDecide.fsetdec.
+  }
+  intros.
+  apply SProps.Add_Equal in H4.
+  destruct (retrieve G x) eqn:?; try SDecide.fsetdec.
+  destruct s.
+  destruct isFun eqn:?; try SDecide.fsetdec.
+  destruct isFresh eqn:?; try SDecide.fsetdec.
+  assert (StrSet.Subset qual q2'); try SDecide.fsetdec.
+  rewrite <- H2; clear H2 H3.
+  assert (StrSet.In x q2); try SDecide.fsetdec.
+  revert H2.
+  apply SProps.fold_rec. {
+    intros.
+    exfalso.
+    SDecide.fsetdec.
+  }
+  intros.
+  apply SProps.Add_Equal in H6.
+  destruct (x =? x0)%string eqn:?. {
+    apply String.eqb_eq in Heqb4; subst.
+    rewrite Heqo.
+    SDecide.fsetdec.
+  }
+  apply String.eqb_neq in Heqb4.
+  assert (StrSet.In x s'0).
+  SDecide.fsetdec.
+  apply H7 in H9.
+  destruct (retrieve G x0) eqn:?; try SDecide.fsetdec.
+  destruct s.
+  destruct isFun0 eqn:?; try SDecide.fsetdec.
+  destruct isFresh0 eqn:?; try SDecide.fsetdec.
+Qed.
+
 Program Fixpoint expand (ctx: context) (qual: qualset)
                         {measure (StrSet.cardinal (StrSet.diff (ddomain ctx) qual))} : option qualset :=
   match expand_one_step ctx qual with
@@ -306,6 +355,34 @@ Proof.
   apply expand_is_sound in H.
   apply subQual_is_well_formed in H.
   SDecide.fsetdec.
+Qed.
+
+Lemma expand_is_monotonic: forall G q1 q1' q2 q2',
+  StrSet.Subset q1 q2 -> Expand G q1 q1' -> Expand G q2 q2' -> StrSet.Subset q1' q2'.
+Proof.
+  intros.
+  generalize dependent q2.
+  generalize dependent q2'.
+  induction H0; intros.
+  - generalize dependent q1.
+    generalize dependent q2.
+    induction H2; intros.
+    * apply (expand_one_step_is_monotonic ctx q3 _ q1 _); auto.
+    * apply (IHExpand q0 q3); auto.
+      apply expand_one_step_is_increasing in H.
+      SDecide.fsetdec.
+  - generalize dependent q1.
+    generalize dependent q.
+    generalize dependent q2.
+    induction H3; intros.
+    * apply (IHExpand q2 q1).
+      assert (StrSet.Subset q q2).
+      apply (expand_one_step_is_monotonic ctx q3 _ q1 _); auto.
+      SDecide.fsetdec.
+      apply ex_top; auto.
+    * apply (IHExpand q0 q3) with (q1 := q4); auto.
+      apply expand_one_step_is_increasing in H.
+      SDecide.fsetdec.
 Qed.
 
 Inductive Bounded: context -> string -> qualset -> Prop :=
@@ -379,7 +456,15 @@ Proof.
     unfold StrSet.For_all; intros.
     apply bd_base; auto.
   - apply bd_base; auto.
-    admit.
+    apply is_well_formed_iff in H as ?.
+    assert (StrSet.subset (StrSet.singleton f) (ddomain G) = true).
+    { apply SFacts.subset_iff. SDecide.fsetdec. }
+    inversion Hex; subst; unfold expand_one_step in *.
+    all: rewrite H6 in H8; rewrite H7 in H8; simpl in *.
+    all: rewrite StrSet.fold_spec in H8; simpl in *; rewrite H0 in H8.
+    all: inversion H8.
+    2: apply expand_is_increasing in H10.
+    all: SDecide.fsetdec.
   - destruct IHsubQual1; destruct IHsubQual2; subst.
     apply algo with (q' := q'0); auto.
     apply expand_is_well_formed in H3 as ?.
@@ -395,5 +480,28 @@ Proof.
       apply bd_base; auto.
       clear - H1 H3 H4 H7 Heqb.
       admit.
-  - admit.
+  - apply subQual_is_well_formed in H as ?.
+    destruct H1.
+    assert (exists x, Expand G (StrSet.union p q') x).
+    apply expand_is_terminating; auto; SDecide.fsetdec.
+    destruct H3.
+    apply algo with (q' := x); auto.
+    inversion IHsubQual; subst.
+    unfold StrSet.For_all in *; intros.
+    apply expand_is_increasing in H3 as ?.
+    assert (StrSet.Subset q'0 x).
+    apply (expand_is_monotonic G q' _ (StrSet.union p q') _); auto; SDecide.fsetdec.
+    apply expand_is_well_formed in H3 as ?.
+    destruct (StrSet.mem x0 q) eqn:?.
+    * apply SFacts.mem_iff in Heqb.
+      apply H5 in Heqb.
+      clear - Heqb H8 H9.
+      induction Heqb.
+      + apply bd_base; auto.
+      + apply bd_ind with (q' := q'); auto.
+        unfold StrSet.For_all in *; intros.
+        apply H3; auto.
+    * apply SFacts.not_mem_iff in Heqb.
+      apply bd_base; auto.
+      SDecide.fsetdec.
 Admitted.
