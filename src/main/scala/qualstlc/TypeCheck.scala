@@ -404,10 +404,13 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     val qt2 = typeCheck(rhs)
     checkSubQType(qt2, qt1)
     val rt = typeCheck(body)(using Γ + (x -> qt1))
+    // Note: here we are not using the more precise qualifier for substitution
+    if (q1.isFresh) checkDeepDep(rt.ty, Some(x))
     qtypeSubst(rt, Some(x), q1)
   case ELet(x, None, rhs, body) =>
     val qt@QType(t, q) = typeCheck(rhs)
     val rt = typeCheck(body)(using Γ + (x -> qt))
+    if (q.isFresh) checkDeepDep(rt.ty, Some(x))
     qtypeSubst(rt, Some(x), q)
   case EAlloc(e) =>
     val QType(t, q) = typeCheck(e)

@@ -211,6 +211,7 @@ class QualSTLCTests extends AnyFunSuite {
         foo(e)
       }
     }
+
     val Γ2 = TEnv.empty + ("c1" -> (TRef(TNum)^ ◆)) + ("c2" -> (TRef(TNum)^ ◆))
     assert(typeCheck(mkFoo(c1))(using Γ2) == (TRef(TNum)^"c1"))
     assert(typeCheck(mkFoo(c2))(using Γ2) == (TRef(TNum)^"c2"))
@@ -244,11 +245,15 @@ class QualSTLCTests extends AnyFunSuite {
     assert(intercept[DeepDependency] { topTypeCheck(e3) } ==
       DeepDependency(TFun(Some("f"), Some("z"), TNum^(), TRef(TNum)^"x"), "x"))
 
-    val e4 =
-      (λ("x" ∶ (TRef(TNum) ^ ◆)) { λ("f", "z")("f"♯(TNum ~> (TRef(TNum) ^ "f"))) { x } })(alloc(3))
-    assert(topTypeCheck(e4) == (TFun(Some("f"), Some("z"), TNum^(), TRef(TNum)^"f") ^ ◆))
+    // TODO: let should also do freshness and deep dependency check
+    val e3_let =
+      let("x" ⇐ alloc(0)) {
+        λ("f", "z")("f"♯(TNum ~> (TRef(TNum) ^ "x"))) { x }
+      }
+    assert(intercept[DeepDependency] { topTypeCheck(e3_let) } ==
+      DeepDependency(TFun(Some("f"), Some("z"), TNum, TRef(TNum)^"x"), "x"))
 
-    val e5 = {
+    val e3_alias = {
       val f = λ("x" ∶ (TRef(TNum) ^ ◆)) {
         let ("y" ⇐ x) {
           λ("f", "z")("f"♯(TNum ~> (TRef(TNum) ^ "y"))) { y }
@@ -257,10 +262,15 @@ class QualSTLCTests extends AnyFunSuite {
       val arg = alloc(3)
       f(arg)
     }
-    assert(intercept[DeepDependency] { topTypeCheck(e5) } ==
+    assert(intercept[DeepDependency] { topTypeCheck(e3_alias) } ==
       DeepDependency(TFun(Some("f"), Some("z"), TNum^(), TRef(TNum)^"x"), "x"))
 
-    val e6 = {
+    // must upcast return qualifier to self-ref `f`
+    val e4 =
+      (λ("x" ∶ (TRef(TNum) ^ ◆)) { λ("f", "z")("f"♯(TNum ~> (TRef(TNum) ^ "f"))) { x } })(alloc(3))
+    assert(topTypeCheck(e4) == (TFun(Some("f"), Some("z"), TNum^(), TRef(TNum)^"f") ^ ◆))
+
+    val e5 = {
       val f = λ("x" ∶ (TRef(TNum) ^ ◆)) {
         let ("y" ⇐ x) {
           λ("f", "z")("f"♯(TNum ~> (TRef(TNum) ^ "f"))) { y }
@@ -269,7 +279,7 @@ class QualSTLCTests extends AnyFunSuite {
       val arg = alloc(3)
       f(arg)
     }
-    assert(topTypeCheck(e6) == (TFun(Some("f"), Some("z"), TNum^(), TRef(TNum)^"f") ^ ◆))
+    assert(topTypeCheck(e5) == (TFun(Some("f"), Some("z"), TNum^(), TRef(TNum)^"f") ^ ◆))
   }
 
   test("separation") {
