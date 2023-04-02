@@ -388,7 +388,33 @@ Qed.
 Lemma expand_is_saturated: forall G q q' x qual,
   Expand G q q' -> StrSet.In x q' -> retrieve G x = Some (Sym true false qual)
   -> StrSet.Subset qual q'.
-Admitted.
+Proof.
+  intros.
+  generalize dependent x.
+  generalize dependent qual.
+  induction H; intros.
+  2: apply IHExpand with (x := x); auto.
+  unfold expand_one_step in H.
+  destruct (is_well_formed ctx && StrSet.subset q1 (ddomain ctx)) eqn:?; try discriminate.
+  inversion H; clear H.
+  assert (StrSet.In x q1).
+  SDecide.fsetdec.
+  revert H; clear H4.
+  apply SProps.fold_rec; intros.
+  exfalso; SDecide.fsetdec.
+  apply SProps.Add_Equal in H4.
+  destruct (x =? x0)%string eqn:?.
+  - apply String.eqb_eq in Heqb0; subst.
+    rewrite H2.
+    SDecide.fsetdec.
+  - apply String.eqb_neq in Heqb0.
+    assert (StrSet.In x s'). SDecide.fsetdec.
+    apply H5 in H7.
+    destruct (retrieve ctx x0) eqn:?; try SDecide.fsetdec.
+    destruct s eqn:?.
+    destruct isFun eqn:?; try SDecide.fsetdec.
+    destruct isFresh eqn:?; try SDecide.fsetdec.
+Qed.
 
 Inductive Bounded: context -> string -> qualset -> Prop :=
 | bd_base: forall ctx x q, wf_context ctx -> StrSet.Subset q (ddomain ctx)
@@ -440,6 +466,7 @@ Proof.
   apply bounded_is_sound.
   assumption.
 Qed.
+Print Assumptions algorithmic_is_sound.
 
 Lemma algorithmic_is_complete: forall G p q,
   subQual G p q -> algorithmic G p q.
@@ -537,3 +564,4 @@ Proof.
       apply bd_base; auto.
       SDecide.fsetdec.
 Qed.
+Print Assumptions algorithmic_is_complete.
