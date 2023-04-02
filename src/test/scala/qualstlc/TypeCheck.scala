@@ -218,7 +218,6 @@ class QualSTLCTests extends AnyFunSuite {
 
     // Sec 2.2.6 from the paper:
     // qualifier-dependent application (non-fresh)
-    //((TUnit ~> (TRef(TNum)^"x"))^"x")
     val Γ3 = TEnv.empty + ("c" -> (TRef(TNum)^ ◆))
     val e2 =
       let("f" ⇐ (λ("f", "x")("f"♯((TRef(TNum)^"c") ~> ((("_" ∶ TUnit) ~> (TRef(TNum)^"x"))^"x"))) {
@@ -391,6 +390,16 @@ class QualSTLCTests extends AnyFunSuite {
     assert(isSubQType(TRef(TNum) ^ 𝑦, TRef(TNum) ^ 𝑦)(using Γ2))
     // y : Ref[Int]^◆ ⊢ Ref[Int]^y is not subtype of Ref[Int]^◆
     assert(!isSubQType(TRef(TNum) ^ 𝑦, TRef(TNum) ^ ◆)(using Γ2))
+
+    Counter.reset
+    val t1: QType = (𝑓 ♯ ((𝑥 ∶ TNum) ~> (TNum ^ 𝑓))) ^ ◆
+    val t2: QType = (𝑔 ♯ ((𝑥 ∶ TNum) ~> (TNum ^ 𝑔))) ^ ◆
+    assert(isSubQType(t1, t2)(using TEnv.empty))
+
+    Counter.reset
+    val e = let("f" ∶ ("g"♯( ("y" ∶ (TRef(TNum)^(◆))) ~> (TRef(TNum)^("y", "g"))))  ⇐
+      (λ("f", "x")("f"♯((TRef(TNum)^(◆)) ~> (TRef(TNum)^("x", "f")))) { EVar("x") })) { EVar("f") }
+    assert(topTypeCheck(e) == (("g"♯( ("y" ∶ (TRef(TNum)^(◆))) ~> (TRef(TNum)^("y", "g"))))^()))
   }
 
   test("saturation") {
