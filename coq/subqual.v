@@ -385,6 +385,11 @@ Proof.
       SDecide.fsetdec.
 Qed.
 
+Lemma expand_is_saturated: forall G q q' x qual,
+  Expand G q q' -> StrSet.In x q' -> retrieve G x = Some (Sym true false qual)
+  -> StrSet.Subset qual q'.
+Admitted.
+
 Inductive Bounded: context -> string -> qualset -> Prop :=
 | bd_base: forall ctx x q, wf_context ctx -> StrSet.Subset q (ddomain ctx)
   -> StrSet.In x q -> Bounded ctx x q
@@ -471,15 +476,42 @@ Proof.
     unfold StrSet.For_all in *; intros.
     apply bounded_is_transitive with (q1 := q'); auto.
     unfold StrSet.For_all in *; intros.
-    destruct (StrSet.mem x0 p0) eqn:?.
-    * apply SFacts.mem_iff in Heqb.
-      auto.
-    * apply SFacts.not_mem_iff in Heqb.
-      apply subQual_is_well_formed in H as ?.
-      destruct H8.
+    clear H H0 H2 H6 p x.
+    generalize dependent x0.
+    induction H1; intros.
+    + apply expand_one_step_is_increasing in H.
+      apply H4.
+      SDecide.fsetdec.
+    + apply IHExpand; auto.
+      clear q2 H1 IHExpand H7.
+      unfold expand_one_step in *.
+      destruct (is_well_formed ctx) eqn:?;
+      destruct (StrSet.subset q1 (ddomain ctx)) eqn:?;
+      simpl in *; try discriminate.
+      inversion H; clear H H2.
+      apply SProps.fold_rec; intros.
+      { exfalso. SDecide.fsetdec. }
+      apply SProps.Add_Equal in H2.
+      destruct (x =? x1)%string eqn:?.
+      { apply String.eqb_eq in Heqb1; subst. apply H4. exact H. }
+      apply String.eqb_neq in Heqb1.
+      destruct (retrieve ctx x) eqn:?.
+      2: apply H6; SDecide.fsetdec.
+      destruct s eqn:?.
+      destruct isFun eqn:?.
+      2: apply H6; SDecide.fsetdec.
+      destruct isFresh eqn:?.
+      apply H6; SDecide.fsetdec.
+      destruct (StrSet.mem x1 qual) eqn:?.
+      2: apply SFacts.not_mem_iff in Heqb4; apply H6; SDecide.fsetdec.
+      apply SFacts.mem_iff in Heqb4.
+      clear - H3 H4 H Heqo Heqb4.
+      apply H4 in H.
+      inversion H; subst.
+      2: rewrite H2 in Heqo; discriminate.
       apply bd_base; auto.
-      clear - H1 H3 H4 H7 Heqb.
-      admit.
+      clear - H3 Heqo H2 Heqb4.
+      apply expand_is_saturated with (x := x) (qual := qual) in H3; auto.
   - apply subQual_is_well_formed in H as ?.
     destruct H1.
     assert (exists x, Expand G (StrSet.union p q') x).
@@ -504,4 +536,4 @@ Proof.
     * apply SFacts.not_mem_iff in Heqb.
       apply bd_base; auto.
       SDecide.fsetdec.
-Admitted.
+Qed.
