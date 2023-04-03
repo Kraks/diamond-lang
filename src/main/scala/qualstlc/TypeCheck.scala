@@ -350,6 +350,7 @@ def freeVars(e: Expr): Set[String] = e match {
   case EApp(e1, e2) => freeVars(e1) ++ freeVars(e2)
   case ELet(x, _, rhs, body) => freeVars(rhs) ++ (freeVars(body) - x)
   case EAlloc(e) => freeVars(e)
+  case EUntrackedAlloc(e) => freeVars(e)
   case EAssign(e1, e2) => freeVars(e1) ++ freeVars(e2)
   case EDeref(e) => freeVars(e)
   case ECond(cnd, thn, els) => freeVars(cnd) ++ freeVars(thn) ++ freeVars(els)
@@ -416,6 +417,10 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     val QType(t, q) = typeCheck(e)
     checkUntrackQual(q)
     TRef(t) ^ ◆
+  case EUntrackedAlloc(e) =>
+    val QType(t, q) = typeCheck(e)
+    checkUntrackQual(q)
+    TRef(t) ^ ()
   case EAssign(e1, e2) =>
     val QType(TRef(t1), q1) = typeCheck(e1)
     val QType(t2, q2) = typeCheck(e2)

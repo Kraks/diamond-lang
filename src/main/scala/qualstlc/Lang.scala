@@ -36,6 +36,7 @@ enum Expr:
   case EApp(e1: Expr, e2: Expr)
   case ELet(x: String, t: Option[QType], rhs: Expr, body: Expr)
   case EAlloc(init: Expr)
+  case EUntrackedAlloc(init: Expr)
   case EAssign(lhs: Expr, rhs: Expr)
   case EDeref(e: Expr)
   case ECond(cnd: Expr, thn: Expr, els: Expr)

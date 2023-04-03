@@ -182,21 +182,15 @@ class QualSTLCTests extends AnyFunSuite {
     val id = λ("id", "x")("id"♯((TRef(TNum) ^ ◆) ~> (TRef(TNum)^"x"))) { x }
     assert(topTypeCheck(id) == (TFun(Some("id"), Some("x"), TRef(TNum)^ ◆, TRef(TNum)^"x") ^ ()))
 
-    val e1 = id(alloc(42))
-    assert(topTypeCheck(e1) == (TRef(TNum) ^ ◆))
+    assert(topTypeCheck(id(alloc(42))) == (TRef(TNum) ^ ◆))
+    assert(topTypeCheck(id(EUntrackedAlloc(0))) == (TRef(TNum) ^ ()))
 
     val fakeid = λ("fakeid", "x")("fakeid"♯((TRef(TNum) ^ ◆) ~> (TRef(TNum)^"x"))) { alloc(42) }
-    val thrown = intercept[NotSubQType] {
-      topTypeCheck(fakeid)
-    }
-    assert(thrown == NotSubQType(TRef(TNum) ^ ◆, TRef(TNum) ^ "x"))
+    assert(intercept[NotSubQType] { topTypeCheck(fakeid) }
+           == NotSubQType(TRef(TNum) ^ ◆, TRef(TNum) ^ "x"))
 
     val Γ1 = TEnv.empty + ("y" -> (TRef(TNum) ^ ◆))
     assert(typeCheck(id(y))(using Γ1) == (TRef(TNum) ^ "y"))
-
-    // TODO: this can be checked in the polymorphic version
-    //val e2 = id(42)
-    //println(topTypeCheck(e2))
 
     val c1 = EVar("c1")
     val c2 = EVar("c2")
@@ -378,8 +372,8 @@ class QualSTLCTests extends AnyFunSuite {
     println(intercept[NonOverlap] { topTypeCheck(make_e7("x", "x")) })
     println(intercept[NonOverlap] { topTypeCheck(make_e7("x", "y")) })
     println(intercept[NonOverlap] { topTypeCheck(make_e7("y", "x")) })
+    // TODO: what's the right error message here?
     println(intercept[NonOverlap] { topTypeCheck(make_e7("y", "y")) })
-
   }
 
   test("var rename") {
