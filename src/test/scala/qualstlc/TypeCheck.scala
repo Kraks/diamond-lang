@@ -340,6 +340,46 @@ class QualSTLCTests extends AnyFunSuite {
         }
       }
     assert(topTypeCheck(e5) == (TNum^()))
+
+    val id = λ("id", "x")("id"♯((TRef(TNum) ^ ◆) ~> (TRef(TNum)^"x"))) { x }
+    def make_e6(allow: String, use: String, arg: String) =
+      let("id" ⇐ id) {
+        let("x" ⇐ alloc(0)) {
+          let("y" ⇐ EVar("id")(EVar("x"))) {
+            let("f" ⇐ (λ("f", "z")("f"♯((TRef(TNum)^(◆, allow)) ~> TNum)) {
+              EVar(use).deref + EVar("z").deref
+            })) {
+              EVar("f")(EVar(arg))
+            }
+          }
+        }
+      }
+    assert(topTypeCheck(make_e6("x", "x", "x")) == (TNum^()))
+    assert(topTypeCheck(make_e6("x", "x", "y")) == (TNum^()))
+    assert(topTypeCheck(make_e6("x", "y", "x")) == (TNum^()))
+    assert(topTypeCheck(make_e6("x", "y", "y")) == (TNum^()))
+    assert(topTypeCheck(make_e6("y", "x", "x")) == (TNum^()))
+    assert(topTypeCheck(make_e6("y", "x", "y")) == (TNum^()))
+    assert(topTypeCheck(make_e6("y", "y", "x")) == (TNum^()))
+    assert(topTypeCheck(make_e6("y", "y", "y")) == (TNum^()))
+
+    def make_e7(use: String, arg: String) =
+      let("id" ⇐ id) {
+        let("x" ⇐ alloc(0)) {
+          let("y" ⇐ EVar("id")(EVar("x"))) {
+            let("f" ⇐ (λ("f", "z")("f"♯((TRef(TNum)^(◆)) ~> TNum)) {
+              EVar(use).deref + EVar("z").deref
+            })) {
+              EVar("f")(EVar(arg))
+            }
+          }
+        }
+      }
+    println(intercept[NonOverlap] { topTypeCheck(make_e7("x", "x")) })
+    println(intercept[NonOverlap] { topTypeCheck(make_e7("x", "y")) })
+    println(intercept[NonOverlap] { topTypeCheck(make_e7("y", "x")) })
+    println(intercept[NonOverlap] { topTypeCheck(make_e7("y", "y")) })
+
   }
 
   test("var rename") {
