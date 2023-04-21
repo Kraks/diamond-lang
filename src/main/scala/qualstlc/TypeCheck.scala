@@ -174,6 +174,7 @@ def isSubset(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean = q1 ⊆ q2 && q2 ⊆ 
   // else false
 
 def isSubqual(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean =
+  println(s"$Γ ⊢ $q1 <: $q2")
   // TODO: some well-formedness condition seems missing
   def qSelf(q: Set[QElem]): Set[QElem] =
     q.flatMap {
@@ -381,8 +382,10 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
   case EApp(e1, e2) =>
     val t1@QType(TFun(f, x, atq@QType(at, aq), rtq@QType(rt, rq)), qf) = typeCheck(e1)
     //println(t1)
+    // FIXME: function type's qualifier needs to include free variables of types (not only terms)
     val codomBound: Qual =
       Qual(Γ.dom.asInstanceOf[Set[QElem]]) ++ f.toSet ++ x.toSet ++ Set(◆)
+    println(codomBound)
     if (!(rq ⊆ codomBound)) throw RuntimeException("ill-formed qualifier " + rq)
     val tq2@QType(t2, q2) = typeCheck(e2)
     if (!aq.isFresh) {

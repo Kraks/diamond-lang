@@ -13,6 +13,17 @@ import ExprSyntax.given_Conversion_Int_ENum
 
 class Playground extends AnyFunSuite {
   test("playground") {
+    /* val x = alloc(0)
+     * def f(g: Int -> Ref[Int]^x): Ref[Int]^x = g(0)
+     * f(λ(y).x)
+     */
+    val let0 =
+      let("x" ⇐ alloc(0)) {
+        let("f" ⇐ λ("f", "g")("f"♯( (TNum ~> (TRef(TNum) ^ "x")) ~> (TRef(TNum) ^ "x"))) { EVar("g")(0) }) {
+          EVar("f")( λ("y" ∶ TNum) { EVar("x") } )
+        }
+      }
+    println(topTypeCheck(let0))
   }
 }
 
@@ -238,7 +249,6 @@ class QualSTLCTests extends AnyFunSuite {
     assert(intercept[DeepDependency] { topTypeCheck(e3) } ==
       DeepDependency(TFun(Some("f"), Some("z"), TNum^(), TRef(TNum)^"x"), "x"))
 
-    // TODO: let should also do freshness and deep dependency check
     val e3_let =
       let("x" ⇐ alloc(0)) {
         λ("f", "z")("f"♯(TNum ~> (TRef(TNum) ^ "x"))) { x }
@@ -369,11 +379,11 @@ class QualSTLCTests extends AnyFunSuite {
           }
         }
       }
-    println(intercept[NonOverlap] { topTypeCheck(make_e7("x", "x")) })
-    println(intercept[NonOverlap] { topTypeCheck(make_e7("x", "y")) })
-    println(intercept[NonOverlap] { topTypeCheck(make_e7("y", "x")) })
+    intercept[NonOverlap] { topTypeCheck(make_e7("x", "x")) }
+    intercept[NonOverlap] { topTypeCheck(make_e7("x", "y")) }
+    intercept[NonOverlap] { topTypeCheck(make_e7("y", "x")) }
     // TODO: what's the right error message here?
-    println(intercept[NonOverlap] { topTypeCheck(make_e7("y", "y")) })
+    intercept[NonOverlap] { topTypeCheck(make_e7("y", "y")) }
   }
 
   test("var rename") {
