@@ -55,8 +55,8 @@ object TypeSyntax:
     def ~>(s: QType): TFun = TFun(None, None, t, s)
   extension (id: String)
     def ♯(t: TFun): TFun = TFun(Some(id), t.arg, t.t1, t.t2)
-    def ♯(t: TForall): TForall = TForall(Some(id), t.x, t.a, t.bound, t.res)
-    def ^(q: String): TypeBound = TypeBound(id, q, None)
+    def ♯(t: TypeBound): TypeBound = TypeBound(Some(id), t.x, t.q, t.bound)
+    def ^(q: String): TypeBound = TypeBound(None, id, q, None)
   extension (t: Type)
     def ^(q: Qual): QType = QType(t, q)
     def ^(q: QElem): QType = QType(t, Qual(Set(q)))
@@ -64,16 +64,16 @@ object TypeSyntax:
     def ^(q: Tuple): QType = QType(t, Qual(q.toList.asInstanceOf[List[QElem]].toSet))
   // type to qualified type conversion, default is untracked
   given Conversion[Type, QType] = QType(_, Qual.untrack)
-  case class TypeBound(id: String, qual: String, bound: Option[QType]):
+  case class TypeBound(f: Option[String], x: String, q: String, bound: Option[QType]):
     // Note - ∶ and : are different, we use the former
-    def <∶(t: QType): TypeBound = TypeBound(id, qual, Some(t))
-  def ∀(xt: TypeBound)(t: QType) = xt match
-    case TypeBound(id, q, Some(bound)) => TForall(None, id, q, bound, t)
-    case TypeBound(id, q, None) => TForall(None, id, q, TTop, t)
+    def <∶(t: QType): TypeBound = TypeBound(f, x, q, Some(t))
+    def boundOrTop: QType = bound.getOrElse(TTop)
+  def ∀(xt: TypeBound)(t: QType) = TForall(xt.f, xt.x, xt.q, xt.boundOrTop, t)
 
 object ExprSyntax:
   import Expr._
   import Type._
+  import TypeSyntax.TypeBound
 
   val 𝑥 = "x"
   val x = EVar("x")
@@ -100,7 +100,7 @@ object ExprSyntax:
 
   def λ(f: String, x: String)(ft: TFun)(e: => Expr): ELam = ELam(f, x, ft.t1, e, Some(ft.t2))
   def λ(xt: BindTy)(e: => Expr): ELam = ELam("_", xt.id, xt.ty, e, None)
-  def Λ(ft: TForall)(e: => Expr): ETyLam = ETyLam(ft.f.get, ft.x, ft.a, ft.bound, e, Some(ft.res))
+  def Λ(ft: TypeBound)(res: Option[QType])(e: => Expr): ETyLam = ETyLam(ft.f.getOrElse("_"), ft.x, ft.q, ft.boundOrTop, e, res)
   def ite(c: Expr)(thn: Expr)(els: Expr): Expr = ECond(c, thn, els)
   def let(xv: Bind)(e: Expr): Expr = ELet(xv.id, xv.ty, xv.rhs, e)
   def alloc(e: Expr): Expr = EAlloc(e)
