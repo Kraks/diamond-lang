@@ -457,3 +457,11 @@ class QualSTLCTests extends AnyFunSuite {
     assert(Qual.singleton("x").saturated(using Γ3) == Set("x", "z", "a"))
   }
 }
+
+class QualFSubTests extends AnyFunSuite {
+  test("syntax") {
+    assert("f" ♯ ("X" ^ "a") <∶ TVar("Y") == TypeBound(Some("f"), "X", "a", Some(QType(TVar("Y"), Qual.untrack))))
+    assert(∀("X" ^ "_")(TVar("X") ~> TNum) == TForall(None, "X", "_", QType(TTop, Qual.untrack), QType(TFun(None, None, QType(TVar("X"), Qual.untrack), QType(TNum, Qual.untrack)), Qual.untrack)))
+    assert(Λ("X" ^ "_")(None)(ENum(1)) == ETyLam("_", "X", "_", QType(TTop, Qual.untrack), ENum(1), None))
+  }
+}
