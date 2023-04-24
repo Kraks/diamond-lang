@@ -317,6 +317,58 @@ Next Obligation.
   apply SProps.subset_cardinal_lt with (x := x); SDecide.fsetdec.
 Qed.
 
+(*
+Axiom subset' : option qualset -> option qualset -> bool.
+Axiom expand_one_step' : (context * option qualset) -> option qualset.
+
+Inductive R : (context * option qualset) -> (context * option qualset) -> Prop :=
+  | CallExpand : forall ctx_q, R (fst ctx_q, expand_one_step' ctx_q)  ctx_q
+.
+
+Definition expand' (ctx_qual : context * option qualset) (expand: forall c_q, R c_q ctx_qual -> option qualset): option qualset :=
+  match subset' (expand_one_step' ctx_qual) (snd ctx_qual) with
+  | true => (expand_one_step' ctx_qual)
+  | false => expand _ (CallExpand ctx_qual)
+  end.
+
+Axiom measure : (context * option qualset) -> nat.
+
+Lemma wfR' : forall n c_q, measure c_q <= n -> Acc R c_q.
+Admitted.
+
+Theorem wfR : well_founded R.
+Proof.
+  red. intros c_q. eapply wfR'. auto.
+Defined.
+
+Definition expand : (context * option qualset) -> option qualset :=
+  Fix wfR (fun _ => option qualset) expand'.
+
+(* Providing an unfolding requires extensionality. *)
+Axiom extensionality : forall (A : Type) (B : A -> Type)
+  (f g : forall a : A, B a),
+(forall a : A, f a = g a) -> f = g.
+
+Theorem expand_extensional :
+forall (T1 : (context * option qualset)) (f g : forall T2, R T2 T1 -> option qualset),
+(forall T2 (r : R T2 T1), f T2 r = g T2 r)
+-> expand' T1 f = expand' T1 g.
+Proof.
+intros;
+assert (f = g) by (eauto using extensionality); subst; eauto.
+Qed.
+#[global] Hint Resolve expand_extensional : core.
+
+(* unfolding tactics for hypotheses and goal *)
+Tactic Notation "unfold_expand" "in" hyp(H) :=
+unfold expand in H; rewrite Fix_eq in H;
+[ simpl in H; repeat fold expand in H | apply expand_extensional ].
+
+Ltac unfold_expand :=
+unfold expand; rewrite Fix_eq;
+[ simpl; repeat fold expand | apply expand_extensional ].
+*)
+
 Inductive Expand: context -> qualset -> qualset -> Prop :=
 | ex_top: forall ctx q1 q2, expand_one_step ctx q1 = Some q2
   -> StrSet.Subset q2 q1 -> Expand ctx q1 q2
