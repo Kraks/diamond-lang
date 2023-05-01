@@ -23,7 +23,7 @@ class Playground extends AnyFunSuite {
           EVar("f")( λ("y" ∶ TNum) { EVar("x") } )
         }
       }
-    println(topTypeCheck(let0))
+    //println(topTypeCheck(let0))
   }
 }
 
@@ -244,6 +244,8 @@ class QualSTLCTests extends AnyFunSuite {
       (λ("x" ∶ (TRef(TNum) ^ ◆)) { λ("f", "z")("f"♯(TNum ~> TNum)) { x.deref } })(alloc(3))
     assert(topTypeCheck(e2) == (TFun(Some("f"), Some("z"), TNum^(), TNum^()) ^ ◆))
 
+    //    let x = alloc(3) in λf(z).x
+    // or ( λ(x). λf(z).x )(alloc(3))
     val e3 =
       (λ("x" ∶ (TRef(TNum) ^ ◆)) { λ("f", "z")("f"♯(TNum ~> (TRef(TNum) ^ "x"))) { x } })(alloc(3))
     assert(intercept[DeepDependency] { topTypeCheck(e3) } ==
@@ -272,6 +274,12 @@ class QualSTLCTests extends AnyFunSuite {
     val e4 =
       (λ("x" ∶ (TRef(TNum) ^ ◆)) { λ("f", "z")("f"♯(TNum ~> (TRef(TNum) ^ "f"))) { x } })(alloc(3))
     assert(topTypeCheck(e4) == (TFun(Some("f"), Some("z"), TNum^(), TRef(TNum)^"f") ^ ◆))
+
+    val e4_let = 
+      let("x" ⇐ alloc(0)) {
+        λ("f", "z")("f"♯(TNum ~> (TRef(TNum) ^ "f"))) { x }
+      }
+    assert(topTypeCheck(e4_let) == (TFun(Some("f"), Some("z"), TNum^(), TRef(TNum)^"f") ^ ◆))
 
     val e5 = {
       val f = λ("x" ∶ (TRef(TNum) ^ ◆)) {
