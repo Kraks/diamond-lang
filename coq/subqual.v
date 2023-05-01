@@ -317,6 +317,28 @@ Definition expand' (ctx: context) (qual: qualset)
 Definition measure (ctx: context) (qual: qualset) :=
   StrSet.cardinal (StrSet.diff (ddomain ctx) qual).
 
+Lemma expand_one_step'_is_bounded_increasing: forall G q1 q2,
+  wf_context G -> q2 = expand_one_step' G q1 ->
+  StrSet.Subset q2 (StrSet.union (ddomain G) q1) /\ StrSet.Subset q1 q2.
+Proof.
+  intros.
+  revert H0.
+  remember q1.
+  rewrite Heqq at 1.
+  unfold expand_one_step'.
+  generalize dependent q2.
+  apply SProps.fold_rec; subst; intros.
+  - split; SDecide.fsetdec.
+  - specialize (H3 a).
+    assert (a = a). reflexivity.
+    apply H3 in H5; clear H3.
+    destruct (retrieve G x) eqn:?.
+    * destruct s.
+      apply retrieve_is_well_formed in Heqo; try assumption.
+      destruct isFun; destruct isFresh; split; SDecide.fsetdec.
+    * split; SDecide.fsetdec.
+Qed.
+
 Lemma wfR' : forall n ctx qual, wf_context ctx -> measure ctx qual <= n -> Acc (R ctx) qual.
 Proof.
   unfold measure.
@@ -328,17 +350,29 @@ Proof.
     constructor; intros.
     inversion H0; subst; clear H0.
     exfalso; apply H1; clear H1.
-    admit.
+    remember (expand_one_step' ctx qual).
+    apply expand_one_step'_is_bounded_increasing in Heqq; try assumption.
+    SDecide.fsetdec.
   - inversion H0; subst; clear H0.
     * constructor; intros.
       inversion H0; subst; clear H0.
       apply IHn; clear IHn.
       apply Lt.lt_n_Sm_le.
       rewrite <- H2; clear H2.
-      admit.
+      remember (expand_one_step' ctx qual).
+      apply expand_one_step'_is_bounded_increasing in Heqq; try assumption.
+      remember (ddomain ctx).
+      assert (~ StrSet.Subset (StrSet.diff q0 qual) (StrSet.diff q0 q)). {
+        intro; apply H1; clear H1.
+        SDecide.fsetdec.
+      }
+      apply not_all_ex_not in H0.
+      destruct H0.
+      apply SProps.subset_cardinal_lt with (x := x).
+      all: SDecide.fsetdec.
     * apply IHn.
       assumption.
-Admitted.
+Qed.
 
 Theorem wfR : forall ctx, wf_context ctx -> well_founded (R ctx).
 Proof.
