@@ -286,65 +286,73 @@ Proof.
   destruct isFresh0 eqn:?; try SDecide.fsetdec.
 Qed.
 
-Program Fixpoint expand (ctx: context) (qual: qualset)
-                        {measure (StrSet.cardinal (StrSet.diff (ddomain ctx) qual))} : option qualset :=
-  match expand_one_step ctx qual with
-  | Some qual' =>
-    match StrSet.subset qual' qual with
-    | true => Some qual'
-    | false => expand ctx qual'
-    end
-  | None => None
-  end.
-Next Obligation.
-  symmetry in Heq_anonymous0.
-  apply expand_one_step_is_sound in Heq_anonymous0 as ?.
-  apply expand_one_step_is_increasing in Heq_anonymous0.
-  apply subQual_is_well_formed in H.
-  destruct H; destruct H0.
-  assert (~StrSet.Subset qual' qual).
-  {
-    intro.
-    symmetry in Heq_anonymous.
-    apply not_true_iff_false in Heq_anonymous.
-    apply Heq_anonymous.
-    apply SFacts.subset_iff.
-    assumption.
-  }
-  unfold StrSet.Subset in H2.
-  apply not_all_ex_not in H2.
-  destruct H2.
-  apply SProps.subset_cardinal_lt with (x := x); SDecide.fsetdec.
+Definition expand_one_step' (ctx: context) (qual: qualset) : qualset :=
+  StrSet.fold (fun f p =>
+    match retrieve ctx f with
+    | Some (Sym true false q) => StrSet.union q p
+    | _ => p
+    end) qual qual.
+
+Lemma not_subset_iff: forall a b, StrSet.subset a b = false -> ~ StrSet.Subset a b.
+Proof.
+  unfold not; intros.
+  apply not_true_iff_false in H.
+  apply H.
+  apply SFacts.subset_iff.
+  assumption.
 Qed.
 
-(*
-Axiom subset' : option qualset -> option qualset -> bool.
-Axiom expand_one_step' : (context * option qualset) -> option qualset.
+Inductive R (ctx: context) : qualset -> qualset -> Prop :=
+  | RExpandOneStep : forall qual, ~ StrSet.Subset (expand_one_step' ctx qual) qual
+      -> R ctx (expand_one_step' ctx qual) qual.
 
-Inductive R : (context * option qualset) -> (context * option qualset) -> Prop :=
-  | CallExpand : forall ctx_q, R (fst ctx_q, expand_one_step' ctx_q)  ctx_q
-.
+Definition expand' (ctx: context) (qual: qualset)
+    (rec: forall q, R ctx q qual -> qualset): qualset :=
+  let b0 := StrSet.subset (expand_one_step' ctx qual) qual in
+    match b0 as b1 return b0 = b1 -> qualset with
+    | false => fun H => rec _ (RExpandOneStep _ _ (not_subset_iff _ _ H))
+    | true => fun _ => qual
+    end eq_refl.
 
-Definition expand' (ctx_qual : context * option qualset) (expand: forall c_q, R c_q ctx_qual -> option qualset): option qualset :=
-  match subset' (expand_one_step' ctx_qual) (snd ctx_qual) with
-  | true => (expand_one_step' ctx_qual)
-  | false => expand _ (CallExpand ctx_qual)
-  end.
+Definition measure (ctx: context) (qual: qualset) :=
+  StrSet.cardinal (StrSet.diff (ddomain ctx) qual).
 
-Axiom measure : (context * option qualset) -> nat.
-
-Lemma wfR' : forall n c_q, measure c_q <= n -> Acc R c_q.
+Lemma wfR' : forall n ctx qual, wf_context ctx -> measure ctx qual <= n -> Acc (R ctx) qual.
+Proof.
+  unfold measure.
+  intros.
+  generalize dependent qual.
+  induction n; intros.
+  - inversion H0; subst; clear H0.
+    apply SProps.cardinal_Empty in H2.
+    constructor; intros.
+    inversion H0; subst; clear H0.
+    exfalso; apply H1; clear H1.
+    admit.
+  - inversion H0; subst; clear H0.
+    * constructor; intros.
+      inversion H0; subst; clear H0.
+      apply IHn; clear IHn.
+      apply Lt.lt_n_Sm_le.
+      rewrite <- H2; clear H2.
+      admit.
+    * apply IHn.
+      assumption.
 Admitted.
 
-Theorem wfR : well_founded R.
+Theorem wfR : forall ctx, wf_context ctx -> well_founded (R ctx).
 Proof.
-  red. intros c_q. eapply wfR'. auto.
-Defined.
+  unfold well_founded; intros.
+  apply (wfR' (StrSet.cardinal (ddomain ctx)) _ _ H).
+  unfold measure.
+  apply SProps.subset_cardinal.
+  SDecide.fsetdec.
+Qed.
 
-Definition expand : (context * option qualset) -> option qualset :=
-  Fix wfR (fun _ => option qualset) expand'.
+Definition expand (ctx: context) (H: wf_context ctx): qualset -> qualset :=
+  Fix (wfR ctx H) (fun _ => qualset) (expand' ctx).
 
-(* Providing an unfolding requires extensionality. *)
+(* Providing an unfolding requires extensionality.
 Axiom extensionality : forall (A : Type) (B : A -> Type)
   (f g : forall a : A, B a),
 (forall a : A, f a = g a) -> f = g.
@@ -366,8 +374,7 @@ unfold expand in H; rewrite Fix_eq in H;
 
 Ltac unfold_expand :=
 unfold expand; rewrite Fix_eq;
-[ simpl; repeat fold expand | apply expand_extensional ].
-*)
+[ simpl; repeat fold expand | apply expand_extensional ]. *)
 
 Inductive Expand: context -> qualset -> qualset -> Prop :=
 | ex_top: forall ctx q1 q2, expand_one_step ctx q1 = Some q2
