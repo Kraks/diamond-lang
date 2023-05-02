@@ -293,30 +293,6 @@ Definition expand_one_step' (ctx: context) (qual: qualset) : qualset :=
     | _ => p
     end) qual qual.
 
-Lemma not_subset_iff: forall a b, StrSet.subset a b = false -> ~ StrSet.Subset a b.
-Proof.
-  unfold not; intros.
-  apply not_true_iff_false in H.
-  apply H.
-  apply SFacts.subset_iff.
-  assumption.
-Qed.
-
-Inductive R (ctx: context) : qualset -> qualset -> Prop :=
-  | RExpandOneStep : forall qual, ~ StrSet.Subset (expand_one_step' ctx qual) qual
-      -> R ctx (expand_one_step' ctx qual) qual.
-
-Definition expand' (ctx: context) (qual: qualset)
-    (rec: forall q, R ctx q qual -> qualset): qualset :=
-  let b0 := StrSet.subset (expand_one_step' ctx qual) qual in
-    match b0 as b1 return b0 = b1 -> qualset with
-    | false => fun H => rec _ (RExpandOneStep _ _ (not_subset_iff _ _ H))
-    | true => fun _ => qual
-    end eq_refl.
-
-Definition measure (ctx: context) (qual: qualset) :=
-  StrSet.cardinal (StrSet.diff (ddomain ctx) qual).
-
 Lemma expand_one_step'_is_bounded_increasing: forall G q1 q2,
   wf_context G -> q2 = expand_one_step' G q1 ->
   StrSet.Subset q2 (StrSet.union (ddomain G) q1) /\ StrSet.Subset q1 q2.
@@ -335,9 +311,34 @@ Proof.
     destruct (retrieve G x) eqn:?.
     * destruct s.
       apply retrieve_is_well_formed in Heqo; try assumption.
-      destruct isFun; destruct isFresh; split; SDecide.fsetdec.
+      destruct isFun; destruct isFresh; split; subst.
+      all: SDecide.fsetdec.
     * split; SDecide.fsetdec.
 Qed.
+
+Inductive R (ctx: context) : qualset -> qualset -> Prop :=
+  | RExpandOneStep : forall qual, ~ StrSet.Subset (expand_one_step' ctx qual) qual
+      -> R ctx (expand_one_step' ctx qual) qual.
+
+Lemma not_subset_iff: forall a b, StrSet.subset a b = false -> ~ StrSet.Subset a b.
+Proof.
+  unfold not; intros.
+  apply not_true_iff_false in H.
+  apply H.
+  apply SFacts.subset_iff.
+  assumption.
+Qed.
+
+Definition expand' (ctx: context) (qual: qualset)
+    (rec: forall q, R ctx q qual -> qualset): qualset :=
+  let b0 := StrSet.subset (expand_one_step' ctx qual) qual in
+    match b0 as b1 return b0 = b1 -> qualset with
+    | false => fun H => rec _ (RExpandOneStep _ _ (not_subset_iff _ _ H))
+    | true => fun _ => qual
+    end eq_refl.
+
+Definition measure (ctx: context) (qual: qualset) :=
+  StrSet.cardinal (StrSet.diff (ddomain ctx) qual).
 
 Lemma wfR' : forall n ctx qual, wf_context ctx -> measure ctx qual <= n -> Acc (R ctx) qual.
 Proof.
