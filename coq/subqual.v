@@ -384,8 +384,29 @@ Proof.
   SDecide.fsetdec.
 Qed.
 
-Definition expand (ctx: context) (H: wf_context ctx): qualset -> qualset :=
-  Fix (wfR ctx H) (fun _ => qualset) (expand' ctx).
+Lemma wf_convert: forall ctx,
+  is_well_formed ctx = true -> wf_context ctx.
+Proof.
+  intros. apply is_well_formed_iff. assumption.
+Qed.
+
+Definition expand (ctx: context) :=
+  let b0 := is_well_formed ctx in
+    match b0 with
+    | false => fun _ => fun q => q
+    | true => fun Heq => Fix (wfR ctx (wf_convert _ Heq)) (fun _ => qualset) (expand' ctx)
+    end eq_refl.
+
+Lemma unfold_playground: forall ctx q1 q2,
+  expand ctx q1 = q2.
+Proof.
+  intros.
+  unfold expand.
+  destruct (is_well_formed ctx) eqn:?.
+  (* destruct (is_well_formed ctx) eqn:?.
+  unfold Fix in H.
+  rewrite Fix_eq in H. *)
+Admitted.
 
 (* Providing an unfolding requires extensionality.
 Axiom extensionality : forall (A : Type) (B : A -> Type)
