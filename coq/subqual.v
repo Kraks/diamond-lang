@@ -410,8 +410,43 @@ Proof.
       intuition.
 Qed.
 
-Lemma bounded_is_monotonic: forall G x q1 q2,
+Lemma bounded_respects_subset: forall G x q1 q2,
   StrSet.Subset q1 q2 -> bounded G x q1 = true -> bounded G x q2 = true.
+Proof.
+  intros.
+  generalize dependent x.
+  induction G; intros; simpl in *.
+  - (* base case *)
+    destruct (StrSet.mem x q1) eqn:Heqb.
+    2: discriminate.
+    apply StrSet.mem_spec in Heqb.
+    replace (StrSet.mem x q2) with true.
+    reflexivity.
+    symmetry.
+    apply StrSet.mem_spec.
+    SDecide.fsetdec.
+  - (* inductive case *)
+    destruct a; destruct s0.
+    destruct (StrSet.mem x q1) eqn:Heqb1; destruct (StrSet.mem x q2) eqn:Heqb2.
+    1,3: reflexivity.
+    (* ill case: x in q1 not in q2 *)
+    apply StrSet.mem_spec in Heqb1.
+    assert (~ StrSet.In x q2) as Heqb2'.
+    { apply not_true_iff_false in Heqb2. intro. apply Heqb2. apply StrSet.mem_spec. assumption. }
+    clear Heqb2; exfalso.
+    SDecide.fsetdec.
+    (* truly inductive case *)
+    destruct ((x =? s)%string && negb isFun && negb isFresh); try intuition.
+    apply StrSet.for_all_spec.
+    { unfold Proper. unfold respectful. intros. subst. reflexivity. }
+    apply StrSet.for_all_spec in H0.
+    2: { unfold Proper. unfold respectful. intros. subst. reflexivity. }
+    unfold StrSet.For_all in *; intros.
+    intuition.
+Qed.
+
+Lemma bounded_can_be_simple: forall G x q,
+  StrSet.In x q -> bounded G x q = true.
 Admitted.
 
 Definition algorithmic (ctx: context) (q1 q2: qualset) : bool :=
@@ -461,58 +496,44 @@ Proof.
   rewrite H3; clear H3.
   simpl.
   apply StrSet.for_all_spec.
-  unfold Proper.
-  unfold respectful.
-  intros; subst.
-  reflexivity.
+  { unfold Proper. unfold respectful. intros. subst. reflexivity. }
   unfold StrSet.For_all.
   induction H; intros.
   - (* q_sub *)
-    clear H4 H0.
-    remember (expand G q).
-    assert (StrSet.Subset q q0).
-    { subst. apply expand_is_increasing. }
-    clear Heqq0.
-    destruct G; simpl.
-    all: replace (StrSet.mem x q0) with true.
-    1,3: reflexivity.
-    all: symmetry; apply StrSet.mem_spec.
-    all: SDecide.fsetdec.
+    apply bounded_respects_subset with (q1 := q).
+    apply expand_is_increasing.
+    apply bounded_can_be_simple.
+    SDecide.fsetdec.
   - (* q_trans *)
     admit.
   - (* q_var *)
-    clear H0.
-    assert (x = x0).
+    apply bounded_respects_subset with (q1 := q).
+    apply expand_is_increasing.
+    assert (x0 = x).
     SDecide.fsetdec.
     subst; clear H4.
-    remember (expand G q).
-    assert (StrSet.Subset q q0).
-    { subst. apply expand_is_increasing. }
-    clear Heqq0.
     induction G; simpl in *.
     discriminate.
-    destruct a.
-    destruct s0.
-    destruct (StrSet.mem x0 q0) eqn:?.
+    destruct a; destruct s0.
+    destruct (StrSet.mem x q) eqn:?.
     reflexivity.
-    assert (~ StrSet.In x0 q0).
+    assert (~ StrSet.In x q).
     { apply not_true_iff_false in Heqb. intro. apply Heqb. apply StrSet.mem_spec. assumption. }
     clear Heqb.
-    destruct ((x0 =? s)%string && negb isFun && negb isFresh) eqn:?.
+    destruct ((x =? s)%string && negb isFun && negb isFresh) eqn:?.
     * (* true case *)
     apply StrSet.for_all_spec.
-    unfold Proper; unfold respectful; intros; subst.
-    reflexivity.
+    { unfold Proper. unfold respectful. intros. subst. reflexivity. }
     unfold StrSet.For_all; intros.
     apply andb_true_iff in Heqb; destruct Heqb.
     apply andb_true_iff in H6; destruct H6.
     rewrite H6 in H3.
     inversion H3; subst.
     destruct G; simpl in *.
-    all: replace (StrSet.mem x q0) with true; try reflexivity.
+    all: replace (StrSet.mem x0 q) with true; try reflexivity.
     all: symmetry; apply StrSet.mem_spec; SDecide.fsetdec.
     * (* false case *)
-    destruct ((x0 =? s)%string) eqn:?.
+    destruct ((x =? s)%string) eqn:?.
     + inversion H3; subst.
       discriminate.
     + inversion H; subst; clear H.
@@ -520,39 +541,30 @@ Proof.
       apply IHG; try assumption; clear IHG Heqb.
       all: SDecide.fsetdec.
   - (* q_self *)
-    clear H0 H2.
-    remember ((expand G (StrSet.singleton f))).
-    assert (StrSet.Subset (StrSet.add f q) q0).
-    { rewrite Heqq0. apply expand_is_saturated. SDecide.fsetdec. assumption. }
-    clear Heqq0.
-    destruct G; simpl in *.
-    discriminate.
-    replace (StrSet.mem x q0) with true.
-    reflexivity.
-    symmetry.
-    apply StrSet.mem_spec.
+    apply bounded_respects_subset with (q1 := (StrSet.add f q)).
+    apply expand_is_saturated.
     SDecide.fsetdec.
+    assumption.
+    apply bounded_can_be_simple.
+    assumption.
   - (* q_cong *)
     destruct (StrSet.mem x q) eqn:?.
     * (* q case *)
-    apply StrSet.mem_spec in Heqb.
-    apply IHsubQual in Heqb; try assumption.
-    2,3: SDecide.fsetdec.
-    apply bounded_is_monotonic with (q1 := (expand G q')); try assumption.
-    apply expand_is_monotonic.
-    SDecide.fsetdec.
+      apply StrSet.mem_spec in Heqb.
+      apply IHsubQual in Heqb; try assumption.
+      2,3: SDecide.fsetdec.
+      apply bounded_respects_subset with (q1 := (expand G q')); try assumption.
+      apply expand_is_monotonic.
+      SDecide.fsetdec.
     * (* p case *)
-    assert (StrSet.In x p).
-    apply not_true_iff_false in Heqb.
-    assert (~ StrSet.In x q).
-    { intro. apply Heqb. apply StrSet.mem_spec. assumption. }
-    SDecide.fsetdec.
-    apply bounded_is_monotonic with (q1 := StrSet.union p q').
-    apply expand_is_increasing.
-    destruct G; simpl in *.
-    all: replace (StrSet.mem x (StrSet.union p q')) with true.
-    1,3: reflexivity.
-    all: symmetry; apply StrSet.mem_spec; SDecide.fsetdec.
+      assert (~ StrSet.In x q).
+      { apply not_true_iff_false in Heqb. intro. apply Heqb. apply StrSet.mem_spec. assumption. }
+      assert (StrSet.In x p).
+      SDecide.fsetdec.
+      apply bounded_respects_subset with (q1 := StrSet.union p q').
+      apply expand_is_increasing.
+      apply bounded_can_be_simple.
+      SDecide.fsetdec.
 Admitted.
 
 Definition expand_one_step (ctx: context) (qual: qualset) : option qualset :=
