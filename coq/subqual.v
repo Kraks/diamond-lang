@@ -276,11 +276,52 @@ Proof.
     all: SDecide.fsetdec.
 Qed. 
 
+Lemma expand_is_increasing: forall G q,
+  StrSet.Subset q (expand G q).
+Proof.
+  intros.
+  revert q.
+  induction G; intros; simpl.
+  SDecide.fsetdec.
+  destruct a; destruct s0; destruct (isFun && negb isFresh && StrSet.mem s q) eqn:?.
+  assert (StrSet.Subset (StrSet.union qual q) (expand G (StrSet.union qual q))).
+  apply IHG.
+  SDecide.fsetdec.
+  apply IHG.
+Qed.
+
+Lemma expand_is_saturated: forall G q q0 f,
+  StrSet.In f q0 -> retrieve G f = Some (Sym true false q) -> StrSet.Subset (StrSet.add f q) (expand G q0).
+Proof.
+  intros.
+  revert H.
+  revert H0.
+  revert q0.
+  induction G; intros; simpl in *.
+  discriminate.
+  destruct a; destruct s0.
+  destruct ((f =? s)%string) eqn:?.
+  - (* true case *)
+    apply String.eqb_eq in Heqb; subst.
+    assert (StrSet.mem s q0 = true).
+    { apply StrSet.mem_spec. SDecide.fsetdec. }
+    inversion H0; subst.
+    rewrite H1.
+    simpl.
+    assert (StrSet.Subset (StrSet.union q q0) (expand G (StrSet.union q q0))).
+    apply expand_is_increasing.
+    SDecide.fsetdec.
+  - (* false case *)
+    apply IHG; try assumption.
+    destruct (isFun && negb isFresh && StrSet.mem s q0) eqn:?.
+    all: SDecide.fsetdec.
+Qed.
+
 Fixpoint bounded (ctx: context) (x: string) (qual: qualset) : bool :=
   if StrSet.mem x qual then true else
     match ctx with
     | (x', Sym fn fr q)::ctx' =>
-        if (x' =? x)%string && negb fn && negb fr then
+        if (x =? x')%string && negb fn && negb fr then
           StrSet.for_all (fun x => bounded ctx' x qual) q
         else bounded ctx' x qual
     | Nil => false
@@ -315,7 +356,7 @@ Proof.
   { intro. apply Heqb. apply StrSet.mem_spec. assumption. }
   clear Heqb.
   apply suff_ind in H2 as ?.
-  destruct ((s =? x)%string && negb isFun && negb isFresh) eqn:?.
+  destruct ((x =? s)%string && negb isFun && negb isFresh) eqn:?.
   * (* true case *)
   apply andb_true_iff in Heqb; destruct Heqb.
   apply andb_true_iff in H5; destruct H5.
@@ -335,9 +376,9 @@ Proof.
   apply q_trans with (q := qual).
   + (* q_var *)
   apply q_var; try assumption.
-  assert (retrieve ((x, Sym false false qual) :: G') x = Some (Sym false false qual)).
+  assert (retrieve ((s, Sym false false qual) :: G') s = Some (Sym false false qual)).
   simpl.
-  assert ((x =? x)%string = true).
+  assert ((s =? s)%string = true).
   apply String.eqb_eq.
   reflexivity.
   rewrite H5.
@@ -384,9 +425,12 @@ Proof.
   apply q_cong_fold; try assumption.
   intros.
   apply H in H3 as ?; clear H.
+  apply expand_is_sound in H1; try assumption.
   apply q_trans with (q := expand ctx q2).
+  apply subQual_is_well_formed in H1 as ?.
+  destruct H; destruct H5.
   apply bounded_is_sound; assumption.
-  apply expand_is_sound; assumption.
+  assumption.
 Qed.
 
 Theorem algorithmic_is_complete: forall ctx q1 q2,
@@ -408,7 +452,75 @@ Proof.
   unfold respectful.
   intros; subst.
   reflexivity.
-  unfold StrSet.For_all; intros.
+  unfold StrSet.For_all.
+  induction H; intros.
+  - (* q_sub *)
+    clear H4 H0.
+    remember (expand G q).
+    assert (StrSet.Subset q q0).
+    { subst. apply expand_is_increasing. }
+    clear Heqq0.
+    destruct G; simpl.
+    all: replace (StrSet.mem x q0) with true.
+    1,3: reflexivity.
+    all: symmetry; apply StrSet.mem_spec.
+    all: SDecide.fsetdec.
+  - (* q_trans *)
+    admit.
+  - (* q_var *)
+    clear H0.
+    assert (x = x0).
+    SDecide.fsetdec.
+    subst; clear H4.
+    remember (expand G q).
+    assert (StrSet.Subset q q0).
+    { subst. apply expand_is_increasing. }
+    clear Heqq0.
+    induction G; simpl in *.
+    discriminate.
+    destruct a.
+    destruct s0.
+    destruct (StrSet.mem x0 q0) eqn:?.
+    reflexivity.
+    assert (~ StrSet.In x0 q0).
+    { apply not_true_iff_false in Heqb. intro. apply Heqb. apply StrSet.mem_spec. assumption. }
+    clear Heqb.
+    destruct ((x0 =? s)%string && negb isFun && negb isFresh) eqn:?.
+    * (* true case *)
+    apply StrSet.for_all_spec.
+    unfold Proper; unfold respectful; intros; subst.
+    reflexivity.
+    unfold StrSet.For_all; intros.
+    apply andb_true_iff in Heqb; destruct Heqb.
+    apply andb_true_iff in H6; destruct H6.
+    rewrite H6 in H3.
+    inversion H3; subst.
+    destruct G; simpl in *.
+    all: replace (StrSet.mem x q0) with true; try reflexivity.
+    all: symmetry; apply StrSet.mem_spec; SDecide.fsetdec.
+    * (* false case *)
+    destruct ((x0 =? s)%string) eqn:?.
+    + inversion H3; subst.
+      discriminate.
+    + inversion H; subst; clear H.
+      apply retrieve_is_well_formed in H3 as ?; try assumption.
+      apply IHG; try assumption; clear IHG Heqb.
+      all: SDecide.fsetdec.
+  - (* q_self *)
+    clear H0 H2.
+    remember ((expand G (StrSet.singleton f))).
+    assert (StrSet.Subset (StrSet.add f q) q0).
+    { rewrite Heqq0. apply expand_is_saturated. SDecide.fsetdec. assumption. }
+    clear Heqq0.
+    destruct G; simpl in *.
+    discriminate.
+    replace (StrSet.mem x q0) with true.
+    reflexivity.
+    symmetry.
+    apply StrSet.mem_spec.
+    SDecide.fsetdec.
+  - (* q_cong *)
+  admit.
 Admitted.
 
 Definition expand_one_step (ctx: context) (qual: qualset) : option qualset :=
