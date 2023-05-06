@@ -286,6 +286,75 @@ Fixpoint bounded (ctx: context) (x: string) (qual: qualset) : bool :=
     | Nil => false
     end.
 
+Lemma bounded_is_sound: forall G x q,
+  wf_context G -> StrSet.Subset q (ddomain G) -> bounded G x q = true -> subQual G (StrSet.singleton x) q.
+Proof.
+  intros.
+  pose G as G'.
+  replace G with G' in H1.
+  2: reflexivity.
+  assert (list_suffix G' G).
+  constructor.
+  generalize dependent x.
+  induction G'; intros.
+  - (* base case *)
+  simpl in *.
+  destruct (StrSet.mem x q) eqn:?.
+  2: discriminate.
+  apply StrSet.mem_spec in Heqb.
+  apply q_sub; try assumption.
+  SDecide.fsetdec.
+  - (* inductive case *)
+  simpl in *.
+  destruct (StrSet.mem x q) eqn:?.
+  apply StrSet.mem_spec in Heqb.
+  apply q_sub; try assumption; SDecide.fsetdec.
+  destruct a; destruct s0.
+  apply not_true_iff_false in Heqb.
+  assert (~ StrSet.In x q).
+  { intro. apply Heqb. apply StrSet.mem_spec. assumption. }
+  clear Heqb.
+  apply suff_ind in H2 as ?.
+  destruct ((s =? x)%string && negb isFun && negb isFresh) eqn:?.
+  * (* true case *)
+  apply andb_true_iff in Heqb; destruct Heqb.
+  apply andb_true_iff in H5; destruct H5.
+  apply String.eqb_eq in H5.
+  apply negb_true_iff in H6.
+  apply negb_true_iff in H7.
+  subst.
+  apply StrSet.for_all_spec in H1.
+  unfold StrSet.For_all in H1.
+  2: {
+    unfold Proper.
+    unfold respectful.
+    intros.
+    subst.
+    reflexivity.
+  }
+  apply q_trans with (q := qual).
+  + (* q_var *)
+  apply q_var; try assumption.
+  assert (retrieve ((x, Sym false false qual) :: G') x = Some (Sym false false qual)).
+  simpl.
+  assert ((x =? x)%string = true).
+  apply String.eqb_eq.
+  reflexivity.
+  rewrite H5.
+  reflexivity.
+  apply retrieve_works_on_suffix in H2; try assumption.
+  destruct H2.
+  apply H6.
+  assumption.
+  + (* induction *)
+  apply q_cong_fold; try assumption; intros.
+  apply H1 in H5.
+  apply IHG' in H5.
+  all: assumption.
+  * (* false case *)
+  apply IHG'; assumption.
+Qed.
+
 Definition algorithmic (ctx: context) (q1 q2: qualset) : bool :=
   if is_well_formed ctx && StrSet.subset q1 (ddomain ctx) && StrSet.subset q2 (ddomain ctx) then
     StrSet.for_all (fun x => bounded ctx x (expand ctx q2)) q1
@@ -316,11 +385,9 @@ Proof.
   intros.
   apply H in H3 as ?; clear H.
   apply q_trans with (q := expand ctx q2).
-  - (* bounded is sound *)
-  admit.
-  - (* expand is sound *)
+  apply bounded_is_sound; assumption.
   apply expand_is_sound; assumption.
-Admitted.
+Qed.
 
 Theorem algorithmic_is_complete: forall ctx q1 q2,
   subQual ctx q1 q2 -> algorithmic ctx q1 q2 = true.
