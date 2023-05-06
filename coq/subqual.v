@@ -181,6 +181,169 @@ Proof.
       --  apply q_cong'; auto.
 Qed.
 
+Fixpoint expand (ctx: context) (qual: qualset) : qualset :=
+  match ctx with
+  | (f, Sym fn fr q)::ctx' => expand ctx' (
+      if fn && negb fr && StrSet.mem f qual then
+        StrSet.union q qual
+      else qual)
+  | Nil => qual
+  end.
+
+Inductive list_suffix {A: Type}: list A -> list A -> Prop :=
+| suff_refl: forall a, list_suffix a a
+| suff_ind: forall a l1 l2, list_suffix (a::l1) l2 -> list_suffix l1 l2.
+
+Lemma retrieve_works_on_suffix: forall G G',
+  wf_context G -> list_suffix G' G -> wf_context G'
+  /\ (forall x a, retrieve G' x = Some a -> retrieve G x = Some a).
+Proof.
+  intros.
+  induction H0; auto.
+  apply IHlist_suffix in H; clear IHlist_suffix.
+  destruct H.
+  inversion H; subst.
+  split; try assumption; intros.
+  apply H1; clear H1; simpl.
+  destruct (x =? n)%string eqn:?.
+  apply String.eqb_eq in Heqb; subst.
+  - (* true case *)
+  destruct a.
+  apply retrieve_is_well_formed in H2; auto.
+  destruct H2.
+  contradiction.
+  - (* false case *)
+  assumption.
+Qed.
+
+Lemma expand_is_sound: forall G q,
+  wf_context G -> StrSet.Subset q (ddomain G) -> subQual G (expand G q) q.
+Proof.
+  intros.
+  pose G as G'.
+  replace G with G' at 2.
+  2: reflexivity.
+  pose q as q'.
+  replace q with q' at 1.
+  2: reflexivity.
+  assert (list_suffix G' G).
+  constructor.
+  assert (subQual G q' q).
+  apply q_sub; (assumption || SDecide.fsetdec).
+  generalize dependent q'.
+  induction G'; intros.
+  - (* base case *)
+  simpl in *.
+  assumption.
+  - (* inductive case *)
+  destruct a.
+  destruct s0.
+  simpl in *.
+  apply IHG'.
+  apply suff_ind in H1; assumption.
+  clear IHG'.
+  apply retrieve_works_on_suffix in H1; auto.
+  destruct H1.
+  assert (retrieve ((s, Sym isFun isFresh qual) :: G') s = Some (Sym isFun isFresh qual)).
+  simpl.
+  assert ((s =? s)%string = true).
+  apply String.eqb_eq.
+  reflexivity.
+  rewrite H4.
+  reflexivity.
+  apply H3 in H4; clear H3.
+  destruct (isFun && negb isFresh && StrSet.mem s q') eqn:?; try assumption.
+  apply andb_true_iff in Heqb; destruct Heqb.
+  apply andb_true_iff in H3; destruct H3.
+  apply negb_true_iff in H6; subst.
+  apply StrSet.mem_spec in H5.
+  apply retrieve_is_well_formed in H4 as ?; try assumption.
+  apply subQual_is_well_formed in H2 as ?.
+  destruct H3; destruct H6; destruct H8; clear H6 H9.
+  apply q_trans with (q := q'); try assumption.
+  apply q_cong'.
+  apply q_trans with (q := StrSet.singleton s).
+  apply q_trans with (q := StrSet.add s qual).
+  * apply q_sub.
+    assumption.
+    all: SDecide.fsetdec.
+  * apply q_self; assumption.
+  * apply q_sub.
+    assumption.
+    all: SDecide.fsetdec.
+  * apply q_sub.
+    assumption.
+    all: SDecide.fsetdec.
+Qed. 
+
+Fixpoint bounded (ctx: context) (x: string) (qual: qualset) : bool :=
+  if StrSet.mem x qual then true else
+    match ctx with
+    | (x', Sym fn fr q)::ctx' =>
+        if (x' =? x)%string && negb fn && negb fr then
+          StrSet.for_all (fun x => bounded ctx' x qual) q
+        else bounded ctx' x qual
+    | Nil => false
+    end.
+
+Definition algorithmic (ctx: context) (q1 q2: qualset) : bool :=
+  if is_well_formed ctx && StrSet.subset q1 (ddomain ctx) && StrSet.subset q2 (ddomain ctx) then
+    StrSet.for_all (fun x => bounded ctx x (expand ctx q2)) q1
+  else false.
+
+Theorem algorithmic_is_sound: forall ctx q1 q2,
+  algorithmic ctx q1 q2 = true -> subQual ctx q1 q2.
+Proof.
+  unfold algorithmic.
+  intros.
+  destruct (is_well_formed ctx && StrSet.subset q1 (ddomain ctx) && StrSet.subset q2 (ddomain ctx)) eqn:?.
+  2: discriminate.
+  apply andb_true_iff in Heqb; destruct Heqb.
+  apply andb_true_iff in H0; destruct H0.
+  apply is_well_formed_iff in H0.
+  apply StrSet.subset_spec in H1.
+  apply StrSet.subset_spec in H2.
+  apply StrSet.for_all_spec in H.
+  2: {
+    unfold Proper.
+    unfold respectful.
+    intros.
+    subst.
+    reflexivity.
+  }
+  unfold StrSet.For_all in *.
+  apply q_cong_fold; try assumption.
+  intros.
+  apply H in H3 as ?; clear H.
+  apply q_trans with (q := expand ctx q2).
+  - (* bounded is sound *)
+  admit.
+  - (* expand is sound *)
+  apply expand_is_sound; assumption.
+Admitted.
+
+Theorem algorithmic_is_complete: forall ctx q1 q2,
+  subQual ctx q1 q2 -> algorithmic ctx q1 q2 = true.
+Proof.
+  intros.
+  apply subQual_is_well_formed in H as ?.
+  destruct H0; destruct H1.
+  unfold algorithmic.
+  apply is_well_formed_iff in H0 as ?.
+  rewrite H3; clear H3.
+  apply StrSet.subset_spec in H1 as ?.
+  rewrite H3; clear H3.
+  apply StrSet.subset_spec in H2 as ?.
+  rewrite H3; clear H3.
+  simpl.
+  apply StrSet.for_all_spec.
+  unfold Proper.
+  unfold respectful.
+  intros; subst.
+  reflexivity.
+  unfold StrSet.For_all; intros.
+Admitted.
+
 Definition expand_one_step (ctx: context) (qual: qualset) : option qualset :=
   match is_well_formed ctx && StrSet.subset qual (ddomain ctx) with
   | true => Some (StrSet.union qual (StrSet.fold (fun x p =>
