@@ -449,6 +449,10 @@ Lemma bounded_can_be_simple: forall G x q,
   StrSet.In x q -> bounded G x q = true.
 Admitted.
 
+Lemma bounded_is_transitive: forall G x q r,
+  bounded G x q = true -> StrSet.For_all (fun x => bounded G x r = true) q -> bounded G x r = true.
+Admitted.
+
 Definition algorithmic (ctx: context) (q1 q2: qualset) : bool :=
   if is_well_formed ctx && StrSet.subset q1 (ddomain ctx) && StrSet.subset q2 (ddomain ctx) then
     StrSet.for_all (fun x => bounded ctx x (expand ctx q2)) q1
@@ -505,6 +509,11 @@ Proof.
     apply bounded_can_be_simple.
     SDecide.fsetdec.
   - (* q_trans *)
+    apply subQual_is_well_formed in H as ?; clear H0 H1.
+    intuition.
+    apply bounded_is_transitive with (q := expand G q).
+    { apply H1. assumption. }
+    unfold StrSet.For_all; intros; clear H H4 H5 H1 x p.
     admit.
   - (* q_var *)
     apply bounded_respects_subset with (q1 := q).
