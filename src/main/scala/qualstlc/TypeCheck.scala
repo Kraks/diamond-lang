@@ -125,53 +125,8 @@ def qualElemExposure(q: Qual, x: String)(using Γ: TEnv): Qual = {
       res
 }
 
-// One iteration of exposure over the qualifier
-def qualExposure0(q: Qual)(using Γ: TEnv): Qual = {
-  require(!q.isFresh)
-  if (q.isUntrack) q
-  else {
-    val ps: Set[Set[String]] = q.set.asInstanceOf[Set[String]].map { x =>
-        qualElemExposure(q - x, x).set.asInstanceOf[Set[String]]
-    }
-    Qual(ps.tail.foldLeft(ps.head)((a, b) => a.intersect(b)))
-  }
-}
-
-/*
-Note: this one is buggy
-def qualExposure0(q: Qual)(using Γ: TEnv): Qual = {
-  require(!q.isFresh)
-  if (q.isUntrack) q
-  else {
-    val x = q.set.head.asInstanceOf[String]
-    val p = q - x
-    val r = qualElemExposure(p, x)
-    if (r.contains(x)) qualExposure0(r - x) + x
-    else qualExposure0(r)
-  }
-}
-*/
-
-// Iteratively qualifier exposure via fixpoint iteration.
-// Compute the maximum upper bound qualifier following the subtyping "lattice" under Γ.
-// XXX: is that upper bound unique? eg different traverse order may lead to different result?
-def fixQualExposure(q1: Qual, q2: Qual)(using Γ: TEnv): Qual = {
-  //println(s"fixpoint $q1 $q2 ${q1 == q2}")
-  if (q1 == q2) q2
-  else fixQualExposure(q2, qualExposure0(q2))
-}
-
-def qualExposure(q: Qual)(using Γ: TEnv): Qual =
-  val p = fixQualExposure(Qual(Set()), q - ◆)
-  if (q.isFresh) p + ◆ else p
-
 // the Q-Sub rule
 def isSubset(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean = q1 ⊆ q2 && q2 ⊆ Γ
-
-//def isSubqual(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean =
-  // if (isSubset(q1, q2)) true
-  // else if (isSubset(qualExposure(q1), qualExposure(q2))) true
-  // else false
 
 def isSubqual(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean =
   //println(s"$Γ ⊢ $q1 <: $q2")

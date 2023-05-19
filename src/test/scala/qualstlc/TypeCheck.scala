@@ -17,6 +17,7 @@ class Playground extends AnyFunSuite {
      * def f(g: Int -> Ref[Int]^x): Ref[Int]^x = g(0)
      * f(λ(y).x)
      */
+    // FIXME: saturated function qualifier?
     val let0 =
       let("x" ⇐ alloc(0)) {
         let("f" ⇐ λ("f", "g")("f"♯( (TNum ~> (TRef(TNum) ^ "x")) ~> (TRef(TNum) ^ "x"))) { EVar("g")(0) }) {
@@ -68,17 +69,14 @@ class QualSTLCTests extends AnyFunSuite {
   test("subqual") {
     // x : Int^∅ ⊢ {x} <: ∅
     val Γ1 = TEnv.empty + ("x" -> TNum)
-    assert(qualExposure(Qual.singleton("x"))(using Γ1) == Qual.untrack)
     assert(isSubqual(Qual.singleton("x"), Qual.untrack)(using Γ1))
 
     // y: Int^∅, x : Int^y ⊢ {x} <: ∅
     val Γ2 = TEnv.empty + ("x" -> (TNum ^ "y")) + ("y" -> TNum)
-    assert(qualExposure(Qual.singleton("x"))(using Γ2) == Qual.untrack)
     assert(isSubqual(Qual.singleton("x"), Qual.untrack)(using Γ2))
 
     // y: Int^◆, x : Int^y ⊢ {x} <: {y} but not further
     val Γ3 = TEnv.empty + ("x" -> (TNum ^ "y")) + ("y" -> (TNum ^ ◆))
-    assert(qualExposure(Qual(Set("x")))(using Γ3) == Qual.singleton("y"))
     assert(isSubqual(Qual.singleton("x"), Qual.singleton("y"))(using Γ3))
 
     val Γ4 = TEnv.empty + ("f" -> ((TNum ~> TNum) ^ ("x", "y")))
@@ -95,8 +93,6 @@ class QualSTLCTests extends AnyFunSuite {
 
     // f : (Int -> Int)^{x,y,◆} ⊢ {x, y, f} is not subtype of {f}
     val Γ6 = TEnv.empty + ("f" -> ((TNum ~> TNum) ^ ("x", "y", ◆))) + ("x" -> (TNum ^ ◆)) + ("y" -> (TNum ^ ◆))
-    assert(qualExposure(Qual(Set("x", "y", "f")))(using Γ6) == Qual(Set("x", "y", "f")))
-    assert(qualExposure(Qual(Set("f")))(using Γ6) == Qual.singleton("f"))
     assert(!isSubqual(Qual(Set("x", "y", "f")), Qual(Set("f")))(using Γ6))
 
     // a: Int, z: Int^a, x: Int^z, y: Int^x
@@ -135,7 +131,6 @@ class QualSTLCTests extends AnyFunSuite {
     val Γ10 = TEnv.empty + ("x1" -> (TNum ^ ◆)) + ("x2" -> (TNum ^ ◆)) + ("x3" -> (TNum ^ ◆))
         + ("f" -> ((TNum ~> TNum) ^ ("x1", "x2")))
         + ("g" -> ((TNum ~> TNum) ^ ("x1", "x3")))
-    assert(qualExposure(Qual(Set("x1", "x2", "x3", "f", "g")))(using Γ10) == Qual(Set("f", "g")))
     assert(isSubqual(Qual(Set("x1", "x2", "x3", "f", "g")), Qual(Set("f", "g")))(using Γ10))
     assert(!isSubqual(Qual(Set("f")), Qual(Set("g")))(using Γ10))
     assert(!isSubqual(Qual(Set("g")), Qual(Set("f")))(using Γ10))
