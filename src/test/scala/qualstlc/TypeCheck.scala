@@ -25,6 +25,24 @@ class Playground extends AnyFunSuite {
         }
       }
     //println(topTypeCheck(let0))
+
+    // rtq is a function type
+    // q2 contains rtq's argument name
+    /*
+     Env = x: Ref(T)^◆ 
+     def f(y: T^q2): (x: T) => T^y = λz => x
+     g(x)
+     */
+    val Γ = TEnv.empty + ("x" -> (TRef(TNum) ^ ◆))
+    val g_type = "g"♯( ("x" ∶ (TRef(TNum) ^ ◆)) ~> (TRef(TNum)^"y"))
+    val g_body = EVar("x")
+    val f_type = "f"♯( ("y" ∶ (TRef(TNum) ^ "x")) ~> ( g_type ))
+    val f_body = λ("g", "z")(g_type) { g_body }
+    val e = let ("f" ⇐ λ("f", "y")(f_type) { f_body }) {
+      EVar("f")(EVar("x"))
+    }
+    println(typeCheck(λ("f", "y")(f_type) { f_body })(using Γ))
+    //println(typeCheck(e)(using Γ))
   }
 }
 

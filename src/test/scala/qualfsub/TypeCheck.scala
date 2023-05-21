@@ -11,23 +11,7 @@ import ExprSyntax._
 import TypeSyntax.given_Conversion_Type_QType
 import ExprSyntax.given_Conversion_Int_ENum
 
-class Playground extends AnyFunSuite {
-  test("playground") {
-    /* val x = alloc(0)
-     * def f(g: Int -> Ref[Int]^x): Ref[Int]^x = g(0)
-     * f(λ(y).x)
-     */
-    val let0 =
-      let("x" ⇐ alloc(0)) {
-        let("f" ⇐ λ("f", "g")("f"♯( (TNum ~> (TRef(TNum) ^ "x")) ~> (TRef(TNum) ^ "x"))) { EVar("g")(0) }) {
-          EVar("f")( λ("y" ∶ TNum) { EVar("x") } )
-        }
-      }
-    println(topTypeCheck(let0))
-  }
-}
-
-class QualSTLCTests extends AnyFunSuite {
+class QualFSubTests extends AnyFunSuite {
   test("syntax") {
     val t1: QType = TNum ^ ()
     assert(t1 == QType(TNum, Qual.untrack))
@@ -63,6 +47,12 @@ class QualSTLCTests extends AnyFunSuite {
     val t10: QType = (𝑓 ♯ ((𝑥 ∶ TNum) ~> (TNum ^ 𝑥))) ^ ◆
     assert(t10 == QType(TFun(Some("f"),Some("x"),
       QType(TNum,Qual(Set())),QType(TNum,Qual(Set("x")))),Qual(Set(Fresh()))))
+  }
+
+  test("forall-syntax") {
+    assert("f" ♯ ("X" ^ "a") <∶ TVar("Y") == TypeBound(Some("f"), "X", "a", Some(QType(TVar("Y"), Qual.untrack))))
+    assert(∀("X" ^ "_")(TVar("X") ~> TNum) == TForall(None, "X", "_", QType(TTop, Qual.untrack), QType(TFun(None, None, QType(TVar("X"), Qual.untrack), QType(TNum, Qual.untrack)), Qual.untrack)))
+    assert(Λ("X" ^ "_")(None)(ENum(1)) == ETyLam("_", "X", "_", QType(TTop, Qual.untrack), ENum(1), None))
   }
 
   test("subqual") {
@@ -455,13 +445,5 @@ class QualSTLCTests extends AnyFunSuite {
 
     val Γ3 = TEnv.empty + ("a" -> (TNum ^ ())) + ("z" -> (TNum ^ "a")) + ("x" -> (TNum ^ "z")) + ("y" -> (TNum ^ "x"))
     assert(Qual.singleton("x").saturated(using Γ3) == Set("x", "z", "a"))
-  }
-}
-
-class QualFSubTests extends AnyFunSuite {
-  test("syntax") {
-    assert("f" ♯ ("X" ^ "a") <∶ TVar("Y") == TypeBound(Some("f"), "X", "a", Some(QType(TVar("Y"), Qual.untrack))))
-    assert(∀("X" ^ "_")(TVar("X") ~> TNum) == TForall(None, "X", "_", QType(TTop, Qual.untrack), QType(TFun(None, None, QType(TVar("X"), Qual.untrack), QType(TNum, Qual.untrack)), Qual.untrack)))
-    assert(Λ("X" ^ "_")(None)(ENum(1)) == ETyLam("_", "X", "_", QType(TTop, Qual.untrack), ENum(1), None))
   }
 }

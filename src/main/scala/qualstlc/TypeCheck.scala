@@ -129,7 +129,7 @@ def qualElemExposure(q: Qual, x: String)(using Γ: TEnv): Qual = {
 def isSubset(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean = q1 ⊆ q2 && q2 ⊆ Γ
 
 def isSubqual(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean =
-  //println(s"$Γ ⊢ $q1 <: $q2")
+  println(s"$Γ ⊢ $q1 <: $q2")
   // TODO: some well-formedness condition seems missing
   def qSelf(q: Set[QElem]): Set[QElem] =
     q.flatMap {
@@ -154,7 +154,7 @@ def qualSubst(q: Qual, from: String, to: Qual): Qual =
 def typeSubst(t: Type, from: String, to: Qual): Type = t match {
   case TUnit | TNum | TBool => t
   case TFun(f, x, t1, t2) =>
-    // XXX: need capture-free renaming of f and x?
+    // TODO: need capture-free renaming of f and x?
     TFun(f, x, qtypeSubst(t1, Some(from), to), qtypeSubst(t2, Some(from), to))
   case TRef(t) => TRef(typeSubst(t, from, to))
 }
