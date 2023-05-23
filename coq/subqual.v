@@ -546,6 +546,8 @@ Proof.
       apply H7 in Heqb2.
       apply bounded_can_be_simple.
       apply expand_works_on_suffix with (G := G) in H4; try assumption.
+      (* expand G s = expand G qual *)
+      (* s <= r -> expand G s <= expand G r *)
       admit.
       + (* trivial case *)
       intuition.
