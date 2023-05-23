@@ -532,11 +532,11 @@ Proof.
     * simpl in *. intuition.
     * destruct a; destruct s0.
       simpl in *.
+      apply suff_ind in H as ?.
       destruct (isFun && negb isFresh && StrSet.mem s q) eqn:?.
       + (* true inductive case *)
       apply expand_respects_union in H8.
       apply StrSet.union_spec in H8.
-      apply suff_ind in H as ?.
       destruct H8.
       2: apply IHG'; assumption.
       apply andb_true_iff in Heqb; destruct Heqb as [ Heqb01 Heqb2 ].
