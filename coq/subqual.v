@@ -216,10 +216,6 @@ Proof.
   assumption.
 Qed.
 
-Lemma expand_works_on_suffix: forall G G' q,
-  list_suffix G' G -> StrSet.Subset (expand G' q) (expand G q).
-Admitted.
-
 Lemma expand_is_sound: forall G q,
   wf_context G -> StrSet.Subset q (ddomain G) -> subQual G (expand G q) q.
 Proof.
@@ -344,9 +340,74 @@ Proof.
   SDecide.fsetdec.
 Qed.
 
+Lemma expand_works_on_suffix: forall G G' q,
+  list_suffix G' G -> StrSet.Subset (expand G' q) (expand G q).
+Proof.
+  intros.
+  induction H.
+  SDecide.fsetdec.
+  destruct a; destruct s0; simpl in *.
+  destruct (isFun && negb isFresh && StrSet.mem s q).
+  2: SDecide.fsetdec.
+  assert (StrSet.Subset (expand l1 q) (expand l1 (StrSet.union qual q))).
+  apply expand_is_monotonic.
+  all: SDecide.fsetdec.
+Qed.
+
 Lemma expand_respects_union: forall G q1 q2,
   StrSet.Equal (expand G (StrSet.union q1 q2)) (StrSet.union (expand G q1) (expand G q2)).
-Admitted.
+Proof.
+  intros.
+  generalize dependent q1.
+  generalize dependent q2.
+  induction G; intros.
+  + simpl.
+    SDecide.fsetdec.
+  + destruct a; destruct s0; simpl.
+    destruct (isFun && negb isFresh); simpl.
+    2: apply IHG.
+    destruct (StrSet.mem s q1) eqn:?; destruct (StrSet.mem s q2) eqn:?; simpl.
+    * assert (StrSet.mem s (StrSet.union q1 q2) = true).
+      apply StrSet.mem_spec in Heqb.
+      apply StrSet.mem_spec.
+      SDecide.fsetdec.
+      rewrite H.
+      assert (StrSet.Equal (expand G (StrSet.union qual (StrSet.union q1 q2))) (expand G (StrSet.union (StrSet.union qual q1) (StrSet.union qual q2)))).
+      unfold StrSet.Equal; split.
+      1,2: apply expand_is_monotonic; SDecide.fsetdec.
+      assert (StrSet.Equal (expand G (StrSet.union (StrSet.union qual q1) (StrSet.union qual q2))) (StrSet.union (expand G (StrSet.union qual q1)) (expand G (StrSet.union qual q2)))).
+      apply IHG.
+      SDecide.fsetdec.
+    * assert (StrSet.mem s (StrSet.union q1 q2) = true).
+      apply StrSet.mem_spec in Heqb.
+      apply StrSet.mem_spec.
+      SDecide.fsetdec.
+      rewrite H.
+      assert (StrSet.Equal (expand G (StrSet.union qual (StrSet.union q1 q2))) (expand G (StrSet.union (StrSet.union qual q1) q2))).
+      unfold StrSet.Equal; split.
+      1,2: apply expand_is_monotonic; SDecide.fsetdec.
+      assert (StrSet.Equal (expand G (StrSet.union (StrSet.union qual q1) q2)) (StrSet.union (expand G (StrSet.union qual q1)) (expand G q2))).
+      apply IHG.
+      SDecide.fsetdec.
+    * assert (StrSet.mem s (StrSet.union q1 q2) = true).
+      apply StrSet.mem_spec in Heqb0.
+      apply StrSet.mem_spec.
+      SDecide.fsetdec.
+      rewrite H.
+      assert (StrSet.Equal (expand G (StrSet.union qual (StrSet.union q1 q2))) (expand G (StrSet.union q1 (StrSet.union qual q2)))).
+      unfold StrSet.Equal; split.
+      1,2: apply expand_is_monotonic; SDecide.fsetdec.
+      assert (StrSet.Equal (expand G (StrSet.union q1 (StrSet.union qual q2))) (StrSet.union (expand G q1) (expand G (StrSet.union qual q2)))).
+      apply IHG.
+      SDecide.fsetdec.
+    * assert (StrSet.mem s (StrSet.union q1 q2) = false).
+      apply SFacts.not_mem_iff in Heqb.
+      apply SFacts.not_mem_iff in Heqb0.
+      apply SFacts.not_mem_iff.
+      SDecide.fsetdec.
+      rewrite H.
+      apply IHG.
+Qed.
 
 Fixpoint bounded (ctx: context) (x: string) (qual: qualset) : bool :=
   if StrSet.mem x qual then true else
@@ -455,10 +516,18 @@ Qed.
 
 Lemma bounded_can_be_simple: forall G x q,
   StrSet.In x q -> bounded G x q = true.
-Admitted.
+Proof.
+  intros.
+  apply StrSet.mem_spec in H.
+  destruct G; simpl.
+  all: rewrite H; reflexivity.
+Qed.
 
 Lemma bounded_is_transitive: forall G x q r,
   bounded G x q = true -> StrSet.For_all (fun x => bounded G x r = true) q -> bounded G x r = true.
+Proof.
+  intros.
+  unfold StrSet.For_all in H0.
 Admitted.
 
 Definition algorithmic (ctx: context) (q1 q2: qualset) : bool :=
@@ -546,7 +615,7 @@ Proof.
       apply H7 in Heqb2.
       apply bounded_can_be_simple.
       apply expand_works_on_suffix with (G := G) in H4; try assumption.
-      (* expand G s = expand G qual *)
+      (* expand G qual <= expand G s *)
       (* s <= r -> expand G s <= expand G r *)
       admit.
       + (* trivial case *)
