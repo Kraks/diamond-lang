@@ -319,6 +319,10 @@ Proof.
     all: SDecide.fsetdec.
 Qed.
 
+Lemma expand_is_saturated2: forall G x,
+  StrSet.Equal (expand G (expand G x)) (expand G x).
+Admitted.
+
 Lemma expand_is_monotonic: forall G q1 q2,
   StrSet.Subset q1 q2 -> StrSet.Subset (expand G q1) (expand G q2).
 Proof.
@@ -408,6 +412,11 @@ Proof.
       rewrite H.
       apply IHG.
 Qed.
+
+Lemma expand_on_function: forall G f q,
+  wf_context G -> retrieve G f = Some (Sym true false q)
+  -> StrSet.Subset (expand G q) (expand G (StrSet.singleton f)).
+Admitted.
 
 Fixpoint bounded (ctx: context) (x: string) (qual: qualset) : bool :=
   if StrSet.mem x qual then true else
@@ -530,6 +539,11 @@ Proof.
   unfold StrSet.For_all in H0.
 Admitted.
 
+Lemma bounded_on_function: forall G f p q,
+  wf_context G -> bounded G f q = true -> retrieve G f = Some (Sym true false p)
+  -> StrSet.In f q.
+Admitted.
+
 Definition algorithmic (ctx: context) (q1 q2: qualset) : bool :=
   if is_well_formed ctx && StrSet.subset q1 (ddomain ctx) && StrSet.subset q2 (ddomain ctx) then
     StrSet.for_all (fun x => bounded ctx x (expand ctx q2)) q1
@@ -615,9 +629,21 @@ Proof.
       apply H7 in Heqb2.
       apply bounded_can_be_simple.
       apply expand_works_on_suffix with (G := G) in H4; try assumption.
-      (* expand G qual <= expand G s *)
-      (* s <= r -> expand G s <= expand G r *)
-      admit.
+      apply retrieve_works_on_suffix in H; try assumption; destruct H.
+      specialize H5 with (x := s) (a := Sym true false qual).
+      assert (retrieve ((s, Sym true false qual) :: G') s = Some (Sym true false qual)).
+      { simpl. replace (s =? s)%string with true. reflexivity. symmetry. apply String.eqb_eq. reflexivity. }
+      apply H5 in H8.
+      generalize dependent x0.
+      apply expand_on_function in H8 as ?; try assumption.
+      apply bounded_on_function with (p := qual) in Heqb2; try assumption.
+      clear - Heqb2 H4.
+      assert (StrSet.Subset (expand G (StrSet.singleton s)) (expand G (expand G r))).
+      apply expand_is_monotonic.
+      SDecide.fsetdec.
+      assert (StrSet.Equal (expand G (expand G r)) (expand G r)).
+      apply expand_is_saturated2.
+      SDecide.fsetdec.
       + (* trivial case *)
       intuition.
   - (* q_var *)
@@ -679,4 +705,4 @@ Proof.
       apply expand_is_increasing.
       apply bounded_can_be_simple.
       SDecide.fsetdec.
-Admitted.
+Qed.
