@@ -320,7 +320,7 @@ Proof.
 Qed.
 
 Lemma expand_is_saturated2: forall G x,
-  StrSet.Equal (expand G (expand G x)) (expand G x).
+  wf_context G -> StrSet.Equal (expand G (expand G x)) (expand G x).
 Admitted.
 
 Lemma expand_is_monotonic: forall G q1 q2,
@@ -637,12 +637,11 @@ Proof.
       generalize dependent x0.
       apply expand_on_function in H8 as ?; try assumption.
       apply bounded_on_function with (p := qual) in Heqb2; try assumption.
-      clear - Heqb2 H4.
       assert (StrSet.Subset (expand G (StrSet.singleton s)) (expand G (expand G r))).
       apply expand_is_monotonic.
       SDecide.fsetdec.
       assert (StrSet.Equal (expand G (expand G r)) (expand G r)).
-      apply expand_is_saturated2.
+      apply expand_is_saturated2; try assumption.
       SDecide.fsetdec.
       + (* trivial case *)
       intuition.
