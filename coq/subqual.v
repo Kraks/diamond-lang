@@ -319,9 +319,27 @@ Proof.
     all: SDecide.fsetdec.
 Qed.
 
-Lemma expand_is_saturated2: forall G x,
-  wf_context G -> StrSet.Equal (expand G (expand G x)) (expand G x).
-Admitted.
+Lemma expand_is_inbound: forall G q0,
+  wf_context G -> StrSet.Subset (expand G q0) (StrSet.union (ddomain G) q0).
+Proof.
+  intros.
+  generalize dependent q0.
+  induction G; intros.
+  simpl in *.
+  SDecide.fsetdec.
+  destruct a; destruct s0.
+  inversion H; subst.
+  intuition.
+  simpl in *.
+  remember (if isFun && negb isFresh && StrSet.mem s q0 then StrSet.union qual q0 else q0) as q0'.
+  assert (StrSet.Subset (expand G q0') (StrSet.union (ddomain G) q0')).
+  apply H0.
+  assert (StrSet.Subset q0' (StrSet.union qual q0)).
+  subst. destruct (isFun && negb isFresh && StrSet.mem s q0); SDecide.fsetdec.
+  assert (StrSet.Subset qual (StrSet.add s (ddomain G))).
+  destruct isFun; SDecide.fsetdec.
+  SDecide.fsetdec.
+Qed.
 
 Lemma expand_is_monotonic: forall G q1 q2,
   StrSet.Subset q1 q2 -> StrSet.Subset (expand G q1) (expand G q2).
@@ -341,6 +359,47 @@ Proof.
   exfalso.
   apply Heqb0; clear Heqb0.
   apply StrSet.mem_spec.
+  SDecide.fsetdec.
+Qed.
+
+Lemma expand_is_saturated2: forall G x,
+  wf_context G -> StrSet.Equal (expand G (expand G x)) (expand G x).
+Proof.
+  intros.
+  unfold StrSet.Equal.
+  split.
+  2: apply expand_is_increasing.
+  generalize dependent x.
+  induction G; intros.
+  simpl.
+  SDecide.fsetdec.
+  destruct a0; destruct s0.
+  inversion H; subst.
+  intuition.
+  simpl in *.
+  destruct (isFun && negb isFresh) eqn:?; simpl in *.
+  2: intuition.
+  destruct (StrSet.mem s x) eqn:?; simpl in *.
+  replace (StrSet.mem s (expand G (StrSet.union qual x))) with true in H0.
+  assert (StrSet.Subset (StrSet.union qual x) (expand G (StrSet.union qual x))).
+  apply expand_is_increasing.
+  assert (StrSet.Subset (StrSet.union qual (expand G (StrSet.union qual x))) (expand G (StrSet.union qual x))).
+  SDecide.fsetdec.
+  apply expand_is_monotonic with (G := G) in H3.
+  apply H1.
+  SDecide.fsetdec.
+  symmetry.
+  apply StrSet.mem_spec.
+  apply StrSet.mem_spec in Heqb0.
+  apply expand_is_increasing.
+  SDecide.fsetdec.
+  replace (StrSet.mem s (expand G x)) with false in H0.
+  intuition.
+  symmetry.
+  apply SFacts.not_mem_iff in Heqb0.
+  apply SFacts.not_mem_iff.
+  intro.
+  apply expand_is_inbound in H2; try assumption.
   SDecide.fsetdec.
 Qed.
 
