@@ -194,7 +194,7 @@ class QualSTLCTests extends AnyFunSuite {
 
     val fakeid = λ("fakeid", "x")("fakeid"♯((TRef(TNum) ^ ◆) ~> (TRef(TNum)^"x"))) { alloc(42) }
     assert(intercept[NotSubQType] { topTypeCheck(fakeid) }
-           == NotSubQType(TRef(TNum) ^ ◆, TRef(TNum) ^ "x"))
+           == NotSubQType(TRef(TNum) ^ ◆, TRef(TNum) ^ "x")())
 
     val Γ1 = TEnv.empty + ("y" -> (TRef(TNum) ^ ◆))
     assert(typeCheck(id(y))(using Γ1) == (TRef(TNum) ^ "y"))
@@ -450,7 +450,7 @@ class QualSTLCTests extends AnyFunSuite {
     Counter.reset
     // Check capture-free substitution of qualifiers
     assert(typeCheck(e)(using Γ) ==
-      (TFun(Some("#5"), Some("#6"), TRef(TNum) ^ ◆,TRef(TNum)^"x") ^ "x"))
+      (TFun(Some("g"), Some("#1"), TRef(TNum) ^ ◆,TRef(TNum)^"x") ^ "x"))
   }
 
   test("subtype") {
