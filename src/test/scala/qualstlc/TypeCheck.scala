@@ -26,23 +26,6 @@ class Playground extends AnyFunSuite {
       }
     //println(topTypeCheck(let0))
 
-    // rtq is a function type
-    // q2 contains rtq's argument name
-    /*
-     Env = x: Ref(T)^◆ 
-     def f(y: T^q2): (x: T) => T^y = λz => x
-     g(x)
-     */
-    val Γ = TEnv.empty + ("x" -> (TRef(TNum) ^ ◆))
-    val g_type = "g"♯( ("x" ∶ (TRef(TNum) ^ ◆)) ~> (TRef(TNum)^"y"))
-    val g_body = EVar("x")
-    val f_type = "f"♯( ("y" ∶ (TRef(TNum) ^ "x")) ~> ( g_type ))
-    val f_body = λ("g", "z")(g_type) { g_body }
-    val e = let ("f" ⇐ λ("f", "y")(f_type) { f_body }) {
-      EVar("f")(EVar("x"))
-    }
-    println(typeCheck(λ("f", "y")(f_type) { f_body })(using Γ))
-    //println(typeCheck(e)(using Γ))
   }
 }
 
@@ -443,6 +426,31 @@ class QualSTLCTests extends AnyFunSuite {
           QType(TNum,Qual(Set("x")))),
           Qual(Set(Fresh()))),
         QType(TRef(TNum),Qual(Set("f")))),Qual(Set("y"))))
+
+    /*
+     Env = x: Ref^◆
+     def f(y: Ref^x): (x: Ref) => Ref^y = \z.x
+     f(x) // (x1: Ref) => Ref^x = \z.x
+     */
+    val Γ = TEnv.empty + ("x" -> (TRef(TNum) ^ ◆))
+    val g_type = "g"♯( ("x" ∶ (TRef(TNum) ^ ◆)) ~> (TRef(TNum)^"y") )
+    val g_body = EVar("y")
+    val f_type = "f"♯( ("y" ∶ (TRef(TNum) ^ "x")) ~> ( g_type ^ "y" ) )
+    val f_body = λ("g", "z")(g_type) { g_body }
+    val f_def = λ("f", "y")(f_type) { f_body }
+
+    assert(typeCheck(f_def)(using Γ) ==
+      (TFun(Some("f"), Some("y"),
+        TRef(TNum)^"x",
+        TFun(Some("g"), Some("x"), TRef(TNum) ^ ◆, TRef(TNum)^"y")^"y") ^ "x"))
+
+    val e = let ("f" ⇐ f_def) {
+      EVar("f")(EVar("x"))
+    }
+    Counter.reset
+    // Check capture-free substitution of qualifiers
+    assert(typeCheck(e)(using Γ) ==
+      (TFun(Some("#5"), Some("#6"), TRef(TNum) ^ ◆,TRef(TNum)^"x") ^ "x"))
   }
 
   test("subtype") {

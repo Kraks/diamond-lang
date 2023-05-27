@@ -23,8 +23,8 @@ case class QualTypeMismatch(e: Expr, actual: QType, expect: QType)
 case class NotSubtype(t1: Type, t2: Type)
   extends RuntimeException(s"$t1 not subtype of $t2")
 
-case class NotSubQType(t1: QType, t2: QType)
-  extends RuntimeException(s"$t1 not qualified subtype of $t2")
+case class NotSubQType(t1: QType, t2: QType, Γ: Option[TEnv] = None)
+  extends RuntimeException(s"$t1 not qualified subtype of $t2 under $Γ")
 
 case class NonOverlap(permitted: Qual, overlap: Qual)
   extends RuntimeException(s"permit $permitted, but found overlap $overlap")
@@ -129,7 +129,7 @@ def qualElemExposure(q: Qual, x: String)(using Γ: TEnv): Qual = {
 def isSubset(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean = q1 ⊆ q2 && q2 ⊆ Γ
 
 def isSubqual(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean =
-  println(s"$Γ ⊢ $q1 <: $q2")
+  //println(s"$Γ ⊢ $q1 <: $q2")
   // TODO: some well-formedness condition seems missing
   def qSelf(q: Set[QElem]): Set[QElem] =
     q.flatMap {
@@ -153,8 +153,24 @@ def qualSubst(q: Qual, from: String, to: Qual): Qual =
 
 def typeSubst(t: Type, from: String, to: Qual): Type = t match {
   case TUnit | TNum | TBool => t
+  case TFun(Some(f), Some(x), t1, t2) =>
+    // Note: could be more selective, only perform renaming when there is capturing
+    val f1 = Counter.fresh
+    val x1 = Counter.fresh
+    val at = qtypeRename(qtypeRename(t1, x, x1), f, f1)
+    val rt = qtypeRename(qtypeRename(t2, x, x1), f, f1)
+    TFun(Some(f1), Some(x1), qtypeSubst(at, Some(from), to), qtypeSubst(rt, Some(from), to))
+  case TFun(Some(f), None, t1, t2) =>
+    val f1 = Counter.fresh
+    val at = qtypeRename(t1, f, f1)
+    val rt = qtypeRename(t2, f, f1)
+    TFun(Some(f1), None, qtypeSubst(at, Some(from), to), qtypeSubst(rt, Some(from), to))
+  case TFun(None, Some(x), t1, t2) =>
+    val x1 = Counter.fresh
+    val at = qtypeRename(t1, x, x1)
+    val rt = qtypeRename(t2, x, x1)
+    TFun(None, Some(x1), qtypeSubst(at, Some(from), to), qtypeSubst(rt, Some(from), to))
   case TFun(f, x, t1, t2) =>
-    // TODO: need capture-free renaming of f and x?
     TFun(f, x, qtypeSubst(t1, Some(from), to), qtypeSubst(t2, Some(from), to))
   case TRef(t) => TRef(typeSubst(t, from, to))
 }
@@ -270,7 +286,7 @@ def isSubQType(T: QType, S: QType)(using Γ: TEnv): Boolean =
 def checkSubQType(T: QType, S: QType)(using Γ: TEnv): Unit =
   //println(s"$Γ ⊢ $T <: $S")
   if (isSubQType(T, S)) ()
-  else throw NotSubQType(T, S)
+  else throw NotSubQType(T, S, Some(Γ))
 
 def checkSubtypeOverlap(T: QType, S: QType)(using Γ: TEnv): Unit =
   val QType(t1, q1) = T
@@ -325,13 +341,13 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     // XXX allow annotating observable filter?
     val ft = TFun(Some(f), Some(x), at, rt)
     // XXX well-formedness check? at/rt qualifier should be smaller than ctx? or check at call-site?
-    val fv = freeVars(e) -- Set(f, x)
+    val fv = qtypeFreeVars(at) ++ qtypeFreeVars(rt) ++ freeVars(e) -- Set(f, x)
     val Γ1 = Γ.filter(fv) + (x -> at) + (f -> (ft ^ Qual(fv.asInstanceOf[Set[QElem]])))
     val t = typeCheck(e)(using Γ1)
     checkSubQType(t, rt)(using Γ1)
     ft ^ Qual(fv.asInstanceOf[Set[QElem]])
   case ELam(_, x, at, e, None) =>
-    val fv = freeVars(e) - x
+    val fv = qtypeFreeVars(at) ++ freeVars(e) - x
     val t = typeCheck(e)(using Γ.filter(fv) + (x -> at))
     TFun(None, Some(x), at, t) ^ Qual(fv.asInstanceOf[Set[QElem]])
   case EApp(e1, e2) =>
