@@ -475,7 +475,51 @@ Qed.
 Lemma expand_on_function: forall G f q,
   wf_context G -> retrieve G f = Some (Sym true false q)
   -> StrSet.Subset (expand G q) (expand G (StrSet.singleton f)).
-Admitted.
+Proof.
+  intros.
+  induction G.
+  simpl in *.
+  discriminate.
+  destruct a; destruct s0.
+  inversion H; subst.
+  simpl in *.
+  destruct (f =? s)%string eqn:?.
+  2: {
+    intuition.
+    apply retrieve_is_well_formed in H0 as ?; try assumption.
+    assert (f <> s).
+    intro.
+    subst.
+    rewrite String.eqb_refl in Heqb.
+    discriminate.
+    replace (StrSet.mem s (StrSet.singleton f)) with false.
+    2: {
+      symmetry.
+      apply SFacts.not_mem_iff.
+      SDecide.fsetdec.
+    }
+    replace (StrSet.mem s q) with false.
+    2: {
+      symmetry.
+      apply SFacts.not_mem_iff.
+      SDecide.fsetdec.
+    }
+    replace (isFun && negb isFresh && false) with false.
+    assumption.
+    rewrite andb_false_r.
+    reflexivity.
+  }
+  apply String.eqb_eq in Heqb; subst.
+  inversion H0; subst; simpl in *.
+  replace (StrSet.mem s (StrSet.singleton s)) with true.
+  2: {
+    symmetry.
+    apply StrSet.mem_spec.
+    SDecide.fsetdec.
+  }
+  apply expand_is_monotonic.
+  destruct (StrSet.mem s q); SDecide.fsetdec.
+Qed.
 
 Fixpoint bounded (ctx: context) (x: string) (qual: qualset) : bool :=
   if StrSet.mem x qual then true else
