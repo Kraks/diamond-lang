@@ -23,7 +23,7 @@ case class QualTypeMismatch(e: Expr, actual: QType, expect: QType)
 case class NotSubtype(t1: Type, t2: Type)
   extends RuntimeException(s"$t1 not subtype of $t2")
 
-case class NotSubQType(t1: QType, t2: QType)(Γ: Option[TEnv] = None)
+case class NotSubQType(t1: QType, t2: QType, Γ: Option[TEnv] = None)
   extends RuntimeException(s"$t1 not qualified subtype of $t2 under $Γ")
 
 case class NonOverlap(permitted: Qual, overlap: Qual)
@@ -286,7 +286,7 @@ def isSubQType(T: QType, S: QType)(using Γ: TEnv): Boolean =
 def checkSubQType(T: QType, S: QType)(using Γ: TEnv): Unit =
   //println(s"$Γ ⊢ $T <: $S")
   if (isSubQType(T, S)) ()
-  else throw NotSubQType(T, S)(Some(Γ))
+  else throw NotSubQType(T, S, Some(Γ))
 
 def checkSubtypeOverlap(T: QType, S: QType)(using Γ: TEnv): Unit =
   val QType(t1, q1) = T
