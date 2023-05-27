@@ -41,7 +41,7 @@ def typeEq(t1: Type, t2: Type): Boolean = (t1, t2) match {
   case (TForall(x, t1), TForall(y, t2)) =>
     if (x == y) typeEq(t1, t2)
     else {
-      val z = Counter.fresh
+      val z = Counter.fresh()
       typeEq(TForall(z, typeSubst(t1, x, TVar(z))), TForall(z, typeSubst(t2, y, TVar(z))))
     }
   case (TRef(t1), TRef(t2)) =>
@@ -68,7 +68,7 @@ def typeSubst(t: Type, from: String, to: Type): Type = t match {
   case TForall(x, body) =>
     if (x == from) t
     else if (isFreeIn(x, to)) {
-      val fresh = Counter.fresh
+      val fresh = Counter.fresh()
       val newBody = typeSubst(body, x, TVar(fresh))
       typeSubst(TForall(fresh, newBody), from, to)
     } else TForall(x, typeSubst(body, from, to))

@@ -27,7 +27,7 @@ def isSubtypeFull(t1: Type, t2: Type)(using Γ: TEnv): Boolean =
         checkSubtypeFull(b2, b1)
         isSubtypeFull(t1, t2)(using Γ + (x <∶ b2))
       } else {
-        val z = Counter.fresh
+        val z = Counter.fresh()
         isSubtypeFull(TForall(z, b1, typeSubst(t1, x, TVar(z))),
             TForall(z, b2, typeSubst(t2, y, TVar(z))))
       }

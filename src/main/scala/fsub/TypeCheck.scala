@@ -64,7 +64,7 @@ def typeSubst(t: Type, from: String, to: Type): Type = t match {
   case TForall(x, ub, body) =>
     if (x == from) t
     else if (isFreeIn(x, to)) {
-      val fresh = Counter.fresh
+      val fresh = Counter.fresh()
       val newUb = typeSubst(ub, x, TVar(fresh))
       val newBody = typeSubst(body, x, TVar(fresh))
       typeSubst(TForall(fresh, newUb, newBody), from, to)
@@ -88,7 +88,7 @@ def isSubtype(t1: Type, t2: Type)(using Γ: TEnv): Boolean = (t1, t2) match {
       checkSubtype(b2, b1)
       isSubtype(t1, t2)(using Γ + (x <∶ b1))
     } else {
-      val z = Counter.fresh
+      val z = Counter.fresh()
       isSubtype(TForall(z, b1, typeSubst(t1, x, TVar(z))),
         TForall(z, b2, typeSubst(t2, y, TVar(z))))
     }
