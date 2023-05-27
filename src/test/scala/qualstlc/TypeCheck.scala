@@ -402,7 +402,7 @@ class QualSTLCTests extends AnyFunSuite {
     val t2: QType = (𝑔 ♯ (t1 ~> (TRef(TNum) ^ 𝑓))) ^ (𝑦)
     Counter.reset
     assert(qtypeRename(t2, "f", "g") ==
-      QType(TFun(Some("#0"),None,
+      QType(TFun(Some("g#0"),None,
         QType(TFun(Some("f"),Some("x"),
           QType(TNum,Qual(Set())),
           QType(TNum,Qual(Set("x")))),
@@ -413,15 +413,15 @@ class QualSTLCTests extends AnyFunSuite {
     val t3: QType = (𝑓 ♯ ((𝑥 ∶ TNum) ~> (TNum ^ (𝑥, 𝑦)))) ^ ◆
     Counter.reset
     assert(qtypeRename(t3, "y", "x") ==
-      QType(TFun(Some("f"),Some("#0"),QType(TNum,Qual(Set())),QType(TNum,Qual(Set("#0", "x")))),Qual(Set(Fresh()))))
+      QType(TFun(Some("f"),Some("x#0"),QType(TNum,Qual(Set())),QType(TNum,Qual(Set("x#0", "x")))),Qual(Set(Fresh()))))
 
     //      (𝑔 ♯ ((𝑓 ♯ ((𝑥 ∶ TNum) ~> (TNum ^ 𝑥))) ^ ◆ ~> (TRef(TNum) ^ 𝑓))) ^ (𝑦)
     // then (𝑔' ♯ ((𝑓 ♯ ((𝑥 ∶ TNum) ~> (TNum ^ 𝑥))) ^ ◆ ~> (TRef(TNum) ^ 𝑔))) ^ (𝑦)
     // then (𝑔' ♯ ((𝑓' ♯ ((𝑥 ∶ TNum) ~> (TNum ^ 𝑥))) ^ ◆ ~> (TRef(TNum) ^ 𝑓))) ^ (𝑦)
     Counter.reset
     assert(qtypeRename(qtypeRename(t2, "f", "g"), "g", "f") ==
-      QType(TFun(Some("#0"),None,
-        QType(TFun(Some("#1"),Some("x"),
+      QType(TFun(Some("g#0"),None,
+        QType(TFun(Some("f#1"),Some("x"),
           QType(TNum,Qual(Set())),
           QType(TNum,Qual(Set("x")))),
           Qual(Set(Fresh()))),
@@ -450,7 +450,7 @@ class QualSTLCTests extends AnyFunSuite {
     Counter.reset
     // Check capture-free substitution of qualifiers
     assert(typeCheck(e)(using Γ) ==
-      (TFun(Some("g"), Some("#1"), TRef(TNum) ^ ◆,TRef(TNum)^"x") ^ "x"))
+      (TFun(Some("g"), Some("x#1"), TRef(TNum) ^ ◆,TRef(TNum)^"x") ^ "x"))
   }
 
   test("subtype") {

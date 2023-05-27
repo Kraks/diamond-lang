@@ -155,18 +155,18 @@ def typeSubst(t: Type, from: String, to: Qual): Type = t match {
   case TUnit | TNum | TBool => t
   case TFun(Some(f), Some(x), t1, t2) =>
     // Note: could be more selective, only perform renaming when there is capturing
-    val f1 = if (to.contains(f)) Counter.fresh() else f
-    val x1 = if (to.contains(x)) Counter.fresh() else x
+    val f1 = if (to.contains(f)) Counter.fresh(f) else f
+    val x1 = if (to.contains(x)) Counter.fresh(x) else x
     val at = qtypeRename(qtypeRename(t1, x, x1), f, f1)
     val rt = qtypeRename(qtypeRename(t2, x, x1), f, f1)
     TFun(Some(f1), Some(x1), qtypeSubst(at, Some(from), to), qtypeSubst(rt, Some(from), to))
   case TFun(Some(f), None, t1, t2) =>
-    val f1 = if (to.contains(f)) Counter.fresh() else f
+    val f1 = if (to.contains(f)) Counter.fresh(f) else f
     val at = qtypeRename(t1, f, f1)
     val rt = qtypeRename(t2, f, f1)
     TFun(Some(f1), None, qtypeSubst(at, Some(from), to), qtypeSubst(rt, Some(from), to))
   case TFun(None, Some(x), t1, t2) =>
-    val x1 = if (to.contains(x)) Counter.fresh() else x
+    val x1 = if (to.contains(x)) Counter.fresh(x) else x
     val at = qtypeRename(t1, x, x1)
     val rt = qtypeRename(t2, x, x1)
     TFun(None, Some(x1), qtypeSubst(at, Some(from), to), qtypeSubst(rt, Some(from), to))
@@ -195,12 +195,12 @@ def typeRename(t: Type, from: String, to: String): Type = t match {
   case TFun(Some(f), Some(x), t1, t2) =>
     if (f == from || x == from) t
     else if (f == to) {
-      val g = Counter.fresh()
+      val g = Counter.fresh(f)
       val argType = qtypeRename(t1, f, g)
       val retType = qtypeRename(t2, f, g)
       typeRename(TFun(Some(g), Some(x), argType, retType), from, to)
     } else if (x == to) {
-      val y = Counter.fresh()
+      val y = Counter.fresh(x)
       val argType = qtypeRename(t1, x, y)
       val retType = qtypeRename(t2, x, y)
       typeRename(TFun(Some(f), Some(y), argType, retType), from, to)
@@ -208,7 +208,7 @@ def typeRename(t: Type, from: String, to: String): Type = t match {
   case TFun(Some(f), None, t1, t2) =>
     if (f == from) t
     else if (f == to) {
-      val g = Counter.fresh()
+      val g = Counter.fresh(f)
       val argType = qtypeRename(t1, f, g)
       val retType = qtypeRename(t2, f, g)
       typeRename(TFun(Some(g), None, argType, retType), from, to)
@@ -216,7 +216,7 @@ def typeRename(t: Type, from: String, to: String): Type = t match {
   case TFun(None, Some(x), t1, t2) =>
     if (x == from) t
     else if (x == to) {
-      val y = Counter.fresh()
+      val y = Counter.fresh(x)
       val argType = qtypeRename(t1, x, y)
       val retType = qtypeRename(t2, x, y)
       typeRename(TFun(None, Some(y), argType, retType), from, to)
