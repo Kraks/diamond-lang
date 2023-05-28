@@ -33,13 +33,13 @@ case class DeepDependency(t: Type, vbl: String)
   extends RuntimeException(s"$t cannot deeply depend on $vbl")
 
 object TEnv:
-  def empty: TEnv = TEnv(Map())
+  def empty: TEnv = TEnv(List())
 
-case class TEnv(m: Map[String, QType]):
-  def apply(x: String): QType = m(x)
-  def +(xt: (String, QType)): TEnv = TEnv(m + xt)
+case class TEnv(m: List[(String, QType)]):
+  def apply(x: String): QType = m.collectFirst({ case (`x`, t) => t }).get
+  def +(xt: (String, QType)): TEnv = TEnv(xt :: m)
   def filter(q: Set[String]): TEnv = TEnv(m.filter((k, v) => q.contains(k)))
-  def dom: Set[String] = m.keys.toSet
+  def dom: Set[String] = m.map(_._1).toSet
   override def toString = s"""[${m.mkString("; ")}]"""
 
 extension (q: Qual)
@@ -60,8 +60,7 @@ extension (q: Qual)
   def ⊆(q2: Qual): Boolean = q.set.subsetOf(q2.set)
   def ⊆(Γ: TEnv): Boolean = {
     val Qual(s) = q
-    val dom: Set[QElem] = Γ.m.keys.toSet
-    s.subsetOf(dom + ◆)
+    s.subsetOf(Γ.dom + ◆)
   }
   // saturated is supposed to be called only within ⋒
   def saturated(using Γ: TEnv): Set[String] = reach(q.varSet, Set(), Set())
@@ -107,27 +106,6 @@ def checkQTypeEq(e: Expr, actual: QType, exp: QType)(using Γ: TEnv): QType =
 
 def checkUntrackQual(q: Qual)(using Γ: TEnv): Unit = checkQualEq(q, Qual(Set()))
 
-// One-step qualifier exposure (i.e. implementing q-self and q-var)
-def qualElemExposure(q: Qual, x: String)(using Γ: TEnv): Qual = {
-  require(!q.contains(x))
-  Γ(x) match
-    case QType(TFun(_, _, _, _), r) if r.nonFresh && r ⊆ Γ =>
-      val res = (q \ r) + x
-      //println(s"exposing function $Γ ⊢ $x ^ $r -> $res")
-      res
-    case QType(t, r) if !t.isInstanceOf[TFun] && r.nonFresh =>
-      val res = q ∪ r
-      //println(s"exposing variable $Γ ⊢ $x ^ $r -> $res")
-      res
-    case _ =>
-      val res = q + x
-      //println(s"remaining unchanged $Γ ⊢ $x -> $res")
-      res
-}
-
-// the Q-Sub rule
-def isSubset(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean = q1 ⊆ q2 && q2 ⊆ Γ
-
 def isSubqual(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean =
   //println(s"$Γ ⊢ $q1 <: $q2")
   // TODO: some well-formedness condition seems missing
@@ -154,7 +132,6 @@ def qualSubst(q: Qual, from: String, to: Qual): Qual =
 def typeSubst(t: Type, from: String, to: Qual): Type = t match {
   case TUnit | TNum | TBool => t
   case TFun(Some(f), Some(x), t1, t2) =>
-    // Note: could be more selective, only perform renaming when there is capturing
     val f1 = if (to.contains(f)) Counter.fresh(f) else f
     val x1 = if (to.contains(x)) Counter.fresh(x) else x
     val at = qtypeRename(qtypeRename(t1, x, x1), f, f1)

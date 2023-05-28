@@ -81,14 +81,12 @@ class QualSTLCTests extends AnyFunSuite {
     assert(isSubqual(Qual.singleton("x"), Qual.singleton("y"))(using Γ3))
 
     val Γ4 = TEnv.empty + ("f" -> ((TNum ~> TNum) ^ ("x", "y")))
-    assert(qualElemExposure(Qual(Set("z")), "f")(using Γ4) == Qual(Set("f", "z")))
 
     // f : (Int -> Int)^{x,y} ⊢ {z, x, y, f} <: {f, z}
     val Γ5 = Γ4 + ("z" -> TNum) + ("x" -> TNum) + ("y" -> TNum)
     assert(isSubqual(Qual(Set("z", "x", "y", "f")), Qual(Set("f", "z")))(using Γ5))
 
     // f : (Int -> Int)^{x,y} ⊢ {z, f, ◆} <: {z, f, ◆}
-    assert(qualElemExposure(Qual(Set("z", ◆)), "f")(using Γ4) == Qual(Set("z", "f", ◆)))
     assert(isSubqual(Qual(Set("z", "f", ◆)), Qual(Set("z", "f", ◆)))(using Γ5))
     assert(isSubqual(Qual(Set("z", "x", "y", "f", ◆)), Qual(Set("z", "f", ◆)))(using Γ5))
 
