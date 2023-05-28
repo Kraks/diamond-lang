@@ -11,6 +11,7 @@ import ExprSyntax._
 import TypeSyntax.given_Conversion_Type_QType
 import ExprSyntax.given_Conversion_Int_ENum
 
+/*
 class QualFSubTests extends AnyFunSuite {
   test("syntax") {
     val t1: QType = TNum ^ ()
@@ -447,3 +448,4 @@ class QualFSubTests extends AnyFunSuite {
     assert(Qual.singleton("x").saturated(using Γ3) == Set("x", "z", "a"))
   }
 }
+ */

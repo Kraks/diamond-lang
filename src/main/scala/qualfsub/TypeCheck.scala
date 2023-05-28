@@ -23,8 +23,8 @@ case class QualTypeMismatch(e: Expr, actual: QType, expect: QType)
 case class NotSubtype(t1: Type, t2: Type)
   extends RuntimeException(s"$t1 not subtype of $t2")
 
-case class NotSubQType(t1: QType, t2: QType)
-  extends RuntimeException(s"$t1 not qualified subtype of $t2")
+case class NotSubQType(t1: QType, t2: QType)(Γ: Option[TEnv] = None)
+  extends RuntimeException(s"$t1 not qualified subtype of $t2 under $Γ")
 
 case class NonOverlap(permitted: Qual, overlap: Qual)
   extends RuntimeException(s"permit $permitted, but found overlap $overlap")
@@ -32,15 +32,8 @@ case class NonOverlap(permitted: Qual, overlap: Qual)
 case class DeepDependency(t: Type, vbl: String)
   extends RuntimeException(s"$t cannot deeply depend on $vbl")
 
-object TEnv:
-  def empty: TEnv = TEnv(Map())
-
-case class TEnv(m: Map[String, QType]):
-  def apply(x: String): QType = m(x)
-  def +(xt: (String, QType)): TEnv = TEnv(m + xt)
-  def filter(q: Set[String]): TEnv = TEnv(m.filter((k, v) => q.contains(k)))
-  def dom: Set[String] = m.keys.toSet
-  override def toString = s"""[${m.mkString("; ")}]"""
+type TEnv = AssocList[QType]
+val TEnv = AssocList
 
 extension (q: Qual)
   def contains(x: QElem): Boolean = q.set.contains(x)
@@ -60,8 +53,7 @@ extension (q: Qual)
   def ⊆(q2: Qual): Boolean = q.set.subsetOf(q2.set)
   def ⊆(Γ: TEnv): Boolean = {
     val Qual(s) = q
-    val dom: Set[QElem] = Γ.m.keys.toSet
-    s.subsetOf(dom + ◆)
+    s.subsetOf(Γ.dom + ◆)
   }
   // saturated is supposed to be called only within ⋒
   def saturated(using Γ: TEnv): Set[String] = reach(q.varSet, Set())
@@ -315,7 +307,7 @@ def isSubQType(T: QType, S: QType)(using Γ: TEnv): Boolean =
 def checkSubQType(T: QType, S: QType)(using Γ: TEnv): Unit =
   //println(s"$Γ ⊢ $T <: $S")
   if (isSubQType(T, S)) ()
-  else throw NotSubQType(T, S)
+  else throw NotSubQType(T, S)(Some(Γ))
 
 def checkSubtypeOverlap(T: QType, S: QType)(using Γ: TEnv): Unit =
   val QType(t1, q1) = T

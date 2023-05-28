@@ -9,6 +9,12 @@ import TypeSyntax._
 import TypeSyntax.given_Conversion_Type_QType
 import ExprSyntax._
 
+object QualSTLCTEnv {
+  type TEnv = AssocList[QType]
+  val TEnv = AssocList
+}
+import QualSTLCTEnv._
+
 given Conversion[Set[String], Set[QElem]] = _.asInstanceOf[Set[QElem]]
 
 case class QualMismatch(actual: Qual, expect: Qual)
@@ -31,16 +37,6 @@ case class NonOverlap(permitted: Qual, overlap: Qual)
 
 case class DeepDependency(t: Type, vbl: String)
   extends RuntimeException(s"$t cannot deeply depend on $vbl")
-
-object TEnv:
-  def empty: TEnv = TEnv(List())
-
-case class TEnv(m: List[(String, QType)]):
-  def apply(x: String): QType = m.collectFirst({ case (`x`, t) => t }).get
-  def +(xt: (String, QType)): TEnv = TEnv(xt :: m)
-  def filter(q: Set[String]): TEnv = TEnv(m.filter((k, v) => q.contains(k)))
-  def dom: Set[String] = m.map(_._1).toSet
-  override def toString = s"""[${m.mkString("; ")}]"""
 
 extension (q: Qual)
   def contains(x: QElem): Boolean = q.set.contains(x)

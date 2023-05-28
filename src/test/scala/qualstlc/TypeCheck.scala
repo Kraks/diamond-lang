@@ -30,6 +30,9 @@ class Playground extends AnyFunSuite {
 }
 
 class QualSTLCTests extends AnyFunSuite {
+  type TEnv = AssocList[QType]
+  val TEnv = AssocList
+
   test("syntax") {
     val t1: QType = TNum ^ ()
     assert(t1 == QType(TNum, Qual.untrack))
@@ -69,11 +72,11 @@ class QualSTLCTests extends AnyFunSuite {
 
   test("subqual") {
     // x : Int^∅ ⊢ {x} <: ∅
-    val Γ1 = TEnv.empty + ("x" -> TNum)
+    val Γ1: TEnv = TEnv.empty + ("x" -> TNum)
     assert(isSubqual(Qual.singleton("x"), Qual.untrack)(using Γ1))
 
     // y: Int^∅, x : Int^y ⊢ {x} <: ∅
-    val Γ2 = TEnv.empty + ("x" -> (TNum ^ "y")) + ("y" -> TNum)
+    val Γ2: TEnv = TEnv.empty + ("x" -> (TNum ^ "y")) + ("y" -> TNum)
     assert(isSubqual(Qual.singleton("x"), Qual.untrack)(using Γ2))
 
     // y: Int^◆, x : Int^y ⊢ {x} <: {y} but not further
@@ -106,7 +109,7 @@ class QualSTLCTests extends AnyFunSuite {
     assert(isSubqual(Qual(Set("z")), Qual(Set("a")))(using Γ7))
     assert(isSubqual(Qual(Set("z")), Qual(Set()))(using Γ7))
 
-    val Γ8 = TEnv.empty + ("a" -> (TNum ^ ("b", ◆))) + ("b" -> TNum) + ("c" -> (TNum ^ "d")) + ("d" -> TNum)
+    val Γ8 = TEnv.empty[QType] + ("a" -> (TNum ^ ("b", ◆))) + ("b" -> TNum) + ("c" -> (TNum ^ "d")) + ("d" -> TNum)
     // a: Int^{b, ◆}, b: Int^∅, c: Int^d, d: Int^∅ ⊢ {a, c} <: {a}
     assert(isSubqual(Qual(Set("a", "c")), Qual(Set("a")))(using Γ8))
     // a: Int^{b, ◆}, b: Int^∅, c: Int^d, d: Int^∅ ⊢ {a, c} ¬<: ∅
@@ -114,7 +117,7 @@ class QualSTLCTests extends AnyFunSuite {
     // a: Int^{b, ◆}, b: Int^∅, c: Int^d, d: Int^∅ ⊢ {a, c} ¬<: {◆}
     assert(!isSubqual(Qual(Set("a", "c")), Qual(Set(◆)))(using Γ8))
 
-    val Γ9 = TEnv.empty + ("a" -> TNum) + ("b" -> TNum)
+    val Γ9 = TEnv.empty[QType] + ("a" -> TNum) + ("b" -> TNum)
     /*
      Γ = a: Int^∅, b: Int^∅
      a: Int^∅ ∈ Γ
@@ -142,7 +145,7 @@ class QualSTLCTests extends AnyFunSuite {
   test("alloc") {
     assert(topTypeCheck(alloc(42)) == (TRef(TNum) ^ ◆))
 
-    val Γ1 = TEnv.empty + ("x" -> TNum)
+    val Γ1 = TEnv.empty[QType] + ("x" -> TNum)
     assert(typeCheck(alloc(x))(using Γ1) == (TRef(TNum) ^ ◆))
 
     val Γ2 = TEnv.empty + ("x" -> (TNum ^ ◆))
@@ -453,7 +456,7 @@ class QualSTLCTests extends AnyFunSuite {
 
   test("subtype") {
     // x : Int^∅ ⊢ Int^x <: Int^∅
-    val Γ1 = TEnv.empty + ("x" -> TNum)
+    val Γ1 = TEnv.empty[QType] + ("x" -> TNum)
     assert(isSubQType(TNum ^ 𝑥, TNum)(using Γ1))
 
     val Γ2 = TEnv.empty + ("y" -> (TRef(TNum) ^ ◆))
