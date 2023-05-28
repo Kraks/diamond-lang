@@ -1,6 +1,6 @@
 package diamond.qualfsub
 
-/* System F_{<:} + Reference + Diamond-flavored reachability types */
+/* F◆ = System F-Sub + Reference + Diamond-flavored reachability types */
 
 enum Type:
   case TUnit
@@ -8,9 +8,10 @@ enum Type:
   case TBool
   case TFun(id: Option[String], arg: Option[String], t1: QType, t2: QType)
   case TRef(t: Type)
+  // F◆ new types
   case TTop
   case TVar(x: String)
-  case TForall(f: Option[String], x: String, a: String, bound: QType, res: QType)
+  case TForall(f: Option[String], tvar: String, qvar: String, bound: QType, res: QType)
 
 import Type._
 
@@ -43,7 +44,8 @@ enum Expr:
   case EAssign(lhs: Expr, rhs: Expr)
   case EDeref(e: Expr)
   case ECond(cnd: Expr, thn: Expr, els: Expr)
-  case ETyLam(f: String, x: String, a: String, bound: QType, body: Expr, rt: Option[QType])
+  // F◆ new expressions
+  case ETyLam(f: String, tvar: String, qvar: String, bound: QType, body: Expr, rt: Option[QType])
   case ETyApp(t: Expr, q: QType)
 
 import Expr._
@@ -55,8 +57,6 @@ object TypeSyntax:
     def ~>(s: QType): TFun = TFun(None, None, t, s)
   extension (id: String)
     def ♯(t: TFun): TFun = TFun(Some(id), t.arg, t.t1, t.t2)
-    def ♯(t: TypeBound): TypeBound = TypeBound(Some(id), t.x, t.q, t.bound)
-    def ^(q: String): TypeBound = TypeBound(None, id, q, None)
   extension (t: Type)
     def ^(q: Qual): QType = QType(t, q)
     def ^(q: QElem): QType = QType(t, Qual(Set(q)))
@@ -64,11 +64,14 @@ object TypeSyntax:
     def ^(q: Tuple): QType = QType(t, Qual(q.toList.asInstanceOf[List[QElem]].toSet))
   // type to qualified type conversion, default is untracked
   given Conversion[Type, QType] = QType(_, Qual.untrack)
-  case class TypeBound(f: Option[String], x: String, q: String, bound: Option[QType]):
+  // F◆ new syntax
+  extension (id2: (String, String))
+    def ^(qt: QType): TypeBound = TypeBound(id2._1, id2._2, qt)
+  case class TypeBound(tvar: String, qvar: String, bound: QType = (TTop ^ ◆)):
     // Note - ∶ and : are different, we use the former
-    def <∶(t: QType): TypeBound = TypeBound(f, x, q, Some(t))
-    def boundOrTop: QType = bound.getOrElse(TTop)
-  def ∀(xt: TypeBound)(t: QType) = TForall(xt.f, xt.x, xt.q, xt.boundOrTop, t)
+    def <∶(t: QType): TypeBound = TypeBound(tvar, qvar, t)
+  def ∀(f: String, xt: TypeBound)(t: QType) = TForall(Some(f), xt.tvar, xt.qvar, xt.bound, t)
+  def ∀(xt: TypeBound)(t: QType) = TForall(None, xt.tvar, xt.qvar, xt.bound, t)
 
 object ExprSyntax:
   import Expr._
@@ -100,15 +103,18 @@ object ExprSyntax:
 
   def λ(f: String, x: String)(ft: TFun)(e: => Expr): ELam = ELam(f, x, ft.t1, e, Some(ft.t2))
   def λ(xt: BindTy)(e: => Expr): ELam = ELam("_", xt.id, xt.ty, e, None)
-  def Λ(ft: TypeBound)(res: Option[QType])(e: => Expr): ETyLam = ETyLam(ft.f.getOrElse("_"), ft.x, ft.q, ft.boundOrTop, e, res)
   def ite(c: Expr)(thn: Expr)(els: Expr): Expr = ECond(c, thn, els)
   def let(xv: Bind)(e: Expr): Expr = ELet(xv.id, xv.ty, xv.rhs, e)
   def alloc(e: Expr): Expr = EAlloc(e)
+  // F◆ new syntax
+  def Λ(f: String, xt: TypeBound)(res: Option[QType])(e: => Expr): ETyLam =
+    ETyLam(f, xt.tvar, xt.qvar, xt.bound, e, res)
+  def Λ(xt: TypeBound)(res: Option[QType])(e: => Expr): ETyLam =
+    ETyLam("_", xt.tvar, xt.qvar, xt.bound, e, res)
 
   extension (e: Expr)
     def apply(a: Expr): Expr = EApp(e, a)
     def apply(n: Int): Expr = EApp(e, ENum(n))
-    def apply(t: QType): Expr = ETyApp(e, t)
     def ===(e0: Expr): Expr = EBinOp("=", e, e0)
     def ===(e0: Int): Expr = EBinOp("=", e, ENum(e0))
     def +(e0: Expr): Expr = EBinOp("+", e, e0)
@@ -121,6 +127,7 @@ object ExprSyntax:
     def /(e0: Int): Expr = EBinOp("/", e, ENum(e0))
     def deref: Expr = EDeref(e)
     def assign(e0: Expr): Expr = EAssign(e, e0)
-
+    // F◆ new syntax
+    def apply(t: QType): Expr = ETyApp(e, t)
 
   given Conversion[Int, ENum] = ENum(_)
