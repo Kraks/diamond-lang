@@ -645,7 +645,53 @@ Admitted.
 Lemma bounded_on_function: forall G f p q,
   wf_context G -> bounded G f q = true -> retrieve G f = Some (Sym true false p)
   -> StrSet.In f q.
-Admitted.
+Proof.
+  intros.
+  induction G.
+  simpl in *.
+  discriminate.
+  destruct a; destruct s0.
+  inversion H; subst.
+  simpl in *.
+  destruct (StrSet.mem f q) eqn:?.
+  apply StrSet.mem_spec in Heqb.
+  assumption.
+  destruct (f =? s)%string eqn:?.
+  2: {
+    replace (false && negb isFun) with false in H0.
+    replace (false && negb isFresh) with false in H0.
+    intuition.
+    all: rewrite andb_false_l; reflexivity.
+  }
+  apply String.eqb_eq in Heqb0; subst.
+  inversion H1; subst.
+  simpl in *.
+  clear IHG H1 H H9 p.
+  exfalso.
+  apply not_true_iff_false in Heqb.
+  apply Heqb; clear Heqb.
+  apply StrSet.mem_spec.
+  induction G.
+  simpl in *.
+  destruct (StrSet.mem s q) eqn:?.
+  apply StrSet.mem_spec in Heqb.
+  assumption.
+  discriminate.
+  destruct a; destruct s1.
+  inversion H5; subst.
+  simpl in *.
+  destruct (StrSet.mem s q) eqn:?.
+  apply StrSet.mem_spec in Heqb.
+  assumption.
+  destruct (s =? s0)%string eqn:?.
+  apply String.eqb_eq in Heqb0; subst.
+  exfalso.
+  SDecide.fsetdec.
+  replace (false && negb isFun) with false in H0.
+  replace (false && negb isFresh) with false in H0.
+  intuition.
+  all: rewrite andb_false_l; reflexivity.
+Qed.
 
 Definition algorithmic (ctx: context) (q1 q2: qualset) : bool :=
   if is_well_formed ctx && StrSet.subset q1 (ddomain ctx) && StrSet.subset q2 (ddomain ctx) then
