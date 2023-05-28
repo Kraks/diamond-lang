@@ -635,12 +635,106 @@ Proof.
   all: rewrite H; reflexivity.
 Qed.
 
-Lemma bounded_is_transitive: forall G x q r,
-  bounded G x q = true -> StrSet.For_all (fun x => bounded G x r = true) q -> bounded G x r = true.
+Lemma wf_context_on_suffix: forall G' G,
+  list_suffix G' G -> wf_context G -> wf_context G'.
 Proof.
   intros.
+  induction H.
+  assumption.
+  intuition.
+  destruct a; destruct s0.
+  inversion H1; subst.
+  assumption.
+Qed.
+
+Lemma bounded_works_on_suffix: forall G' G x q,
+  list_suffix G' G -> wf_context G -> StrSet.In x (ddomain G')
+  -> bounded G' x q = bounded G x q.
+Proof.
+  intros.
+  induction H.
+  reflexivity.
+  intuition.
+  apply wf_context_on_suffix in H; try assumption.
+  destruct a; destruct s0.
+  inversion H; subst.
+  simpl in *.
+  assert (StrSet.In x (StrSet.add s (ddomain l1))).
+  SDecide.fsetdec.
+  intuition.
+  destruct (StrSet.mem x q) eqn:?.
+  apply StrSet.mem_spec in Heqb.
+  rewrite bounded_can_be_simple; assumption.
+  assert ((x =? s)%string = false).
+  apply not_true_iff_false.
+  intro.
+  apply String.eqb_eq in H2; subst.
+  SDecide.fsetdec.
+  replace ((x =? s)%string && negb isFun && negb isFresh) with false in H4.
+  2: {
+    rewrite H2.
+    simpl.
+    reflexivity.
+  }
+  assumption.
+Qed.
+
+Lemma bounded_is_transitive: forall G x q r,
+  wf_context G -> bounded G x q = true -> StrSet.For_all (fun x => bounded G x r = true) q -> bounded G x r = true.
+Proof.
+  intros.
+  unfold StrSet.For_all in H1.
+  remember G as G' in H0.
+  assert (list_suffix G' G).
+  subst. constructor.
+  clear HeqG'.
+  generalize dependent x.
+  (* generalize dependent G. *)
+  induction G'; intros.
+  simpl in *.
+  destruct (StrSet.mem x q) eqn:?.
+  apply StrSet.mem_spec in Heqb.
+  apply H1.
+  assumption.
+  discriminate.
+  destruct a; destruct s0.
+  apply suff_ind in H2 as ?.
+  intuition.
+  simpl in *.
+  destruct (StrSet.mem x q) eqn:?.
+  apply H1.
+  apply StrSet.mem_spec in Heqb.
+  assumption.
+  destruct ((x =? s)%string && negb isFun && negb isFresh) eqn:?.
+  2: intuition.
+  apply StrSet.for_all_spec in H0.
+  2: unfold Proper; unfold respectful; intros; subst; reflexivity.
   unfold StrSet.For_all in H0.
-Admitted.
+  apply andb_true_iff in Heqb0; destruct Heqb0 as [ Heqb01 Heqb2 ].
+  apply andb_true_iff in Heqb01; destruct Heqb01 as [ Heqb0 Heqb1 ].
+  apply String.eqb_eq in Heqb0; subst.
+  apply negb_true_iff in Heqb1; subst.
+  apply negb_true_iff in Heqb2; subst.
+  apply (bounded_works_on_suffix _ _ s r) in H2 as ?.
+  2: assumption.
+  2: simpl; SDecide.fsetdec.
+  rewrite <- H5.
+  simpl.
+  destruct (StrSet.mem s r) eqn:?.
+  reflexivity.
+  rewrite String.eqb_refl.
+  simpl.
+  apply StrSet.for_all_spec.
+  unfold Proper; unfold respectful; intros; subst; reflexivity.
+  unfold StrSet.For_all.
+  intros.
+  apply wf_context_on_suffix in H2; try assumption.
+  inversion H2; subst.
+  apply H0 in H6 as ?.
+  apply H4 in H7.
+  rewrite bounded_works_on_suffix with (G := G); try assumption.
+  SDecide.fsetdec.
+Qed.
 
 Lemma bounded_on_function: forall G f p q,
   wf_context G -> bounded G f q = true -> retrieve G f = Some (Sym true false p)
@@ -751,7 +845,7 @@ Proof.
   - (* q_trans *)
     apply subQual_is_well_formed in H as ?; clear H0 H1.
     intuition.
-    apply bounded_is_transitive with (q := expand G q).
+    apply bounded_is_transitive with (q := expand G q); try assumption.
     { apply H1. assumption. }
     unfold StrSet.For_all; intros; clear H H4 H5 H1 x p.
     pose G as G'.
