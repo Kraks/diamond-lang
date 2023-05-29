@@ -9,11 +9,8 @@ import TypeSyntax._
 import TypeSyntax.given_Conversion_Type_QType
 import ExprSyntax._
 
-object QualSTLCTEnv {
-  type TEnv = AssocList[QType]
-  val TEnv = AssocList
-}
-import QualSTLCTEnv._
+type TEnv = AssocList[QType]
+val TEnv = AssocList
 
 given Conversion[Set[String], Set[QElem]] = _.asInstanceOf[Set[QElem]]
 
