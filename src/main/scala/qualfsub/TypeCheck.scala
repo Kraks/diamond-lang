@@ -99,72 +99,6 @@ def checkQTypeEq(e: Expr, actual: QType, exp: QType)(using Γ: TEnv): QType =
 
 def checkUntrackQual(q: Qual)(using Γ: TEnv): Unit = checkQualEq(q, Qual(Set()))
 
-// One-step qualifier exposure (i.e. implementing q-self and q-var)
-def qualElemExposure(q: Qual, x: String)(using Γ: TEnv): Qual = {
-  require(!q.contains(x))
-  Γ(x) match
-    case QType(TFun(_, _, _, _), r) if r.nonFresh && r ⊆ Γ =>
-      val res = (q \ r) + x
-      //println(s"exposing function $Γ ⊢ $x ^ $r -> $res")
-      res
-    case QType(t, r) if !t.isInstanceOf[TFun] && r.nonFresh =>
-      val res = q ∪ r
-      //println(s"exposing variable $Γ ⊢ $x ^ $r -> $res")
-      res
-    case _ =>
-      val res = q + x
-      //println(s"remaining unchanged $Γ ⊢ $x -> $res")
-      res
-}
-
-// One iteration of exposure over the qualifier
-def qualExposure0(q: Qual)(using Γ: TEnv): Qual = {
-  require(!q.isFresh)
-  if (q.isUntrack) q
-  else {
-    val ps: Set[Set[String]] = q.set.asInstanceOf[Set[String]].map { x =>
-        qualElemExposure(q - x, x).set.asInstanceOf[Set[String]]
-    }
-    Qual(ps.tail.foldLeft(ps.head)((a, b) => a.intersect(b)))
-  }
-}
-
-/*
-Note: this one is buggy
-def qualExposure0(q: Qual)(using Γ: TEnv): Qual = {
-  require(!q.isFresh)
-  if (q.isUntrack) q
-  else {
-    val x = q.set.head.asInstanceOf[String]
-    val p = q - x
-    val r = qualElemExposure(p, x)
-    if (r.contains(x)) qualExposure0(r - x) + x
-    else qualExposure0(r)
-  }
-}
-*/
-
-// Iteratively qualifier exposure via fixpoint iteration.
-// Compute the maximum upper bound qualifier following the subtyping "lattice" under Γ.
-// XXX: is that upper bound unique? eg different traverse order may lead to different result?
-def fixQualExposure(q1: Qual, q2: Qual)(using Γ: TEnv): Qual = {
-  //println(s"fixpoint $q1 $q2 ${q1 == q2}")
-  if (q1 == q2) q2
-  else fixQualExposure(q2, qualExposure0(q2))
-}
-
-def qualExposure(q: Qual)(using Γ: TEnv): Qual =
-  val p = fixQualExposure(Qual(Set()), q - ◆)
-  if (q.isFresh) p + ◆ else p
-
-// the Q-Sub rule
-def isSubset(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean = q1 ⊆ q2 && q2 ⊆ Γ
-
-//def isSubqual(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean =
-  // if (isSubset(q1, q2)) true
-  // else if (isSubset(qualExposure(q1), qualExposure(q2))) true
-  // else false
-
 def isSubqual(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean =
   //println(s"$Γ ⊢ $q1 <: $q2")
   // TODO: some well-formedness condition seems missing
@@ -190,8 +124,23 @@ def qualSubst(q: Qual, from: String, to: Qual): Qual =
 
 def typeSubst(t: Type, from: String, to: Qual): Type = t match {
   case TUnit | TNum | TBool => t
+  case TFun(Some(f), Some(x), t1, t2) =>
+    val f1 = if (to.contains(f)) Counter.fresh(f) else f
+    val x1 = if (to.contains(x)) Counter.fresh(x) else x
+    val at = qtypeRename(qtypeRename(t1, x, x1), f, f1)
+    val rt = qtypeRename(qtypeRename(t2, x, x1), f, f1)
+    TFun(Some(f1), Some(x1), qtypeSubst(at, Some(from), to), qtypeSubst(rt, Some(from), to))
+  case TFun(Some(f), None, t1, t2) =>
+    val f1 = if (to.contains(f)) Counter.fresh(f) else f
+    val at = qtypeRename(t1, f, f1)
+    val rt = qtypeRename(t2, f, f1)
+    TFun(Some(f1), None, qtypeSubst(at, Some(from), to), qtypeSubst(rt, Some(from), to))
+  case TFun(None, Some(x), t1, t2) =>
+    val x1 = if (to.contains(x)) Counter.fresh(x) else x
+    val at = qtypeRename(t1, x, x1)
+    val rt = qtypeRename(t2, x, x1)
+    TFun(None, Some(x1), qtypeSubst(at, Some(from), to), qtypeSubst(rt, Some(from), to))
   case TFun(f, x, t1, t2) =>
-    // XXX: need capture-free renaming of f and x?
     TFun(f, x, qtypeSubst(t1, Some(from), to), qtypeSubst(t2, Some(from), to))
   case TRef(t) => TRef(typeSubst(t, from, to))
 }
@@ -216,12 +165,12 @@ def typeRename(t: Type, from: String, to: String): Type = t match {
   case TFun(Some(f), Some(x), t1, t2) =>
     if (f == from || x == from) t
     else if (f == to) {
-      val g = Counter.fresh()
+      val g = Counter.fresh(f)
       val argType = qtypeRename(t1, f, g)
       val retType = qtypeRename(t2, f, g)
       typeRename(TFun(Some(g), Some(x), argType, retType), from, to)
     } else if (x == to) {
-      val y = Counter.fresh()
+      val y = Counter.fresh(x)
       val argType = qtypeRename(t1, x, y)
       val retType = qtypeRename(t2, x, y)
       typeRename(TFun(Some(f), Some(y), argType, retType), from, to)
@@ -229,7 +178,7 @@ def typeRename(t: Type, from: String, to: String): Type = t match {
   case TFun(Some(f), None, t1, t2) =>
     if (f == from) t
     else if (f == to) {
-      val g = Counter.fresh()
+      val g = Counter.fresh(f)
       val argType = qtypeRename(t1, f, g)
       val retType = qtypeRename(t2, f, g)
       typeRename(TFun(Some(g), None, argType, retType), from, to)
@@ -237,7 +186,7 @@ def typeRename(t: Type, from: String, to: String): Type = t match {
   case TFun(None, Some(x), t1, t2) =>
     if (x == from) t
     else if (x == to) {
-      val y = Counter.fresh()
+      val y = Counter.fresh(x)
       val argType = qtypeRename(t1, x, y)
       val retType = qtypeRename(t2, x, y)
       typeRename(TFun(None, Some(y), argType, retType), from, to)
@@ -362,13 +311,13 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     // XXX allow annotating observable filter?
     val ft = TFun(Some(f), Some(x), at, rt)
     // XXX well-formedness check? at/rt qualifier should be smaller than ctx? or check at call-site?
-    val fv = freeVars(e) -- Set(f, x)
+    val fv = qtypeFreeVars(at) ++ qtypeFreeVars(rt) ++ freeVars(e) -- Set(f, x)
     val Γ1 = Γ.filter(fv) + (x -> at) + (f -> (ft ^ Qual(fv.asInstanceOf[Set[QElem]])))
     val t = typeCheck(e)(using Γ1)
     checkSubQType(t, rt)(using Γ1)
     ft ^ Qual(fv.asInstanceOf[Set[QElem]])
   case ELam(_, x, at, e, None) =>
-    val fv = freeVars(e) - x
+    val fv = qtypeFreeVars(at) ++ freeVars(e) - x
     val t = typeCheck(e)(using Γ.filter(fv) + (x -> at))
     TFun(None, Some(x), at, t) ^ Qual(fv.asInstanceOf[Set[QElem]])
   case EApp(e1, e2) =>

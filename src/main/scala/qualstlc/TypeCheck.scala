@@ -9,9 +9,6 @@ import TypeSyntax._
 import TypeSyntax.given_Conversion_Type_QType
 import ExprSyntax._
 
-type TEnv = AssocList[QType]
-val TEnv = AssocList
-
 given Conversion[Set[String], Set[QElem]] = _.asInstanceOf[Set[QElem]]
 
 case class QualMismatch(actual: Qual, expect: Qual)
@@ -35,6 +32,9 @@ case class NonOverlap(permitted: Qual, overlap: Qual)
 case class DeepDependency(t: Type, vbl: String)
   extends RuntimeException(s"$t cannot deeply depend on $vbl")
 
+type TEnv = AssocList[QType]
+val TEnv = AssocList
+
 extension (q: Qual)
   def contains(x: QElem): Boolean = q.set.contains(x)
   def varSet: Set[String] = (q.set - Fresh()).asInstanceOf[Set[String]]
@@ -56,18 +56,18 @@ extension (q: Qual)
     s.subsetOf(Γ.dom + ◆)
   }
   // saturated is supposed to be called only within ⋒
-  def saturated(using Γ: TEnv): Set[String] = reach(q.varSet, Set(), Set())
+  def saturated(using Γ: TEnv): Set[String] = reach(q.varSet, Set())
   def ⋒(q2: Qual)(using Γ: TEnv): Qual =
     //println(s"${q.saturated} ⋒ ${q2.saturated}")
     Qual(q.saturated.intersect(q2.saturated).asInstanceOf[Set[QElem]]) + Fresh()
 
-def reach(worklist: Set[String], seen: Set[String], acc: Set[String])(using Γ: TEnv): Set[String] =
+def reach(worklist: Set[String], acc: Set[String])(using Γ: TEnv): Set[String] =
   if (worklist.isEmpty) acc
   else {
     val x = worklist.head
     val QType(t, q) = Γ(x)
-    val newQual = q.varSet.filter(z => !seen.contains(z))
-    reach((worklist ++ newQual) -- Set(x), seen + x, acc ++ newQual ++ Set(x))
+    val newQual = q.varSet.filter(z => !acc.contains(z))
+    reach((worklist ++ newQual) -- Set(x), acc ++ newQual ++ Set(x))
   }
 
 def typeCheckBinOp(e1: Expr, e2: Expr, op: String, t1: QType, t2: QType)(using Γ: TEnv): Type =
