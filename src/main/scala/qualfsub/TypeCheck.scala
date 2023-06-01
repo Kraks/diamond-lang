@@ -32,8 +32,18 @@ case class NonOverlap(permitted: Qual, overlap: Qual)
 case class DeepDependency(t: Type, vbl: String)
   extends RuntimeException(s"$t cannot deeply depend on $vbl")
 
-type TEnv = AssocList[QType]
-val TEnv = AssocList
+case class TEnv(m: AssocList[String, QType], tm: AssocList[TVar, Type], qm: AssocList[String, Qual]):
+  def apply(x: String): QType = m(x)
+  def apply(x: TVar): Type = tm(x)
+  def getQualBound(x: String): Qual = qm(x)
+
+  def +(xt: (String, QType)) = TEnv(m + xt, tm, qm)
+  def +<:(xt: (TVar, Type), xq: (String, Qual)) = TEnv(m, tm + xt, qm + xq)
+  def filter(q: Set[String]) = TEnv(m.filter(q), tm, qm) // XXX should we filter tm and qm?
+  def dom: Set[String] = m.dom // XXX should we inlcude tm and qm?
+
+object TEnv:
+  def empty: TEnv = TEnv(AssocList.empty, AssocList.empty, AssocList.empty)
 
 extension (q: Qual)
   def contains(x: QElem): Boolean = q.set.contains(x)

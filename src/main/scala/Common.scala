@@ -10,11 +10,11 @@ def fix[T](f: T => T): T => T = x =>
   if (x == y) y else fix(f)(y)
 
 object AssocList:
-  def empty[T]: AssocList[T] = AssocList[T](List())
+  def empty[K, T]: AssocList[K, T] = AssocList[K, T](List())
 
-case class AssocList[T](m: List[(String, T)]):
-  def apply(x: String): T = m.collectFirst({ case (`x`, t) => t }).get
-  def +(xt: (String, T)): AssocList[T] = AssocList(xt :: m)
-  def filter(q: Set[String]): AssocList[T] = AssocList(m.filter((k, v) => q.contains(k)))
-  def dom: Set[String] = m.map(_._1).toSet
+case class AssocList[K, T](m: List[(K, T)]):
+  def apply(x: K): T = m.collectFirst({ case (`x`, t) => t }).get
+  def +(xt: (K, T)): AssocList[K, T] = AssocList(xt :: m)
+  def filter(q: Set[K]): AssocList[K, T] = AssocList(m.filter((k, v) => q.contains(k)))
+  def dom: Set[K] = m.map(_._1).toSet
   override def toString = s"""[${m.mkString("; ")}]"""

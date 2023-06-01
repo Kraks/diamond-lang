@@ -49,9 +49,13 @@ enum Expr:
   case ETyApp(t: Expr, q: QType)
 
 import Expr._
+import Type._
+
+case class TypeBound(tvar: String, qvar: String, bound: QType = QType(TTop, Qual.fresh)):
+  // Note - ∶ and : are different, we use the former
+  def <∶(t: QType): TypeBound = TypeBound(tvar, qvar, t)
 
 object TypeSyntax:
-  import Type._
   val ◆ = Fresh()
   extension (t: QType)
     def ~>(s: QType): TFun = TFun(None, None, t, s)
@@ -67,16 +71,12 @@ object TypeSyntax:
   // F◆ new syntax
   extension (id2: (String, String))
     def ^(qt: QType): TypeBound = TypeBound(id2._1, id2._2, qt)
-  case class TypeBound(tvar: String, qvar: String, bound: QType = (TTop ^ ◆)):
-    // Note - ∶ and : are different, we use the former
-    def <∶(t: QType): TypeBound = TypeBound(tvar, qvar, t)
   def ∀(f: String, xt: TypeBound)(t: QType) = TForall(Some(f), xt.tvar, xt.qvar, xt.bound, t)
   def ∀(xt: TypeBound)(t: QType) = TForall(None, xt.tvar, xt.qvar, xt.bound, t)
 
 object ExprSyntax:
   import Expr._
   import Type._
-  import TypeSyntax.TypeBound
 
   val 𝑥 = "x"
   val x = EVar("x")

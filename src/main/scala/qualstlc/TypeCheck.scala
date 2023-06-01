@@ -32,7 +32,7 @@ case class NonOverlap(permitted: Qual, overlap: Qual)
 case class DeepDependency(t: Type, vbl: String)
   extends RuntimeException(s"$t cannot deeply depend on $vbl")
 
-type TEnv = AssocList[QType]
+type TEnv = AssocList[String, QType]
 val TEnv = AssocList
 
 extension (q: Qual)
