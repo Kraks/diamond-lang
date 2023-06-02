@@ -45,7 +45,7 @@ enum Expr:
   case EDeref(e: Expr)
   case ECond(cnd: Expr, thn: Expr, els: Expr)
   // F◆ new expressions
-  case ETyLam(f: String, tvar: String, qvar: String, bound: QType, body: Expr, rt: Option[QType])
+  case ETyLam(f: Option[String], tvar: String, qvar: String, bound: QType, body: Expr, rt: Option[QType])
   case ETyApp(t: Expr, q: QType)
 
 import Expr._
@@ -108,9 +108,9 @@ object ExprSyntax:
   def alloc(e: Expr): Expr = EAlloc(e)
   // F◆ new syntax
   def Λ(f: String, xt: TypeBound)(res: Option[QType])(e: => Expr): ETyLam =
-    ETyLam(f, xt.tvar, xt.qvar, xt.bound, e, res)
+    ETyLam(Some(f), xt.tvar, xt.qvar, xt.bound, e, res)
   def Λ(xt: TypeBound)(res: Option[QType])(e: => Expr): ETyLam =
-    ETyLam("_", xt.tvar, xt.qvar, xt.bound, e, res)
+    ETyLam(None, xt.tvar, xt.qvar, xt.bound, e, res)
 
   extension (e: Expr)
     def apply(a: Expr): Expr = EApp(e, a)

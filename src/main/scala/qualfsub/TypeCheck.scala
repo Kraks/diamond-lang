@@ -38,8 +38,8 @@ case class TEnv(m: AssocList[String, QType], tm: AssocList[TVar, Type], qm: Asso
   def getQualBound(x: String): Qual = qm(x)
 
   def +(xt: (String, QType)) = TEnv(m + xt, tm, qm)
-  def +<:(xt: (TVar, Type), xq: (String, Qual)) = TEnv(m, tm + xt, qm + xq)
-  def filter(q: Set[String]) = TEnv(m.filter(q), tm, qm) // XXX should we filter tm and qm?
+  def +(tb: TypeBound) = TEnv(m, tm + (TVar(tb.tvar) -> tb.bound.ty), qm + (tb.qvar -> tb.bound.q))
+  def filter(q: Set[String]) = TEnv(m.filter(q), tm, qm.filter(q)) // XXX should we filter tm?
   def dom: Set[String] = m.dom // XXX should we inlcude tm and qm?
 
 object TEnv:
@@ -153,7 +153,13 @@ def typeSubst(t: Type, from: String, to: Qual): Type = t match {
   case TFun(f, x, t1, t2) =>
     TFun(f, x, qtypeSubst(t1, Some(from), to), qtypeSubst(t2, Some(from), to))
   case TRef(t) => TRef(typeSubst(t, from, to))
+  // New F◆ types
+  case TVar(x) => ???
+  case TTop => ???
+  case TForall(f, tvar, qvar, bound, rt) => ???
 }
+
+def qtypeSubst(t: QType, tvar: String, qvar: String, to: QType): QType = ???
 
 def qtypeSubst(qt: QType, from: Option[String], to: Qual): QType =
   from match {
@@ -308,6 +314,15 @@ def freeVars(e: Expr): Set[String] = e match {
   case ECond(cnd, thn, els) => freeVars(cnd) ++ freeVars(thn) ++ freeVars(els)
 }
 
+def typeExposure(t: Type)(using Γ: TEnv): Type = t match {
+  case x@TVar(_) => typeExposure(Γ(x))
+  case _ => t
+}
+
+def qtypeExposure(t: QType)(using Γ: TEnv): QType = ???
+
+def qtypeWFCheck(t: QType)(using Γ: TEnv): QType = ???
+
 def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
   case EUnit => TUnit
   case ENum(_) => TNum
@@ -320,13 +335,14 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
   case ELam(f, x, at, e, Some(rt)) =>
     // XXX allow annotating observable filter?
     val ft = TFun(Some(f), Some(x), at, rt)
-    // XXX well-formedness check? at/rt qualifier should be smaller than ctx? or check at call-site?
+    qtypeWFCheck(ft)
     val fv = qtypeFreeVars(at) ++ qtypeFreeVars(rt) ++ freeVars(e) -- Set(f, x)
     val Γ1 = Γ.filter(fv) + (x -> at) + (f -> (ft ^ Qual(fv.asInstanceOf[Set[QElem]])))
     val t = typeCheck(e)(using Γ1)
     checkSubQType(t, rt)(using Γ1)
     ft ^ Qual(fv.asInstanceOf[Set[QElem]])
   case ELam(_, x, at, e, None) =>
+    qtypeWFCheck(at)
     val fv = qtypeFreeVars(at) ++ freeVars(e) - x
     val t = typeCheck(e)(using Γ.filter(fv) + (x -> at))
     TFun(None, Some(x), at, t) ^ Qual(fv.asInstanceOf[Set[QElem]])
@@ -355,6 +371,7 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
       qtypeSubst(qtypeSubst(rtq, x, q2), f, qf)
     }
   case ELet(x, Some(qt1), rhs, body) =>
+    qtypeWFCheck(qt1)
     val QType(t1, q1) = qt1
     val qt2 = typeCheck(rhs)
     checkSubQType(qt2, qt1)
@@ -391,6 +408,29 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     val t2 = typeCheck(thn)
     val t3 = typeCheck(els)
     checkQTypeEq(thn, t2, t3)
+  // New F◆ terms
+  case ETyLam(Some(f), tvar, qvar, ub, e, Some(rt)) =>
+    val ft = TForall(Some(f), tvar, qvar, ub, rt)
+    val fv = qtypeFreeVars(ub) ++ qtypeFreeVars(rt) ++ freeVars(e) -- Set(f, tvar, qvar)
+    val Γ1 = Γ.filter(fv) + ((tvar, qvar) ^ ub) + (f -> (ft ^ Qual(fv.asInstanceOf[Set[QElem]])))
+    val t = typeCheck(e)(using Γ1)
+    checkSubQType(t, rt)(using Γ1)
+    ft ^ Qual(fv.asInstanceOf[Set[QElem]])
+  case ETyLam(_, tvar, qvar, ub, e, None) =>
+    val fv = qtypeFreeVars(ub) ++ freeVars(e) -- Set(tvar, qvar)
+    val t = typeCheck(e)(using Γ.filter(fv) + ((tvar, qvar) ^ ub))
+    TForall(None, tvar, qvar, ub, t) ^ Qual(fv.asInstanceOf[Set[QElem]])
+  case ETyApp(e, qt@QType(ty, q)) =>
+    qtypeWFCheck(qt)
+    val t1 = typeCheck(e)
+    val QType(TForall(f, tvar, qvar, ub, rt), fq) = qtypeExposure(t1)
+    if (q.isFresh) {
+      ???
+    } else {
+      // TODO: check nonfresh
+      checkSubQType(qt, ub)
+      qtypeSubst(qtypeSubst(rt, f, fq), tvar, qvar, qt)
+    }
 }
 
 def topTypeCheck(e: Expr): QType = {

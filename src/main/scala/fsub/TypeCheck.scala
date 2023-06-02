@@ -156,6 +156,7 @@ def typeCheck(e: Expr)(using Γ: TEnv): Type = e match {
   case ETyLam(tx, ub, e) =>
     TForall(tx, ub, typeCheck(e)(using Γ + (tx <∶ ub)))
   case ETyApp(e, t) =>
+    typeWFCheck(t)
     val t1 = typeCheck(e)
     val TForall(x, b, body) = typeExposure(t1)
     checkSubtype(t, b)
