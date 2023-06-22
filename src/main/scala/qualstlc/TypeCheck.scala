@@ -99,25 +99,27 @@ def checkQTypeEq(e: Expr, actual: QType, exp: QType)(using Γ: TEnv): QType =
 
 def checkUntrackQual(q: Qual)(using Γ: TEnv): Unit = checkQualEq(q, Qual(Set()))
 
+def qSelf(q: Set[QElem])(using Γ: TEnv): Set[QElem] =
+  q.flatMap {
+    case x: String => Γ(x) match
+      case QType(TFun(_, _, _, _), q) if !q.isFresh => Set(x) ++ q.set
+      case _ => Set(x)
+    case d => Set(d)
+  }
+
+def bounded(e: QElem, b: Set[QElem])(using Γ: TEnv): Boolean =
+  b.contains(e) || { e match
+    case x: String => Γ(x) match
+      case QType(t, q) if !t.isInstanceOf[TFun] && !q.isFresh => q.set.forall(bounded(_, b))
+      case _ => false
+    case _ => false
+  }
+
 def isSubqual(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean =
   //println(s"$Γ ⊢ $q1 <: $q2")
   // TODO: some well-formedness condition seems missing
-  def qSelf(q: Set[QElem]): Set[QElem] =
-    q.flatMap {
-      case x: String => Γ(x) match
-        case QType(TFun(_, _, _, _), q) if !q.isFresh => Set(x) ++ q.set
-        case _ => Set(x)
-      case d => Set(d)
-    }
   val q2ext = fix(qSelf)(q2.set)
-  def bounded(e: QElem): Boolean =
-    q2ext(e) || { e match
-      case x: String => Γ(x) match
-        case QType(t, q) if !t.isInstanceOf[TFun] && !q.isFresh => q.set.forall(bounded)
-        case _ => false
-      case _ => false
-    }
-  q1.set.forall(bounded)
+  q1.set.forall(bounded(_, q2ext))
 
 def qualSubst(q: Qual, from: String, to: Qual): Qual =
   if (q.contains(from)) q - from ++ to.set else q
@@ -201,49 +203,34 @@ def isSubtype(t1: Type, t2: Type)(using Γ: TEnv): Boolean = (t1, t2) match {
   case (TUnit, TUnit) => true
   case (TNum, TNum) => true
   case (TBool, TBool) => true
-  case (tf@TFun(Some(f), Some(x), t1, t2), tg@TFun(Some(g), Some(y), t3, t4)) =>
+  case (F@TFun(f, x, t1, t2), G@TFun(g, y, t3, t4)) =>
     if (f == g && x == y) {
-      val Γ1 = Γ + (f -> (tf ^ ◆)) + (x -> t3)
-      isSubQType(t3, t1) && isSubQType(t2, t4)(using Γ1)
-    } else if (f != g && x == y) {
-      val f1 = Counter.fresh()
-      isSubtype(TFun(Some(f1), Some(x), qtypeRename(t1, f, f1), qtypeRename(t2, f, f1)),
-        TFun(Some(f1), Some(x), qtypeRename(t3, g, f1), qtypeRename(t4, g, f1)))
-    } else if (f == g && x != y) {
-      val x1 = Counter.fresh()
-      isSubtype(TFun(Some(f), Some(x1), qtypeRename(t1, x, x1), qtypeRename(t2, x, x1)),
-        TFun(Some(f), Some(x1), qtypeRename(t3, y, x1), qtypeRename(t4, y, x1)))
-    } else {
-      val f1 = Counter.fresh()
-      val x1 = Counter.fresh()
-      val tf1 = TFun(Some(f1), Some(x1),
-        qtypeRename(qtypeRename(t1, x, x1), f, f1),
-        qtypeRename(qtypeRename(t2, x, x1), f, f1))
-      val tg1 = TFun(Some(f1), Some(x1),
-        qtypeRename(qtypeRename(t3, y, x1), g, f1),
-        qtypeRename(qtypeRename(t4, y, x1), g, f1))
-      isSubtype(tf1, tg1)
-    }
-  case (tf@TFun(Some(f), None, t1, t2), tg@TFun(Some(g), None, t3, t4)) =>
-    if (f == g) {
-      val Γ1 = Γ + (f -> (tf ^ ◆))
-      isSubQType(t3, t1) && isSubQType(t2, t4)(using Γ1)
-    } else {
-      val f1 = Counter.fresh()
-      isSubtype(TFun(Some(f1), None, qtypeRename(t1, f, f1), qtypeRename(t2, f, f1)),
-        TFun(Some(f1), None, qtypeRename(t3, g, f1), qtypeRename(t4, g, f1)))
-    }
-  case (TFun(None, Some(x), t1, t2), TFun(None, Some(y), t3, t4)) =>
-    if (x == y) {
-      val Γ1 = Γ + (x -> t3)
-      isSubQType(t3, t1) && isSubQType(t2, t4)(using Γ1)
-    } else {
-      val x1 = Counter.fresh()
-      isSubtype(TFun(None, Some(x1), qtypeRename(t1, x, x1), qtypeRename(t2, x, x1)),
-        TFun(None, Some(x1), qtypeRename(t3, y, x1), qtypeRename(t4, y, x1)))
-    }
-  case (TFun(None, None, t1, t2), TFun(None, None, t3, t4)) =>
-    isSubQType(t3, t1) && isSubQType(t2, t4)
+      val Γ1 = (f, x) match
+        case (Some(f), Some(x)) => Γ + (f -> (F ^ ◆)) + (x -> t3)
+        case (None, Some(x)) => Γ + (x -> t3)
+        case (Some(f), None) => Γ + (f -> (F ^ ◆)) 
+        case (None, None) => Γ
+      isSubQType(t3, t1) &&
+        isSubQType(t2, t4)(using Γ1)
+    } else if (f != g) {
+      val f1 = freshVar()
+      val F1 = f match
+        case Some(f) => TFun(Some(f1), x, qtypeRename(t1, f, f1), qtypeRename(t2, f, f1))
+        case None => TFun(Some(f1), x, t1, t2)
+      val G1 = g match
+        case Some(g) => TFun(Some(f1), y, qtypeRename(t3, g, f1), qtypeRename(t4, g, f1))
+        case None => TFun(Some(f1), y, t3, t4)
+      isSubtype(F1, G1)
+    } else if (x != y) {
+      val x1 = freshVar()
+      val F1 = x match
+        case Some(x) => TFun(f, Some(x1), t1, qtypeRename(t2, x, x1))
+        case None => TFun(f, Some(x1), t1, t2)
+      val G1 = y match
+        case Some(y) => TFun(g, Some(x1), t3, qtypeRename(t4, y, x1))
+        case None => TFun(g, Some(x1), t3, t4)
+      isSubtype(F1, G1)
+    } else throw new RuntimeException("Impossible")
   case (TRef(t1), TRef(t2)) => typeEq(t1, t2)
   case _ => false
 }

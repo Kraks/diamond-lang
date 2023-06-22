@@ -25,7 +25,6 @@ class Playground extends AnyFunSuite {
         }
       }
     //println(topTypeCheck(let0))
-
   }
 }
 
@@ -471,6 +470,9 @@ class QualSTLCTests extends AnyFunSuite {
     assert(isSubQType(t1, t2)(using TEnv.empty))
 
     Counter.reset
+    // let f: g(y: Ref(Num)◆ => Ref(Num)^{y, g}) =
+    //   (λf(x).x): f(x: Ref(Num)◆ => Ref(Num)^{x, f})
+    // in f
     val e = let("f" ∶ ("g"♯( ("y" ∶ (TRef(TNum)^(◆))) ~> (TRef(TNum)^("y", "g"))))  ⇐
       (λ("f", "x")("f"♯((TRef(TNum)^(◆)) ~> (TRef(TNum)^("x", "f")))) { EVar("x") })) { EVar("f") }
     assert(topTypeCheck(e) == (("g"♯( ("y" ∶ (TRef(TNum)^(◆))) ~> (TRef(TNum)^("y", "g"))))^()))

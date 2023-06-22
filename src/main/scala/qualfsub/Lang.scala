@@ -54,7 +54,7 @@ import Expr._
 import Type._
 
 case class TypeBound(tvar: String, qvar: String, bound: QType = QType(TTop, Qual.fresh)):
-  // Note - ∶ and : are different, we use the former
+  // Attach a new qualified bound
   def <⦂(t: QType): TypeBound = TypeBound(tvar, qvar, t)
 
 object TypeSyntax:
