@@ -127,7 +127,7 @@ def typeSubst(t: Type, from: String, to: Qual): Type = t match {
   case TFun(Some(f), Some(x), t1, t2) =>
     val f1 = if (to.contains(f)) Counter.fresh(f) else f
     val x1 = if (to.contains(x)) Counter.fresh(x) else x
-    val at = qtypeRename(qtypeRename(t1, x, x1), f, f1)
+    val at = qtypeRename(t1, f, f1)
     val rt = qtypeRename(qtypeRename(t2, x, x1), f, f1)
     TFun(Some(f1), Some(x1), qtypeSubst(at, Some(from), to), qtypeSubst(rt, Some(from), to))
   case TFun(Some(f), None, t1, t2) =>
@@ -137,7 +137,7 @@ def typeSubst(t: Type, from: String, to: Qual): Type = t match {
     TFun(Some(f1), None, qtypeSubst(at, Some(from), to), qtypeSubst(rt, Some(from), to))
   case TFun(None, Some(x), t1, t2) =>
     val x1 = if (to.contains(x)) Counter.fresh(x) else x
-    val at = qtypeRename(t1, x, x1)
+    val at = t1 //qtypeRename(t1, x, x1)
     val rt = qtypeRename(t2, x, x1)
     TFun(None, Some(x1), qtypeSubst(at, Some(from), to), qtypeSubst(rt, Some(from), to))
   case TFun(f, x, t1, t2) =>

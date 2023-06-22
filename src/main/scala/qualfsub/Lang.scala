@@ -2,6 +2,8 @@ package diamond.qualfsub
 
 /* F◆ = System F-Sub + Reference + Diamond-flavored reachability types */
 
+// TODO: TRef with inner qualifier
+
 enum Type:
   case TUnit
   case TNum
@@ -53,7 +55,7 @@ import Type._
 
 case class TypeBound(tvar: String, qvar: String, bound: QType = QType(TTop, Qual.fresh)):
   // Note - ∶ and : are different, we use the former
-  def <∶(t: QType): TypeBound = TypeBound(tvar, qvar, t)
+  def <⦂(t: QType): TypeBound = TypeBound(tvar, qvar, t)
 
 object TypeSyntax:
   val ◆ = Fresh()
@@ -70,7 +72,7 @@ object TypeSyntax:
   given Conversion[Type, QType] = QType(_, Qual.untrack)
   // F◆ new syntax
   extension (id2: (String, String))
-    def ^(qt: QType): TypeBound = TypeBound(id2._1, id2._2, qt)
+    def <⦂(qt: QType): TypeBound = TypeBound(id2._1, id2._2, qt)
   def ∀(f: String, xt: TypeBound)(t: QType) = TForall(Some(f), xt.tvar, xt.qvar, xt.bound, t)
   def ∀(xt: TypeBound)(t: QType) = TForall(None, xt.tvar, xt.qvar, xt.bound, t)
 
