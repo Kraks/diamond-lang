@@ -38,6 +38,9 @@ case class IllFormedQType(t: QType, Γ: TEnv)
 case class IllFormedQual(q: Qual)
   extends RuntimeException(s"ill-formed qualifier " + q.set)
 
+case class RequireNonFresh(e: Expr, t: QType)
+  extends RuntimeException(s"$e: $t should be non-fresh")
+
 case class TEnv(m: AssocList[String, QType], tm: AssocList[TVar, Type], qm: AssocList[String, Qual]):
   def apply(x: String): QType | Qual =
     assert(!(m.contains(x) && qm.contains(x)), "overlap")
@@ -498,6 +501,7 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     if (!aq.isFresh) {
       // T-App
       checkSubQType(tq2, atq)
+      if (q2.contains(◆)) throw RequireNonFresh(e2, tq2)
       qtypeSubstQual(qtypeSubstQual(rtq, x, q2), f, qf)
     } else {
       // println(s"tq2: $tq2 rt: $rt fv(rt): ${typeFreeVars(rt)}")
