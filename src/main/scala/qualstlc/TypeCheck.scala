@@ -99,7 +99,7 @@ def checkQTypeEq(e: Expr, actual: QType, exp: QType)(using Γ: TEnv): QType =
 
 def checkUntrackQual(q: Qual)(using Γ: TEnv): Unit = checkQualEq(q, Qual(Set()))
 
-def qSelf(q: Set[QElem])(using Γ: TEnv): Set[QElem] =
+def expandSelf(q: Set[QElem])(using Γ: TEnv): Set[QElem] =
   q.flatMap {
     case x: String => Γ(x) match
       case QType(TFun(_, _, _, _), q) if !q.isFresh => Set(x) ++ q.set
@@ -107,10 +107,11 @@ def qSelf(q: Set[QElem])(using Γ: TEnv): Set[QElem] =
     case d => Set(d)
   }
 
-def bounded(e: QElem, b: Set[QElem])(using Γ: TEnv): Boolean =
+def boundedBy(e: QElem, b: Set[QElem])(using Γ: TEnv): Boolean =
   b.contains(e) || { e match
     case x: String => Γ(x) match
-      case QType(t, q) if !t.isInstanceOf[TFun] && !q.isFresh => q.set.forall(bounded(_, b))
+      case QType(t, q) if !t.isInstanceOf[TFun] && !q.isFresh  =>
+        q.set.forall(boundedBy(_, b))
       case _ => false
     case _ => false
   }
@@ -118,8 +119,8 @@ def bounded(e: QElem, b: Set[QElem])(using Γ: TEnv): Boolean =
 def isSubqual(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean =
   //println(s"$Γ ⊢ $q1 <: $q2")
   // TODO: some well-formedness condition seems missing
-  val q2ext = fix(qSelf)(q2.set)
-  q1.set.forall(bounded(_, q2ext))
+  val q2ext = fix(expandSelf)(q2.set)
+  q1.set.forall(boundedBy(_, q2ext))
 
 def qualSubst(q: Qual, from: String, to: Qual): Qual =
   if (q.contains(from)) q - from ++ to.set else q
@@ -256,9 +257,14 @@ def checkSubtypeOverlap(T: QType, S: QType)(using Γ: TEnv): Unit =
     else throw NonOverlap(sq2, sq1 \ sq2)
   } else throw NotSubtype(t1, t2)
 
+def checkDeepDep(t: Type, x: String): Unit =
+  if (!typeFreeVars(t).contains(x)) ()
+  else throw DeepDependency(t, x)
+
 def checkDeepDep(t: Type, x: Option[String]): Unit =
-  if (typeFreeVars(t).intersect(x.toSet).isEmpty) ()
-  else throw DeepDependency(t, x.get)
+  x match
+    case Some(x) => checkDeepDep(t, x)
+    case None => ()
 
 def qtypeFreeVars(qt: QType): Set[String] = {
   val QType(t, q) = qt

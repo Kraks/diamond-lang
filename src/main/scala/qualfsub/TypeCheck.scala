@@ -20,8 +20,8 @@ case class TypeMismatch(e: Expr, actual: Type, expect: Type)
 case class QualTypeMismatch(e: Expr, actual: QType, expect: QType)
   extends RuntimeException(s"expr:\n  $e\n  expect type: $expect\n  actual type: $actual")
 
-case class NotSubtype(t1: Type, t2: Type)
-  extends RuntimeException(s"$t1 not subtype of $t2")
+case class NotSubtype(t1: Type, t2: Type)(Γ: Option[TEnv] = None)
+  extends RuntimeException(s"$t1 not subtype of $t2 under $Γ")
 
 case class NotSubQType(t1: QType, t2: QType)(Γ: Option[TEnv] = None)
   extends RuntimeException(s"$t1 not qualified subtype of $t2 under $Γ")
@@ -32,19 +32,25 @@ case class NonOverlap(permitted: Qual, overlap: Qual)
 case class DeepDependency(t: Type, vbl: String)
   extends RuntimeException(s"$t cannot deeply depend on $vbl")
 
+case class IllFormedQType(t: QType, Γ: TEnv)
+  extends RuntimeException(s"ill-formed qualified type $t under $Γ")
+
 case class IllFormedQual(q: Qual)
   extends RuntimeException(s"ill-formed qualifier " + q.set)
 
 case class TEnv(m: AssocList[String, QType], tm: AssocList[TVar, Type], qm: AssocList[String, Qual]):
-  def apply(x: String): QType = m(x)
+  def apply(x: String): QType | Qual =
+    assert(!(m.contains(x) && qm.contains(x)), "overlap")
+    if (m.contains(x)) m(x)
+    else qm(x)
   def apply(x: TVar): Type = tm(x)
   def getQualVarBound(q: String): Qual = qm(q)
   def containsQualVar(q: String): Boolean = qm.contains(q)
 
   def +(xt: (String, QType)) = TEnv(m + xt, tm, qm)
   def +(tb: TypeBound) = TEnv(m, tm + (TVar(tb.tvar) -> tb.bound.ty), qm + (tb.qvar -> tb.bound.q))
-  def filter(q: Set[String]) = TEnv(m.filter(q), tm, qm.filter(q)) // XXX should we filter tm?
-  def dom: Set[String] = m.dom // XXX should we inlcude tm and qm?
+  def filter(q: Set[String]) = TEnv(m.filter(q), tm, qm.filter(q))
+  def dom: Set[String] = m.dom ++ qm.dom
 
 object TEnv:
   def empty: TEnv = TEnv(AssocList.empty, AssocList.empty, AssocList.empty)
@@ -79,7 +85,10 @@ def reach(worklist: Set[String], acc: Set[String])(using Γ: TEnv): Set[String] 
   if (worklist.isEmpty) acc
   else {
     val x = worklist.head
-    val QType(t, q) = Γ(x)
+    val q = Γ(x) match {
+      case QType(_, q) => q // if x is a term variable
+      case q@Qual(_) => q   // if x is an abstract qualifier
+    }
     val newQual = q.varSet.filter(z => !acc.contains(z))
     reach((worklist ++ newQual) -- Set(x), acc ++ newQual ++ Set(x))
   }
@@ -113,7 +122,7 @@ def checkQTypeEq(e: Expr, actual: QType, exp: QType)(using Γ: TEnv): QType =
 
 def checkUntrackQual(q: Qual)(using Γ: TEnv): Unit = checkQualEq(q, Qual(Set()))
 
-def qSelf(q: Set[QElem])(using Γ: TEnv): Set[QElem] =
+def expandSelf(q: Set[QElem])(using Γ: TEnv): Set[QElem] =
   q.flatMap {
     case x: String => Γ(x) match
       case QType(TFun(_, _, _, _), q) if !q.isFresh => Set(x) ++ q.set
@@ -121,10 +130,13 @@ def qSelf(q: Set[QElem])(using Γ: TEnv): Set[QElem] =
     case d => Set(d)
   }
 
-def bounded(e: QElem, b: Set[QElem])(using Γ: TEnv): Boolean =
+def boundedBy(e: QElem, b: Set[QElem])(using Γ: TEnv): Boolean =
   b.contains(e) || { e match
     case x: String => Γ(x) match
-      case QType(t, q) if !t.isInstanceOf[TFun] && !q.isFresh => q.set.forall(bounded(_, b))
+      case QType(t, q) if !t.isInstanceOf[TFun] && !q.isFresh  =>
+        q.set.forall(boundedBy(_, b))
+      case q@Qual(_) if !q.isFresh => // Q-QVar
+        q.set.forall(boundedBy(_, b))
       case _ => false
     case _ => false
   }
@@ -132,8 +144,8 @@ def bounded(e: QElem, b: Set[QElem])(using Γ: TEnv): Boolean =
 def isSubqual(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean =
   //println(s"$Γ ⊢ $q1 <: $q2")
   // TODO: some well-formedness condition seems missing
-  val q2ext = fix(qSelf)(q2.set)
-  q1.set.forall(bounded(_, q2ext))
+  val q2ext = fix(expandSelf)(q2.set)
+  q1.set.forall(boundedBy(_, q2ext))
 
 def qualSubst(q: Qual, from: String, to: Qual): Qual =
   if (q.contains(from)) q - from ++ to.set else q
@@ -184,7 +196,23 @@ def qtypeSubstQual(qt: QType, from: Option[String], to: Qual): QType =
     case Some(from) => qtypeSubstQual(qt, from, to)
   }
 
-def qtypeSubstType(t: QType, tvar: String, to: Type): QType = ???
+def typeSubstType(t: Type, from: String, to: Type): Type = t match {
+  case TUnit | TNum | TBool => t
+  case TFun(f, x, t1, t2) =>
+    TFun(f, x, qtypeSubstType(t1, from, to), qtypeSubstType(t2, from, to))
+  case TRef(t) => typeSubstType(t, from, to)
+  // New F◆ types
+  case TTop => t
+  case TVar(x) =>
+    if (x == from) to
+    else TVar(x)
+  case TForall(f, tvar, qvar, t1, t2) =>
+    if (tvar == from) t
+    else TForall(f, tvar, qvar, qtypeSubstType(t1, from, to), qtypeSubstType(t2, from, to))
+}
+
+def qtypeSubstType(t: QType, tvar: String, to: Type): QType =
+  QType(typeSubstType(t.ty, tvar, to), t.q)
 
 def qtypeSubst(t: QType, tvar: String, qvar: String, to: QType): QType =
   val QType(toType, toQual) = to
@@ -346,6 +374,11 @@ def isSubtype(t1: Type, t2: Type)(using Γ: TEnv): Boolean = (t1, t2) match {
   case _ => false
 }
 
+def checkSubtype(T: Type, S: Type)(using Γ: TEnv): Unit =
+  //println(s"$Γ ⊢ $T <: $S")
+  if (isSubtype(T, S)) ()
+  else throw NotSubtype(T, S)(Some(Γ))
+
 def isSubQType(T: QType, S: QType)(using Γ: TEnv): Boolean =
   val QType(t1, q1) = T
   val QType(t2, q2) = S
@@ -364,11 +397,16 @@ def checkSubtypeOverlap(T: QType, S: QType)(using Γ: TEnv): Unit =
     val sq2 = Qual(q2.saturated)
     if (isSubqual(sq1, sq2)) ()
     else throw NonOverlap(sq2, sq1 \ sq2)
-  } else throw NotSubtype(t1, t2)
+  } else throw NotSubtype(t1, t2)()
+
+def checkDeepDep(t: Type, x: String): Unit =
+  if (!typeFreeVars(t).contains(x)) ()
+  else throw DeepDependency(t, x)
 
 def checkDeepDep(t: Type, x: Option[String]): Unit =
-  if (typeFreeVars(t).intersect(x.toSet).isEmpty) ()
-  else throw DeepDependency(t, x.get)
+  x match
+    case Some(x) => checkDeepDep(t, x)
+    case None => ()
 
 def qtypeFreeVars(qt: QType): Set[String] =
   val QType(t, q) = qt
@@ -410,6 +448,7 @@ def typeExposure(t: Type)(using Γ: TEnv): Type = t match {
 }
 
 // XXX: exposure across fresh??
+// XXX: this is not used currently
 def qualExposure(qual: Qual)(using Γ: TEnv): Qual =
   val vars = qual.varSet
   val (abs, conc) = vars.partition(Γ.containsQualVar(_))
@@ -418,9 +457,12 @@ def qualExposure(qual: Qual)(using Γ: TEnv): Qual =
 
 def qtypeExposure(t: QType)(using Γ: TEnv): QType =
   val QType(ty, q) = t
-  QType(typeExposure(ty), qualExposure(q))
+  //QType(typeExposure(ty), qualExposure(q))
+  QType(typeExposure(ty), q)
 
-def qtypeWFCheck(t: QType)(using Γ: TEnv): QType = t // TODO
+def qtypeWFCheck(t: QType)(using Γ: TEnv): Unit =
+  if (qtypeFreeVars(t).subsetOf(Γ.dom)) ()
+  else throw new IllFormedQType(t, Γ)
 
 def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
   case EUnit => TUnit
@@ -450,12 +492,12 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     // FIXME: function type's qualifier needs to include free variables of types (not only terms)
     val codomBound: Qual =
       Qual(Γ.dom) ++ f.toSet ++ x.toSet ++ Set(◆)
-    if (!(rq ⊆ codomBound)) throw RuntimeException("ill-formed qualifier " + rq)
+    if (!(rq ⊆ codomBound)) throw IllFormedQual(rq)
     val tq2@QType(t2, q2) = typeCheck(e2)
+    // XXX: or check if argument qualifier q2 is fresh?
     if (!aq.isFresh) {
       // T-App
       checkSubQType(tq2, atq)
-      if (q2.contains(◆)) throw RuntimeException(s"${tq2} is possibly fresh")
       qtypeSubstQual(qtypeSubstQual(rtq, x, q2), f, qf)
     } else {
       // println(s"tq2: $tq2 rt: $rt fv(rt): ${typeFreeVars(rt)}")
@@ -518,22 +560,29 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     val Γ1 = Γ.filter(fv) + ((tvar, qvar) <⦂ ub)
     val t = typeCheck(e)(using Γ1)
     TForall(None, tvar, qvar, ub, t) ^ Qual(fv)
-  case ETyApp(e, qt@QType(ty, q)) =>
-    qtypeWFCheck(qt)
+  case ETyApp(e, arg@QType(tyArg, qArg)) =>
+    qtypeWFCheck(arg)
     val t1 = typeCheck(e)
-    val QType(TForall(f, tvar, qvar, ub, rt), fq) = qtypeExposure(t1)
+    val QType(TForall(f, tvar, qvar, ub, rt), qf) = qtypeExposure(t1)
+    // qf may contain abstract qualifier variables (which seems fine?)
     val codomBound: Qual =
       Qual(Γ.dom) ++ f.toSet ++ Set(qvar, ◆)
     if (!(rt.q ⊆ codomBound)) throw IllFormedQual(rt.q)
-    if (!(q ⊆ Γ)) throw IllFormedQual(q)
-    // XXX: do we need to concretize q via exposure?
-    // Since q might contain abstract qualifier variables, is syntactic check enough?
-    if (!q.isFresh) {
-      checkSubQType(qt, ub)
-      qtypeSubst(qtypeSubstQual(rt, f, fq), tvar, qvar, qt)
+    if (!(qArg ⊆ Γ)) throw IllFormedQual(qArg)
+    if (qArg.isFresh) {
+      try // T-TApp◆
+        checkDeepDep(rt.ty, qvar)
+        if (qf.isFresh) checkDeepDep(rt.ty, f)
+        checkSubtypeOverlap(tyArg ^ (qArg ⋒ qf), ub)
+        qtypeSubst(qtypeSubstQual(rt, f, qf), tvar, qvar, arg)
+      catch case ex: RuntimeException =>
+        // T-TApp
+        checkSubQType(arg, ub)
+        qtypeSubst(qtypeSubstQual(rt, f, qf), tvar, qvar, arg)
     } else {
-
-      ???
+      // T-TApp
+      checkSubQType(arg, ub)
+      qtypeSubst(qtypeSubstQual(rt, f, qf), tvar, qvar, arg)
     }
 }
 
