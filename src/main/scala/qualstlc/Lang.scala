@@ -33,7 +33,7 @@ enum Expr:
   case EVar(x: String)
   case EBinOp(op: String, e1: Expr, e2: Expr)
   case ELam(f: String, x: String, at: QType, body: Expr, rt: Option[QType])
-  case EApp(e1: Expr, e2: Expr)
+  case EApp(e1: Expr, e2: Expr, fresh: Option[Boolean] = None)
   case ELet(x: String, t: Option[QType], rhs: Expr, body: Expr)
   case EAlloc(init: Expr)
   case EUntrackedAlloc(init: Expr)
@@ -93,6 +93,7 @@ object ExprSyntax:
 
   extension (e: Expr)
     def apply(a: Expr): Expr = EApp(e, a)
+    def applyFresh(a: Expr): Expr = EApp(e, a, Some(true))
     def apply(n: Int): Expr = EApp(e, ENum(n))
     def ===(e0: Expr): Expr = EBinOp("=", e, e0)
     def ===(e0: Int): Expr = EBinOp("=", e, ENum(e0))

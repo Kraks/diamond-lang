@@ -297,7 +297,7 @@ class QualSTLCTests extends AnyFunSuite {
     val e1 =
       let("c1" ⇐ alloc(3)) {
         let("f" ⇐ (λ("f", "x")("f"♯((TRef(TNum)^ ◆) ~> TNum)) { x.deref + c1.deref })) {
-          EVar("f")(c1)
+          EVar("f").applyFresh(c1)
         }
       }
     assert(intercept[NonOverlap] { topTypeCheck(e1) } ==
@@ -307,7 +307,7 @@ class QualSTLCTests extends AnyFunSuite {
     val e2 =
       let("c1" ⇐ alloc(3)) {
         let("f" ⇐ (λ("f", "x")("f"♯((TRef(TNum)^(◆, "c1")) ~> TNum)) { x.deref + c1.deref })) {
-          EVar("f")(c1)
+          EVar("f").applyFresh(c1)
         }
       }
     assert(topTypeCheck(e2) == (TNum ^ ()))
@@ -318,7 +318,7 @@ class QualSTLCTests extends AnyFunSuite {
       let("c1" ⇐ alloc(3)) {
         let("c2" ⇐ c1) {
           let("f" ⇐ (λ("f", "x")("f"♯((TRef(TNum)^(◆)) ~> TNum)) { x.deref + c1.deref })) {
-            EVar("f")(c2)
+            EVar("f").applyFresh(c2)
           }
         }
       }
@@ -331,7 +331,7 @@ class QualSTLCTests extends AnyFunSuite {
       let("c1" ⇐ alloc(3)) {
         let("c2" ⇐ c1) {
           let("f" ⇐ (λ("f", "x")("f"♯((TRef(TNum)^(◆, "c2")) ~> TNum)) { x.deref + c1.deref })) {
-            EVar("f")(c2)
+            EVar("f").applyFresh(c2)
           }
         }
       }
@@ -343,7 +343,7 @@ class QualSTLCTests extends AnyFunSuite {
       let("c1" ⇐ alloc(3)) {
         let("c2" ⇐ c1) {
           let("f" ⇐ (λ("f", "x")("f"♯((TRef(TNum)^(◆, "c2")) ~> TNum)) { x.deref + c1.deref })) {
-            EVar("f")(c1)
+            EVar("f").applyFresh(c1)
           }
         }
       }
@@ -357,7 +357,7 @@ class QualSTLCTests extends AnyFunSuite {
             let("f" ⇐ (λ("f", "z")("f"♯((TRef(TNum)^(◆, allow)) ~> TNum)) {
               EVar(use).deref + EVar("z").deref
             })) {
-              EVar("f")(EVar(arg))
+              EVar("f").applyFresh(EVar(arg))
             }
           }
         }
@@ -378,7 +378,7 @@ class QualSTLCTests extends AnyFunSuite {
             let("f" ⇐ (λ("f", "z")("f"♯((TRef(TNum)^(◆)) ~> TNum)) {
               EVar(use).deref + EVar("z").deref
             })) {
-              EVar("f")(EVar(arg))
+              EVar("f").applyFresh(EVar(arg))
             }
           }
         }

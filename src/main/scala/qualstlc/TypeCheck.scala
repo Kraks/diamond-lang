@@ -32,6 +32,15 @@ case class NonOverlap(permitted: Qual, overlap: Qual)
 case class DeepDependency(t: Type, vbl: String)
   extends RuntimeException(s"$t cannot deeply depend on $vbl")
 
+case class IllFormedQType(t: QType, Γ: TEnv)
+  extends RuntimeException(s"ill-formed qualified type $t under $Γ")
+
+case class IllFormedQual(q: Qual)
+  extends RuntimeException(s"ill-formed qualifier " + q.set)
+
+case class RequireNonFresh(e: Expr, t: QType)
+    extends RuntimeException(s"$e: $t should be non-fresh")
+
 type TEnv = AssocList[String, QType]
 val TEnv = AssocList
 
@@ -59,7 +68,7 @@ extension (q: Qual)
   def saturated(using Γ: TEnv): Set[String] = reach(q.varSet, Set())
   def ⋒(q2: Qual)(using Γ: TEnv): Qual =
     //println(s"${q.saturated} ⋒ ${q2.saturated}")
-    Qual(q.saturated.intersect(q2.saturated).asInstanceOf[Set[QElem]]) + Fresh()
+    Qual(q.saturated.intersect(q2.saturated)) + Fresh()
 
 def reach(worklist: Set[String], acc: Set[String])(using Γ: TEnv): Set[String] =
   if (worklist.isEmpty) acc
@@ -282,7 +291,7 @@ def freeVars(e: Expr): Set[String] = e match {
   case EVar(x) => Set(x)
   case EBinOp(op, e1, e2) => freeVars(e1) ++ freeVars(e2)
   case ELam(f, x, _, e, _) => freeVars(e) -- Set(f, x)
-  case EApp(e1, e2) => freeVars(e1) ++ freeVars(e2)
+  case EApp(e1, e2, _) => freeVars(e1) ++ freeVars(e2)
   case ELet(x, _, rhs, body) => freeVars(rhs) ++ (freeVars(body) - x)
   case EAlloc(e) => freeVars(e)
   case EUntrackedAlloc(e) => freeVars(e)
@@ -305,37 +314,47 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     val ft = TFun(Some(f), Some(x), at, rt)
     // XXX well-formedness check? at/rt qualifier should be smaller than ctx? or check at call-site?
     val fv = qtypeFreeVars(at) ++ qtypeFreeVars(rt) ++ freeVars(e) -- Set(f, x)
-    val Γ1 = Γ.filter(fv) + (x -> at) + (f -> (ft ^ Qual(fv.asInstanceOf[Set[QElem]])))
+    val Γ1 = Γ.filter(fv) + (x -> at) + (f -> (ft ^ Qual(fv)))
     val t = typeCheck(e)(using Γ1)
     checkSubQType(t, rt)(using Γ1)
-    ft ^ Qual(fv.asInstanceOf[Set[QElem]])
+    ft ^ Qual(fv)
   case ELam(_, x, at, e, None) =>
     val fv = qtypeFreeVars(at) ++ freeVars(e) - x
     val t = typeCheck(e)(using Γ.filter(fv) + (x -> at))
-    TFun(None, Some(x), at, t) ^ Qual(fv.asInstanceOf[Set[QElem]])
-  case EApp(e1, e2) =>
-    val t1@QType(TFun(f, x, atq@QType(at, aq), rtq@QType(rt, rq)), qf) = typeCheck(e1)
-    //println(t1)
+    TFun(None, Some(x), at, t) ^ Qual(fv)
+  case EApp(e1, e2, Some(true)) =>
     // FIXME: function type's qualifier needs to include free variables of types (not only terms)
-    val codomBound: Qual =
-      Qual(Γ.dom.asInstanceOf[Set[QElem]]) ++ f.toSet ++ x.toSet ++ Set(◆)
-    //println(codomBound)
-    if (!(rq ⊆ codomBound)) throw RuntimeException("ill-formed qualifier " + rq)
+    // T-App◆
+    val t1@QType(TFun(f, x, atq@QType(at, aq), rtq@QType(rt, rq)), qf) = typeCheck(e1)
+    val codomBound: Qual = Qual(Γ.dom) ++ f.toSet ++ x.toSet ++ Set(◆)
+    if (!(rq ⊆ codomBound)) throw IllFormedQual(rq)
     val tq2@QType(t2, q2) = typeCheck(e2)
-    if (!aq.isFresh) {
-      // T-App
-      checkSubQType(tq2, atq)
-      if (q2.contains(◆)) throw RuntimeException(s"${tq2} is possibly fresh")
-      qtypeSubst(qtypeSubst(rtq, x, q2), f, qf)
-    } else {
-      // println(s"tq2: $tq2 rt: $rt fv(rt): ${typeFreeVars(rt)}")
-      // T-App◆
-      // ◆ ∈ q2 ⇒ x ∉ fv(rt)
-      if (q2.isFresh) checkDeepDep(rt, x)
-      // ◆ ∈ qf ⇒ f ∉ fv(rt)
-      if (qf.isFresh) checkDeepDep(rt, f)
-      checkSubtypeOverlap(t2 ^ (q2 ⋒ qf), atq)
-      qtypeSubst(qtypeSubst(rtq, x, q2), f, qf)
+    // ◆ ∈ q2 ⇒ x ∉ fv(rt)
+    if (q2.isFresh) checkDeepDep(rt, x)
+    // ◆ ∈ qf ⇒ f ∉ fv(rt)
+    if (qf.isFresh) checkDeepDep(rt, f)
+    checkSubtypeOverlap(t2 ^ (q2 ⋒ qf), atq)
+    qtypeSubst(qtypeSubst(rtq, x, q2), f, qf)
+  case EApp(e1, e2, Some(false)) =>
+    // T-App
+    val t1@QType(TFun(f, x, atq@QType(at, aq), rtq@QType(rt, rq)), qf) = typeCheck(e1)
+    val codomBound: Qual = Qual(Γ.dom) ++ f.toSet ++ x.toSet ++ Set(◆)
+    if (!(rq ⊆ codomBound)) throw IllFormedQual(rq)
+    val tq2@QType(t2, q2) = typeCheck(e2)
+    checkSubQType(tq2, atq)
+    if (q2.isFresh) throw RequireNonFresh(e2, tq2)
+    qtypeSubst(qtypeSubst(rtq, x, q2), f, qf)
+  case EApp(e1, e2, None) =>
+    // Not specified which application rule to use, try heuristically
+    val t1@QType(TFun(f, x, atq@QType(at, aq), rtq@QType(rt, rq)), qf) = typeCheck(e1)
+    val codomBound: Qual = Qual(Γ.dom) ++ f.toSet ++ x.toSet ++ Set(◆)
+    if (!(rq ⊆ codomBound)) throw IllFormedQual(rq)
+    val tq2@QType(t2, q2) = typeCheck(e2)
+    if (q2.isFresh) typeCheck(EApp(e1, e2, Some(true)))
+    else {
+      // When q2 is not fresh, both T-App◆ and T-App are applicable
+      try typeCheck(EApp(e1, e2, Some(true)))
+      catch case ex: RuntimeException => typeCheck(EApp(e1, e2, Some(false)))
     }
   case ELet(x, Some(qt1), rhs, body) =>
     val QType(t1, q1) = qt1

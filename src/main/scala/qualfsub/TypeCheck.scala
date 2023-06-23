@@ -432,7 +432,7 @@ def freeVars(e: Expr): Set[String] = e match {
   case EVar(x) => Set(x)
   case EBinOp(op, e1, e2) => freeVars(e1) ++ freeVars(e2)
   case ELam(f, x, _, e, _) => freeVars(e) -- Set(f, x)
-  case EApp(e1, e2) => freeVars(e1) ++ freeVars(e2)
+  case EApp(e1, e2, _) => freeVars(e1) ++ freeVars(e2)
   case ELet(x, _, rhs, body) => freeVars(rhs) ++ (freeVars(body) - x)
   case EAlloc(e) => freeVars(e)
   case EUntrackedAlloc(e) => freeVars(e)
@@ -441,7 +441,7 @@ def freeVars(e: Expr): Set[String] = e match {
   case ECond(cnd, thn, els) => freeVars(cnd) ++ freeVars(thn) ++ freeVars(els)
   case ETyLam(f, tvar, qvar, ub, e, _) =>
     freeVars(e) -- (f.toSet ++ Set(qvar))
-  case ETyApp(e, qt) =>
+  case ETyApp(e, qt, _) =>
     freeVars(e) ++ qtypeFreeVars(qt)
 }
 
@@ -490,28 +490,39 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     val fv = qtypeFreeVars(at) ++ freeVars(e) - x
     val t = typeCheck(e)(using Γ.filter(fv) + (x -> at))
     TFun(None, Some(x), at, t) ^ Qual(fv)
-  case EApp(e1, e2) =>
-    val t1@QType(TFun(f, x, atq@QType(at, aq), rtq@QType(rt, rq)), qf) = typeCheck(e1)
+  case EApp(e1, e2, Some(true)) =>
     // FIXME: function type's qualifier needs to include free variables of types (not only terms)
-    val codomBound: Qual =
-      Qual(Γ.dom) ++ f.toSet ++ x.toSet ++ Set(◆)
+    // T-App◆
+    val t1@QType(TFun(f, x, atq@QType(at, aq), rtq@QType(rt, rq)), qf) = typeCheck(e1)
+    val codomBound: Qual = Qual(Γ.dom) ++ f.toSet ++ x.toSet ++ Set(◆)
     if (!(rq ⊆ codomBound)) throw IllFormedQual(rq)
     val tq2@QType(t2, q2) = typeCheck(e2)
-    // XXX: or check if argument qualifier q2 is fresh?
-    if (!aq.isFresh) {
-      // T-App
-      checkSubQType(tq2, atq)
-      if (q2.contains(◆)) throw RequireNonFresh(e2, tq2)
-      qtypeSubstQual(qtypeSubstQual(rtq, x, q2), f, qf)
-    } else {
-      // println(s"tq2: $tq2 rt: $rt fv(rt): ${typeFreeVars(rt)}")
-      // T-App◆
-      // ◆ ∈ q2 ⇒ x ∉ fv(rt)
-      if (q2.isFresh) checkDeepDep(rt, x)
-      // ◆ ∈ qf ⇒ f ∉ fv(rt)
-      if (qf.isFresh) checkDeepDep(rt, f)
-      checkSubtypeOverlap(t2 ^ (q2 ⋒ qf), atq)
-      qtypeSubstQual(qtypeSubstQual(rtq, x, q2), f, qf)
+    // ◆ ∈ q2 ⇒ x ∉ fv(rt)
+    if (q2.isFresh) checkDeepDep(rt, x)
+    // ◆ ∈ qf ⇒ f ∉ fv(rt)
+    if (qf.isFresh) checkDeepDep(rt, f)
+    checkSubtypeOverlap(t2 ^ (q2 ⋒ qf), atq)
+    qtypeSubstQual(qtypeSubstQual(rtq, x, q2), f, qf)
+  case EApp(e1, e2, Some(false)) =>
+    // T-App
+    val t1@QType(TFun(f, x, atq@QType(at, aq), rtq@QType(rt, rq)), qf) = typeCheck(e1)
+    val codomBound: Qual = Qual(Γ.dom) ++ f.toSet ++ x.toSet ++ Set(◆)
+    if (!(rq ⊆ codomBound)) throw IllFormedQual(rq)
+    val tq2@QType(t2, q2) = typeCheck(e2)
+    checkSubQType(tq2, atq)
+    if (q2.isFresh) throw RequireNonFresh(e2, tq2)
+    qtypeSubstQual(qtypeSubstQual(rtq, x, q2), f, qf)
+  case EApp(e1, e2, None) =>
+    // Not specified which application rule to use, try heuristically
+    val t1@QType(TFun(f, x, atq@QType(at, aq), rtq@QType(rt, rq)), qf) = typeCheck(e1)
+    val codomBound: Qual = Qual(Γ.dom) ++ f.toSet ++ x.toSet ++ Set(◆)
+    if (!(rq ⊆ codomBound)) throw IllFormedQual(rq)
+    val tq2@QType(t2, q2) = typeCheck(e2)
+    if (q2.isFresh) typeCheck(EApp(e1, e2, Some(true)))
+    else {
+      // When q2 is not fresh, both T-App◆ and T-App are applicable
+      try typeCheck(EApp(e1, e2, Some(true)))
+      catch case ex: RuntimeException => typeCheck(EApp(e1, e2, Some(false)))
     }
   case ELet(x, Some(qt1), rhs, body) =>
     qtypeWFCheck(qt1)
@@ -564,29 +575,43 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     val Γ1 = Γ.filter(fv) + ((tvar, qvar) <⦂ ub)
     val t = typeCheck(e)(using Γ1)
     TForall(None, tvar, qvar, ub, t) ^ Qual(fv)
-  case ETyApp(e, arg@QType(tyArg, qArg)) =>
+  case ETyApp(e, arg@QType(tyArg, qArg), Some(true)) =>
+    // T-TApp◆
     qtypeWFCheck(arg)
     val t1 = typeCheck(e)
     val QType(TForall(f, tvar, qvar, ub, rt), qf) = qtypeExposure(t1)
     // qf may contain abstract qualifier variables (which seems fine?)
-    val codomBound: Qual =
-      Qual(Γ.dom) ++ f.toSet ++ Set(qvar, ◆)
+    val codomBound: Qual = Qual(Γ.dom) ++ f.toSet ++ Set(qvar, ◆)
     if (!(rt.q ⊆ codomBound)) throw IllFormedQual(rt.q)
     if (!(qArg ⊆ Γ)) throw IllFormedQual(qArg)
-    if (qArg.isFresh) {
-      try // T-TApp◆
-        checkDeepDep(rt.ty, qvar)
-        if (qf.isFresh) checkDeepDep(rt.ty, f)
-        checkSubtypeOverlap(tyArg ^ (qArg ⋒ qf), ub)
-        qtypeSubst(qtypeSubstQual(rt, f, qf), tvar, qvar, arg)
-      catch case ex: RuntimeException =>
-        // T-TApp
-        checkSubQType(arg, ub)
-        qtypeSubst(qtypeSubstQual(rt, f, qf), tvar, qvar, arg)
-    } else {
-      // T-TApp
-      checkSubQType(arg, ub)
-      qtypeSubst(qtypeSubstQual(rt, f, qf), tvar, qvar, arg)
+    if (qArg.isFresh) checkDeepDep(rt.ty, qvar)
+    if (qf.isFresh) checkDeepDep(rt.ty, f)
+    checkSubtypeOverlap(tyArg ^ (qArg ⋒ qf), ub)
+    qtypeSubst(qtypeSubstQual(rt, f, qf), tvar, qvar, arg)
+  case ETyApp(e, arg@QType(tyArg, qArg), Some(false)) =>
+    // T-TApp
+    qtypeWFCheck(arg)
+    val t1 = typeCheck(e)
+    val QType(TForall(f, tvar, qvar, ub, rt), qf) = qtypeExposure(t1)
+    // qf may contain abstract qualifier variables (which seems fine?)
+    val codomBound: Qual = Qual(Γ.dom) ++ f.toSet ++ Set(qvar, ◆)
+    if (!(rt.q ⊆ codomBound)) throw IllFormedQual(rt.q)
+    if (!(qArg ⊆ Γ)) throw IllFormedQual(qArg)
+    checkSubQType(arg, ub)
+    qtypeSubst(qtypeSubstQual(rt, f, qf), tvar, qvar, arg)
+  case ETyApp(e, arg@QType(tyArg, qArg), _) =>
+    // Not specified which application rule to use, try heuristically
+    qtypeWFCheck(arg)
+    val t1 = typeCheck(e)
+    val QType(TForall(f, tvar, qvar, ub, rt), qf) = qtypeExposure(t1)
+    // qf may contain abstract qualifier variables (which seems fine?)
+    val codomBound: Qual = Qual(Γ.dom) ++ f.toSet ++ Set(qvar, ◆)
+    if (!(rt.q ⊆ codomBound)) throw IllFormedQual(rt.q)
+    if (!(qArg ⊆ Γ)) throw IllFormedQual(qArg)
+    if (qArg.isFresh) typeCheck(ETyApp(e, arg, Some(true)))
+    else {
+      try typeCheck(ETyApp(e, arg, Some(true)))
+      catch case ex: RuntimeException => typeCheck(ETyApp(e, arg, Some(false)))
     }
 }
 

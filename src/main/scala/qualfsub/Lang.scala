@@ -39,7 +39,7 @@ enum Expr:
   case EVar(x: String)
   case EBinOp(op: String, e1: Expr, e2: Expr)
   case ELam(f: String, x: String, at: QType, body: Expr, rt: Option[QType])
-  case EApp(e1: Expr, e2: Expr)
+  case EApp(e1: Expr, e2: Expr, fresh: Option[Boolean] = None)
   case ELet(x: String, t: Option[QType], rhs: Expr, body: Expr)
   case EAlloc(init: Expr)
   case EUntrackedAlloc(init: Expr)
@@ -48,7 +48,7 @@ enum Expr:
   case ECond(cnd: Expr, thn: Expr, els: Expr)
   // F◆ new expressions
   case ETyLam(f: Option[String], tvar: String, qvar: String, bound: QType, body: Expr, rt: Option[QType])
-  case ETyApp(t: Expr, q: QType)
+  case ETyApp(t: Expr, q: QType, fresh: Option[Boolean] = None)
 
 import Expr._
 import Type._
@@ -116,6 +116,7 @@ object ExprSyntax:
 
   extension (e: Expr)
     def apply(a: Expr): Expr = EApp(e, a)
+    def applyFresh(a: Expr): Expr = EApp(e, a, Some(true))
     def apply(n: Int): Expr = EApp(e, ENum(n))
     def ===(e0: Expr): Expr = EBinOp("=", e, e0)
     def ===(e0: Int): Expr = EBinOp("=", e, ENum(e0))
@@ -131,5 +132,6 @@ object ExprSyntax:
     def assign(e0: Expr): Expr = EAssign(e, e0)
     // F◆ new syntax
     def apply(t: QType): Expr = ETyApp(e, t)
+    def applyFresh(t: QType): Expr = ETyApp(e, t, Some(true))
 
   given Conversion[Int, ENum] = ENum(_)
