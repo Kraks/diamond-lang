@@ -38,6 +38,9 @@ case class IllFormedQType(t: QType, Γ: TEnv)
 case class IllFormedQual(q: Qual)
   extends RuntimeException(s"ill-formed qualifier " + q.set)
 
+case class RequireTypeNonFresh(t: QType)
+  extends RuntimeException(s"type $t should be non-fresh")
+
 case class RequireNonFresh(e: Expr, t: QType)
   extends RuntimeException(s"$e: $t should be non-fresh")
 
@@ -50,7 +53,10 @@ case class TEnv(m: AssocList[String, QType], tm: AssocList[TVar, Type], qm: Asso
   def getQualVarBound(q: String): Qual = qm(q)
   def containsQualVar(q: String): Boolean = qm.contains(q)
 
-  def +(xt: (String, QType)) = TEnv(m + xt, tm, qm)
+  def +(xt: (String, (Type|QType))) = xt match {
+    case (x, t: Type) => TEnv(m + (x -> t), tm, qm)
+    case (x, t: QType) => TEnv(m + (x -> t), tm, qm)
+  }
   def +(tb: TypeBound) = TEnv(m, tm + (TVar(tb.tvar) -> tb.bound.ty), qm + (tb.qvar -> tb.bound.q))
   def filter(q: Set[String]) = TEnv(m.filter(q), tm, qm.filter(q))
   def dom: Set[String] = m.dom ++ qm.dom
@@ -570,7 +576,7 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     val t = typeCheck(e)(using Γ1)
     checkSubQType(t, rt)(using Γ1)
     ft ^ Qual(fv)
-  case ETyLam(None, tvar, qvar, ub, e, None) =>
+  case ETyLam(_, tvar, qvar, ub, e, None) =>
     val fv = qtypeFreeVars(ub) ++ freeVars(e) -- Set(qvar)
     val Γ1 = Γ.filter(fv) + ((tvar, qvar) <⦂ ub)
     val t = typeCheck(e)(using Γ1)
@@ -597,6 +603,7 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     val codomBound: Qual = Qual(Γ.dom) ++ f.toSet ++ Set(qvar, ◆)
     if (!(rt.q ⊆ codomBound)) throw IllFormedQual(rt.q)
     if (!(qArg ⊆ Γ)) throw IllFormedQual(qArg)
+    if (qArg.isFresh) throw RequireTypeNonFresh(arg)
     checkSubQType(arg, ub)
     qtypeSubst(qtypeSubstQual(rt, f, qf), tvar, qvar, arg)
   case ETyApp(e, arg@QType(tyArg, qArg), _) =>

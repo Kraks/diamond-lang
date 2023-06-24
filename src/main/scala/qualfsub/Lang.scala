@@ -109,10 +109,14 @@ object ExprSyntax:
   def let(xv: Bind)(e: Expr): Expr = ELet(xv.id, xv.ty, xv.rhs, e)
   def alloc(e: Expr): Expr = EAlloc(e)
   // F◆ new syntax
-  def Λ(f: String, xt: TypeBound)(res: Option[QType])(e: => Expr): ETyLam =
-    ETyLam(Some(f), xt.tvar, xt.qvar, xt.bound, e, res)
-  def Λ(xt: TypeBound)(res: Option[QType])(e: => Expr): ETyLam =
-    ETyLam(None, xt.tvar, xt.qvar, xt.bound, e, res)
+  def Λ(f: String, xt: TypeBound, res: QType)(e: => Expr): ETyLam =
+    ETyLam(Some(f), xt.tvar, xt.qvar, xt.bound, e, Some(res))
+  def Λ(f: String, xt: TypeBound)(e: => Expr): ETyLam =
+    ETyLam(Some(f), xt.tvar, xt.qvar, xt.bound, e, None)
+  def Λ(xt: TypeBound, res: QType)(e: => Expr): ETyLam =
+    ETyLam(None, xt.tvar, xt.qvar, xt.bound, e, Some(res))
+  def Λ(xt: TypeBound)(e: => Expr): ETyLam =
+    ETyLam(None, xt.tvar, xt.qvar, xt.bound, e, None)
 
   extension (e: Expr)
     def apply(a: Expr): Expr = EApp(e, a)
