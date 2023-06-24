@@ -100,7 +100,7 @@ object ExprSyntax:
   case class Bind(id: String, rhs: Expr, ty: Option[QType])
 
   extension (id: String)
-    def ∶(t: QType): BindTy = BindTy(id, t)
+    def ⦂(t: QType): BindTy = BindTy(id, t)
     def ⇐(e: Expr): Bind = Bind(id, e, None)
 
   def λ(f: String, x: String)(ft: TFun)(e: => Expr): ELam = ELam(f, x, ft.t1, e, Some(ft.t2))
