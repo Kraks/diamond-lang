@@ -59,6 +59,24 @@ public interface DiamondParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitFunTy(DiamondParser.FunTyContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link DiamondParser#tyParam}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitTyParam(DiamondParser.TyParamContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link DiamondParser#tyParamList}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitTyParamList(DiamondParser.TyParamListContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link DiamondParser#tyFunTy}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitTyFunTy(DiamondParser.TyFunTyContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link DiamondParser#ty}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -118,18 +136,6 @@ public interface DiamondParserVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitLam(DiamondParser.LamContext ctx);
-	/**
-	 * Visit a parse tree produced by {@link DiamondParser#tyParam}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitTyParam(DiamondParser.TyParamContext ctx);
-	/**
-	 * Visit a parse tree produced by {@link DiamondParser#tyParamList}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitTyParamList(DiamondParser.TyParamListContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link DiamondParser#tyLam}.
 	 * @param ctx the parse tree

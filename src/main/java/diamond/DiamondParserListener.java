@@ -88,6 +88,36 @@ public interface DiamondParserListener extends ParseTreeListener {
 	 */
 	void exitFunTy(DiamondParser.FunTyContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link DiamondParser#tyParam}.
+	 * @param ctx the parse tree
+	 */
+	void enterTyParam(DiamondParser.TyParamContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link DiamondParser#tyParam}.
+	 * @param ctx the parse tree
+	 */
+	void exitTyParam(DiamondParser.TyParamContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link DiamondParser#tyParamList}.
+	 * @param ctx the parse tree
+	 */
+	void enterTyParamList(DiamondParser.TyParamListContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link DiamondParser#tyParamList}.
+	 * @param ctx the parse tree
+	 */
+	void exitTyParamList(DiamondParser.TyParamListContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link DiamondParser#tyFunTy}.
+	 * @param ctx the parse tree
+	 */
+	void enterTyFunTy(DiamondParser.TyFunTyContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link DiamondParser#tyFunTy}.
+	 * @param ctx the parse tree
+	 */
+	void exitTyFunTy(DiamondParser.TyFunTyContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link DiamondParser#ty}.
 	 * @param ctx the parse tree
 	 */
@@ -187,26 +217,6 @@ public interface DiamondParserListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitLam(DiamondParser.LamContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link DiamondParser#tyParam}.
-	 * @param ctx the parse tree
-	 */
-	void enterTyParam(DiamondParser.TyParamContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link DiamondParser#tyParam}.
-	 * @param ctx the parse tree
-	 */
-	void exitTyParam(DiamondParser.TyParamContext ctx);
-	/**
-	 * Enter a parse tree produced by {@link DiamondParser#tyParamList}.
-	 * @param ctx the parse tree
-	 */
-	void enterTyParamList(DiamondParser.TyParamListContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link DiamondParser#tyParamList}.
-	 * @param ctx the parse tree
-	 */
-	void exitTyParamList(DiamondParser.TyParamListContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link DiamondParser#tyLam}.
 	 * @param ctx the parse tree

@@ -10,6 +10,12 @@ def polyId[T <: Top](x: T): T = x
 
 def polyId[T^z <: Top^<>](x: T^<>): T^x =  x
 
+val polyId: forall[A] => (A) => A =
+  Lam [A] { lam(x: A) { x } };
+
+val polyId: (forall polyId[A^a <: Top^<>] => ((x: A^a) => A^x)^{w})^{w} =
+  Lam polyId[A^a <: Top^<>] { lam(x: A^a) { x } };
+
 val _ = polyId[ref(int)^<>](alloc(0));
 val x = alloc@(0);
 val g = lam f(g: g(zz: ref(int)^x, int, w: unit) => int) { g(0) };

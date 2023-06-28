@@ -40,12 +40,27 @@ funTy :
 | '(' argList? ')' '=>' qty
 ;
 
+tyParam :
+  ID
+| ID '<:' ty
+| ID '^' ID '<:' qty
+;
+
+tyParamList :
+  tyParam (',' tyParam)*
+;
+
+tyFunTy :
+  FORALL '[' tyParamList ']' '=>' qty
+| FORALL ID '[' tyParamList ']' '=>' qty
+;
+
 ty :
   ID // int, unit, top, bool, top, type variable
-| funTy
 | REF '(' qty ')'
-| FORALL ID (ID '<:' ty) qty
-| FORALL ID (ID '^' ID '<:' qty) qty
+| funTy
+| tyFunTy
+| '(' ty ')'
 ;
 
 qty :
@@ -113,16 +128,6 @@ deref :
 lam :
   LAM ID '(' namedArgList? ')' (':' qty)? '{' expr '}'
 | LAM '(' namedArgList? ')' (':' qty)? '{' expr '}'
-;
-
-tyParam :
-  ID
-| ID '<:' ty
-| ID '^' ID '<:' qty
-;
-
-tyParamList :
-  tyParam (',' tyParam)*
 ;
 
 tyLam :
