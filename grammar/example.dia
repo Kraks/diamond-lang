@@ -1,0 +1,22 @@
+def f(x: int, y: int ^ {x, y, <>}) {
+  val a = 3+fo0;
+  x && y
+}
+
+def id(z: ref(int)^♦, n: int): int^{z, ♦} { x }
+
+def polyId[T](x: T): T { x }
+
+def polyId[T <: Top](x: T): T { x }
+
+def polyId[T^z <: Top^<>](x: T^<>): T^x { x }
+
+val _ = polyId[
+val _ = polyId[ref(int)^<>](alloc(0));
+val x = alloc@(0);
+val g = lambda f(g: g(zz: ref(int)^x, int, w: unit) => int) { g(0) };
+val f = lambda f(g: g(zz: ref(int)^x, int, w: unit) => int): int^{x} { g(0) };
+val _ = ! x;
+val z = ! (ref x) + 3;
+z
+
