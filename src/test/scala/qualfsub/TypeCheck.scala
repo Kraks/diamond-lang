@@ -471,6 +471,34 @@ class QualFSubBasicTests extends AnyFunSuite {
     val Γ3 = TEnv.empty + ("a" -> (TNum ^ ())) + ("z" -> (TNum ^ "a")) + ("x" -> (TNum ^ "z")) + ("y" -> (TNum ^ "x"))
     assert(Qual.singleton("x").saturated(using Γ3) == Set("x", "z", "a"))
   }
+
+  test("free-var-in-type") {
+    /* val x = alloc(0)
+     * def f(g: (Int -> Ref[Int]^x)^x): Ref[Int]^x = g(0)
+     * f(λ(y).x)
+     */
+    // Permitting g and f have overlap x
+    val let0 =
+      let("x" ⇐ alloc(0)) {
+        let("f" ⇐ λ("f", ("g" ⦂ ((TNum ~> (TRef(TNum) ^ "x")) ^ "x")), (TRef(TNum) ^ "x")) { EVar("g")(0) }) {
+          EVar("f")( λ("y" ⦂ TNum) { EVar("x") } )
+        }
+      }
+    println(topTypeCheck(let0))
+
+    /* val x = alloc(0)
+     * def f(g: (Int -> Ref[Int]^x)^∅): Ref[Int]^x = g(0)
+     * f(λ(y).x)
+     */
+    // Do not permit any overlap between g and f
+    val let1 =
+      let("x" ⇐ alloc(0)) {
+        let("f" ⇐ λ("f", ("g" ⦂ ((TNum ~> (TRef(TNum) ^ "x")) ^ ())), (TRef(TNum) ^ "x")) { EVar("g")(0) }) {
+          EVar("f").applyFresh( λ("y" ⦂ TNum) { EVar("x") } )
+        }
+      }
+    intercept[NonOverlap] { topTypeCheck(let1) } // errors as expected (do we want to allow it?)
+  }
 }
 
 class QualFSubTests extends AnyFunSuite {
