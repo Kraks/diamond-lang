@@ -16,6 +16,7 @@ import ExprSyntax.given_Conversion_Int_ENum
 
 class QualFSubEvalTests extends AnyFunSuite {
   test("poly-id") {
+    Counter.reset
     val id = Λ(("T", "z") <⦂ (TTop ^ ◆)) {
       λ("y" ⦂ (TVar("T") ^ ◆)) { EVar("y") }
     }

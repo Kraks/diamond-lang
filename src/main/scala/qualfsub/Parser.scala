@@ -263,6 +263,7 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
 
 object Parser {
   def parse(input: String): ir.IR = {
+    Counter.reset
     val charStream = new ANTLRInputStream(input)
     val lexer = new DiamondLexer(charStream)
     val tokens = new CommonTokenStream(lexer)
