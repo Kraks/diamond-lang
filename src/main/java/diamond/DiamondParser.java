@@ -918,20 +918,22 @@ public class DiamondParser extends Parser {
 	public static class TyContext extends ParserRuleContext {
 		public TerminalNode ID() { return getToken(DiamondParser.ID, 0); }
 		public TerminalNode REF() { return getToken(DiamondParser.REF, 0); }
-		public TerminalNode LPAREN() { return getToken(DiamondParser.LPAREN, 0); }
+		public TerminalNode LBRACKET() { return getToken(DiamondParser.LBRACKET, 0); }
 		public QtyContext qty() {
 			return getRuleContext(QtyContext.class,0);
 		}
-		public TerminalNode RPAREN() { return getToken(DiamondParser.RPAREN, 0); }
+		public TerminalNode RBRACKET() { return getToken(DiamondParser.RBRACKET, 0); }
 		public FunTyContext funTy() {
 			return getRuleContext(FunTyContext.class,0);
 		}
 		public TyFunTyContext tyFunTy() {
 			return getRuleContext(TyFunTyContext.class,0);
 		}
+		public TerminalNode LPAREN() { return getToken(DiamondParser.LPAREN, 0); }
 		public TyContext ty() {
 			return getRuleContext(TyContext.class,0);
 		}
+		public TerminalNode RPAREN() { return getToken(DiamondParser.RPAREN, 0); }
 		public TyContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
@@ -971,11 +973,11 @@ public class DiamondParser extends Parser {
 				setState(152);
 				match(REF);
 				setState(153);
-				match(LPAREN);
+				match(LBRACKET);
 				setState(154);
 				qty();
 				setState(155);
-				match(RPAREN);
+				match(RBRACKET);
 				}
 				break;
 			case 3:
@@ -2610,8 +2612,8 @@ public class DiamondParser extends Parser {
 		"\u0093\u0094\u0003\u0018\f\u0000\u0094\u0096\u0001\u0000\u0000\u0000\u0095"+
 		"\u0086\u0001\u0000\u0000\u0000\u0095\u008d\u0001\u0000\u0000\u0000\u0096"+
 		"\u0015\u0001\u0000\u0000\u0000\u0097\u00a4\u0005&\u0000\u0000\u0098\u0099"+
-		"\u0005\u0015\u0000\u0000\u0099\u009a\u0005\t\u0000\u0000\u009a\u009b\u0003"+
-		"\u0018\f\u0000\u009b\u009c\u0005\n\u0000\u0000\u009c\u00a4\u0001\u0000"+
+		"\u0005\u0015\u0000\u0000\u0099\u009a\u0005\r\u0000\u0000\u009a\u009b\u0003"+
+		"\u0018\f\u0000\u009b\u009c\u0005\u000e\u0000\u0000\u009c\u00a4\u0001\u0000"+
 		"\u0000\u0000\u009d\u00a4\u0003\u000e\u0007\u0000\u009e\u00a4\u0003\u0014"+
 		"\n\u0000\u009f\u00a0\u0005\t\u0000\u0000\u00a0\u00a1\u0003\u0016\u000b"+
 		"\u0000\u00a1\u00a2\u0005\n\u0000\u0000\u00a2\u00a4\u0001\u0000\u0000\u0000"+

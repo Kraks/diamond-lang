@@ -8,7 +8,20 @@ import scala.collection.JavaConverters._
 package ir {
   abstract class IR
   trait TopLevel
-  case class Program(top: List[TopLevel]) extends IR
+  case class Program(tops: List[TopLevel]) extends IR {
+    def toCore: core.Expr = {
+      val (newTops, last) = tops.last match {
+        case Expr(e) => (tops.dropRight(1), e)
+        case _ => (tops, core.Expr.EUnit)
+      }
+      newTops.foldRight(last) {
+        case (Expr(e), last) =>
+          core.Expr.ELet(freshVar("AnnoLet"), None, e, last)
+        case (d: Def, last) =>
+          d.toLet(last)
+      }
+    }
+  }
 
   case class Type(t: core.Type) extends IR {
     def toCore = t
@@ -26,7 +39,7 @@ package ir {
   case class Param(name: String, qty: core.QType) extends IR
 
   case class TyParamList(tyParams: List[TyParam]) extends IR
-  case class TyParam(tvar: String, qvar: Option[String], bound: core.QType) extends IR
+  case class TyParam(tvar: String, qvar: String, bound: core.QType) extends IR
 
   case class ArgList(args: List[core.Expr]) extends IR
   case class TyArgList(args: List[core.QType]) extends IR
@@ -35,9 +48,29 @@ package ir {
     def toCore: core.Expr = e
   }
 
-  abstract class Def extends IR with TopLevel
-  case class MonoFunDef(name: String, params: List[Param], rt: Option[QType], body: Expr) extends Def
-  case class PolyFunDef(name: String, tyParams: List[TyParam], params: List[Param], rt: Option[QType], body: Expr) extends Def
+  abstract class Def extends IR with TopLevel {
+    def toLet(e: core.Expr): core.Expr.ELet
+  }
+  case class MonoFunDef(name: String, params: List[Param], rt: Option[QType], body: core.Expr) extends Def {
+    // TODO: multi-arg functions
+    def toLet(e: core.Expr): core.Expr.ELet = {
+      val argName = params(0).name
+      val argTy = params(0).qty
+      val rhs = core.Expr.ELam(name, argName, argTy, body, rt.map(_.toCore))
+      val rhsTy = None
+      core.Expr.ELet(name, rhsTy, rhs, e)
+    }
+  }
+  case class PolyFunDef(name: String, tyParams: List[TyParam], params: List[Param], rt: Option[QType], body: core.Expr) extends Def {
+    // TODO: multi-arg functions
+    def toLet(e: core.Expr): core.Expr.ELet = {
+      val ty = tyParams(0)
+      val lamBody = core.Expr.ELam(freshVar("AnnoFun"), params(0).name, params(0).qty, body, rt.map(_.toCore))
+      val rhs = core.Expr.ETyLam(name, ty.tvar, ty.qvar, ty.bound, lamBody, None)
+      val rhsTy = None
+      core.Expr.ELet(name, rhsTy, rhs, e)
+    }
+  }
 }
 
 class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
@@ -74,11 +107,11 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
 
   override def visitTyParam(ctx: TyParamContext): TyParam = {
     if (ctx.ID.size == 1 && ctx.ty == null) {
-      TyParam(ctx.ID(0).getText.toString, None, coreTop)
+      TyParam(ctx.ID(0).getText.toString, freshVar("AnnoQVar"), coreTop)
     } else if (ctx.ID.size == 1 && ctx.ty != null) {
-      TyParam(ctx.ID(0).getText.toString, None, core.QType(visitTy(ctx.ty).toCore, core.Qual.fresh))
+      TyParam(ctx.ID(0).getText.toString, freshVar("AnnoQVar"), core.QType(visitTy(ctx.ty).toCore, core.Qual.fresh))
     } else if (ctx.ID.size == 2) {
-      TyParam(ctx.ID(0).getText.toString, Some(ctx.ID(1).getText.toString), visitQty(ctx.qty).toCore)
+      TyParam(ctx.ID(0).getText.toString, ctx.ID(1).getText.toString, visitQty(ctx.qty).toCore)
     } else error
   }
 
@@ -89,7 +122,7 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
     val args = visitTyParamList(ctx.tyParamList).tyParams
     val ret = visitQty(ctx.qty).toCore
     if (args.size == 1) {
-      Type(core.Type.TForall(f, args(0).tvar, args(0).qvar.getOrElse(""), args(0).bound, ret))
+      Type(core.Type.TForall(f, args(0).tvar, args(0).qvar, args(0).bound, ret))
     } else error
   }
 
@@ -136,7 +169,7 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
     val name = ctx.ID.getText.toString
     val args = visitNamedParamList(ctx.namedParamList).params
     val rt = if (ctx.qty != null) Some(visitQty(ctx.qty)) else None
-    val body = visitExpr(ctx.expr)
+    val body = visitExpr(ctx.expr).toCore
     MonoFunDef(name, args, rt, body)
   }
 
@@ -145,7 +178,7 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
     val tyArgs = visitTyParamList(ctx.tyParamList).tyParams
     val args = visitNamedParamList(ctx.namedParamList).params
     val rt = if (ctx.qty != null) Some(visitQty(ctx.qty)) else None
-    val body = visitExpr(ctx.expr)
+    val body = visitExpr(ctx.expr).toCore
     PolyFunDef(name, tyArgs, args, rt, body)
   }
 
@@ -153,12 +186,12 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
     val name = if (ctx.ID != null) ctx.ID.getText.toString else ""
     val args = visitNamedParamList(ctx.namedParamList).params
     val rt = if (ctx.qty != null) Some(visitQty(ctx.qty).toCore) else None
-    val body = visitExpr(ctx.expr)
+    val body = visitExpr(ctx.expr).toCore
     // TODO: multi-argument lambda functions
     if (args.size == 0) {
-      Expr(core.Expr.ELam(name, "", core.QType(core.Type.TUnit), body.toCore, rt))
+      Expr(core.Expr.ELam(name, "", core.QType(core.Type.TUnit), body, rt))
     } else if (args.size == 1) {
-      Expr(core.Expr.ELam(name, args(0).name, args(0).qty, body.toCore, rt))
+      Expr(core.Expr.ELam(name, args(0).name, args(0).qty, body, rt))
     } else error
   }
 
@@ -166,9 +199,9 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
     val name = if (ctx.ID != null) ctx.ID.getText.toString else freshVar("AnnoTFun")
     val tyArgs = visitTyParamList(ctx.tyParamList).tyParams
     val rt = if (ctx.qty != null) Some(visitQty(ctx.qty).toCore) else None
-    val body = visitExpr(ctx.expr)
+    val body = visitExpr(ctx.expr).toCore
     if (tyArgs.size == 1) {
-      Expr(core.Expr.ETyLam(name, tyArgs(0).tvar, tyArgs(0).qvar.getOrElse(""), tyArgs(0).bound, body.toCore, rt))
+      Expr(core.Expr.ETyLam(name, tyArgs(0).tvar, tyArgs(0).qvar, tyArgs(0).bound, body, rt))
     } else error
   }
 
@@ -220,19 +253,7 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
         core.Expr.EAssign(lhs, rhs)
       } else if (ctx.funDef != null) {
         val body = visitExpr(ctx.expr(0)).toCore
-        // TODO: multi-arg definitions
-        val (f, rhs, rhsTy) = super.visit(ctx.funDef) match {
-          case MonoFunDef(f, params, rt, e) =>
-            val argName = params(0).name
-            val argTy = params(0).qty
-            val rhs = core.Expr.ELam(f, argName, argTy, e.toCore, rt.map(_.toCore))
-            val rhsTy = None
-            (f, rhs, rhsTy)
-          case PolyFunDef(f, tyParams, params, rt, e) =>
-            // FIXME
-            (f, core.Expr.ENum(0), None)
-        }
-        core.Expr.ELet(f, rhsTy, rhs, body)
+        super.visit(ctx.funDef).asInstanceOf[Def].toLet(body)
       } else if (ctx.args != null) {
         // TODO: multi-argument application
         val e = visitExpr(ctx.expr(0)).toCore
@@ -262,21 +283,16 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
 }
 
 object Parser {
-  def parse(input: String): ir.IR = {
+  def parse(input: String): ir.Program = {
     Counter.reset
     val charStream = new ANTLRInputStream(input)
     val lexer = new DiamondLexer(charStream)
     val tokens = new CommonTokenStream(lexer)
     val parser = new DiamondParser(tokens)
     val visitor = new DiamondVisitor()
-    val res: ir.IR = visitor.visit(parser.program).asInstanceOf[ir.IR]
+    val res = visitor.visit(parser.program).asInstanceOf[ir.Program]
     res
   }
 
-  def parseFile(filepath: String): ir.IR = parse(scala.io.Source.fromFile(filepath).mkString)
-
-  def main(args: Array[String]): Unit = {
-    val res = parseFile("grammar/" + args(0)) //example.dia
-    println(res)
-  }
+  def parseFile(filepath: String): ir.Program = parse(scala.io.Source.fromFile(filepath).mkString)
 }

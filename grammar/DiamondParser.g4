@@ -57,7 +57,7 @@ tyFunTy :
 
 ty :
   ID // Int, Unit, Top, Bool, type variable
-| REF '(' qty ')'
+| REF '[' qty ']'
 | funTy
 | tyFunTy
 | '(' ty ')'
