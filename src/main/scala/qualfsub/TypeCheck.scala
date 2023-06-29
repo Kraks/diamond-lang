@@ -103,13 +103,23 @@ def reach(worklist: Set[String], acc: Set[String])(using Γ: TEnv): Set[String] 
     reach((worklist ++ newQual) -- Set(x), acc ++ newQual ++ Set(x))
   }
 
+def typeCheckUnaryOp(e: Expr, op: String, t: QType)(using Γ: TEnv): Type =
+  op match
+    case "~" =>
+      checkQTypeEq(e, t, TBool)
+      TBool
+
 def typeCheckBinOp(e1: Expr, e2: Expr, op: String, t1: QType, t2: QType)(using Γ: TEnv): Type =
   op match
     case "+" | "-" | "*" | "/" =>
       checkQTypeEq(e1, t1, TNum)
       checkQTypeEq(e2, t2, TNum)
       TNum
-    case "=" =>
+    case "&&" | "||" =>
+      checkQTypeEq(e1, t1, TBool)
+      checkQTypeEq(e2, t2, TBool)
+      TBool
+    case "==" =>
       checkQTypeEq(e1, t1, TNum)
       checkQTypeEq(e2, t2, TNum)
       TBool
@@ -378,6 +388,7 @@ def typeFreeVars(t: Type): Set[String] = t match
 def freeVars(e: Expr): Set[String] = e match {
   case EUnit | ENum(_) | EBool(_) => Set()
   case EVar(x) => Set(x)
+  case EUnaryOp(op, e) => freeVars(e) 
   case EBinOp(op, e1, e2) => freeVars(e1) ++ freeVars(e2)
   case ELam(f, x, _, e, _) => freeVars(e) -- Set(f, x)
   case EApp(e1, e2, _) => freeVars(e1) ++ freeVars(e2)
@@ -422,6 +433,8 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
   case EVar(x) =>
     val QType(t, _) = Γ(x)
     t ^ x
+  case EUnaryOp(op, e) =>
+    typeCheckUnaryOp(e, op, typeCheck(e))
   case EBinOp(op, e1, e2) =>
     typeCheckBinOp(e1, e2, op, typeCheck(e1), typeCheck(e2))
   case ELam(f, x, at, e, Some(rt)) =>
