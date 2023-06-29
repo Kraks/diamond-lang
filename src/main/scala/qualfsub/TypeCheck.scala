@@ -162,38 +162,22 @@ def qualSubst(q: Qual, from: String, to: Qual): Qual =
 
 def typeSubstQual(t: Type, from: String, to: Qual): Type = t match {
   case TUnit | TNum | TBool => t
-  case TFun(Some(f), Some(x), t1, t2) =>
+  case TFun(f, x, t1, t2) =>
     val f1 = if (to.contains(f)) freshVar(f) else f
     val x1 = if (to.contains(x)) freshVar(x) else x
     val at = qtypeRename(t1, f, f1)
     val rt = qtypeRename(qtypeRename(t2, x, x1), f, f1)
-    TFun(Some(f1), Some(x1), qtypeSubstQual(at, from, to), qtypeSubstQual(rt, from, to))
-  case TFun(Some(f), None, t1, t2) =>
-    val f1 = if (to.contains(f)) freshVar(f) else f
-    val at = qtypeRename(t1, f, f1)
-    val rt = qtypeRename(t2, f, f1)
-    TFun(Some(f1), None, qtypeSubstQual(at, from, to), qtypeSubstQual(rt, from, to))
-  case TFun(None, Some(x), t1, t2) =>
-    val x1 = if (to.contains(x)) freshVar(x) else x
-    val at = t1 //qtypeRename(t1, x, x1)
-    val rt = qtypeRename(t2, x, x1)
-    TFun(None, Some(x1), qtypeSubstQual(at, from, to), qtypeSubstQual(rt, from, to))
-  case TFun(f, x, t1, t2) =>
-    TFun(f, x, qtypeSubstQual(t1, from, to), qtypeSubstQual(t2, from, to))
+    TFun(f1, x1, qtypeSubstQual(at, from, to), qtypeSubstQual(rt, from, to))
   case TRef(t) => TRef(typeSubstQual(t, from, to))
   // New F◆ types
   case TTop => TTop
   case TVar(x) => TVar(x)
-  case TForall(Some(f), tvar, qvar, t1, t2) =>
+  case TForall(f, tvar, qvar, t1, t2) =>
     val f1 = if (to.contains(f)) freshVar(f) else f
     val qvar1 = if (to.contains(qvar)) freshVar(qvar) else qvar
     val bound = qtypeRename(t1, f, f1)
     val rt = qtypeRename(qtypeRename(t2, qvar, qvar1), f, f1)
-    TForall(Some(f1), tvar, qvar1, qtypeSubstQual(bound, from, to), qtypeSubstQual(rt, from, to))
-  case TForall(None, tvar, qvar, t1, t2) =>
-    val qvar1 = if (to.contains(qvar)) freshVar(qvar) else qvar
-    val rt = qtypeRename(t2, qvar, qvar1)
-    TForall(None, tvar, qvar1, qtypeSubstQual(t1, from, to), qtypeSubstQual(rt, from, to))
+    TForall(f1, tvar, qvar1, qtypeSubstQual(bound, from, to), qtypeSubstQual(rt, from, to))
 }
 
 def qtypeSubstQual(qt: QType, from: String, to: Qual): QType =
@@ -238,61 +222,36 @@ def qtypeRename(tq: QType, from: String, to: String): QType =
 // Rename free occurrence of term variable `from` in `t` to `to`
 def typeRename(t: Type, from: String, to: String): Type = t match {
   case TUnit | TNum | TBool => t
-  case TFun(Some(f), Some(x), t1, t2) =>
+  case TFun(f, x, t1, t2) =>
     if (f == from || x == from) t
     else if (f == to) {
       val g = freshVar(f)
       val argType = qtypeRename(t1, f, g)
       val retType = qtypeRename(t2, f, g)
-      typeRename(TFun(Some(g), Some(x), argType, retType), from, to)
+      typeRename(TFun(g, x, argType, retType), from, to)
     } else if (x == to) {
       val y = freshVar(x)
       val argType = t1 //qtypeRename(t1, x, y)
       val retType = qtypeRename(t2, x, y)
-      typeRename(TFun(Some(f), Some(y), argType, retType), from, to)
-    } else TFun(Some(f), Some(x), qtypeRename(t1, from, to), qtypeRename(t2, from, to))
-  case TFun(Some(f), None, t1, t2) =>
-    if (f == from) t
-    else if (f == to) {
-      val g = freshVar(f)
-      val argType = qtypeRename(t1, f, g)
-      val retType = qtypeRename(t2, f, g)
-      typeRename(TFun(Some(g), None, argType, retType), from, to)
-    } else TFun(Some(f), None, qtypeRename(t1, from, to), qtypeRename(t2, from, to))
-  case TFun(None, Some(x), t1, t2) =>
-    if (x == from) t
-    else if (x == to) {
-      val y = freshVar(x)
-      val argType = t1 //qtypeRename(t1, x, y)
-      val retType = qtypeRename(t2, x, y)
-      typeRename(TFun(None, Some(y), argType, retType), from, to)
-    } else TFun(None, Some(x), qtypeRename(t1, from, to), qtypeRename(t2, from, to))
-  case TFun(None, None, t1, t2) =>
-    TFun(None, None, qtypeRename(t1, from, to), qtypeRename(t2, from, to))
+      typeRename(TFun(f, y, argType, retType), from, to)
+    } else TFun(f, x, qtypeRename(t1, from, to), qtypeRename(t2, from, to))
   case TRef(t) =>
     TRef(typeRename(t, from, to))
   // New F◆ types
   case TTop => TTop
   case TVar(x) => TVar(x)
-  case TForall(Some(f), tvar, qvar, t1, t2) =>
+  case TForall(f, tvar, qvar, t1, t2) =>
     if (f == from || qvar == from) t
     else if (f == to) {
       val g = freshVar(f)
       val bound = qtypeRename(t1, f, g)
       val rt = qtypeRename(t2, f, g)
-      typeRename(TForall(Some(g), tvar, qvar, bound, rt), from, to)
+      typeRename(TForall(g, tvar, qvar, bound, rt), from, to)
     } else if (qvar == to) {
       val pvar = freshVar(qvar)
       val rt = qtypeRename(t2, qvar, pvar)
-      typeRename(TForall(Some(f), tvar, pvar, t1, rt), from, to)
-    } else TForall(Some(f), tvar, qvar, qtypeRename(t1, from, to), qtypeRename(t2, from, to))
-  case TForall(None, tvar, qvar, t1, t2) =>
-    if (qvar == from) t
-    else if (qvar == to) {
-      val pvar = freshVar(qvar)
-      val rt = qtypeRename(t2, qvar, pvar)
-      typeRename(TForall(None, tvar, pvar, t1, rt), from, to)
-    } else TForall(None, tvar, qvar, qtypeRename(t1, from, to), qtypeRename(t2, from, to))
+      typeRename(TForall(f, tvar, pvar, t1, rt), from, to)
+    } else TForall(f, tvar, qvar, qtypeRename(t1, from, to), qtypeRename(t2, from, to))
 }
 
 def qtypeRenameTVar(t: QType, from: String, to: String): QType =
@@ -325,29 +284,17 @@ def isSubtype(t1: Type, t2: Type)(using Γ: TEnv): Boolean = (t1, t2) match {
   case (TBool, TBool) => true
   case (F@TFun(f, x, t1, t2), G@TFun(g, y, t3, t4)) =>
     if (f == g && x == y) {
-      val Γ1 = (f, x) match
-        case (Some(f), Some(x)) => Γ + (f -> (F ^ ◆)) + (x -> t3)
-        case (None, Some(x)) => Γ + (x -> t3)
-        case (Some(f), None) => Γ + (f -> (F ^ ◆)) 
-        case (None, None) => Γ
+      val Γ1 = Γ + (f -> (F ^ ◆)) + (x -> t3)
       isSubQType(t3, t1) && isSubQType(t2, t4)(using Γ1)
     } else if (f != g) {
       val f1 = freshVar()
-      val F1 = f match
-        case Some(f) => TFun(Some(f1), x, qtypeRename(t1, f, f1), qtypeRename(t2, f, f1))
-        case None => TFun(Some(f1), x, t1, t2)
-      val G1 = g match
-        case Some(g) => TFun(Some(f1), y, qtypeRename(t3, g, f1), qtypeRename(t4, g, f1))
-        case None => TFun(Some(f1), y, t3, t4)
+      val F1 = TFun(f1, x, qtypeRename(t1, f, f1), qtypeRename(t2, f, f1))
+      val G1 = TFun(f1, y, qtypeRename(t3, g, f1), qtypeRename(t4, g, f1))
       isSubtype(F1, G1)
     } else if (x != y) {
       val x1 = freshVar()
-      val F1 = x match
-        case Some(x) => TFun(f, Some(x1), t1, qtypeRename(t2, x, x1))
-        case None => TFun(f, Some(x1), t1, t2)
-      val G1 = y match
-        case Some(y) => TFun(g, Some(x1), t3, qtypeRename(t4, y, x1))
-        case None => TFun(g, Some(x1), t3, t4)
+      val F1 = TFun(f, x1, t1, qtypeRename(t2, x, x1))
+      val G1 = TFun(g, x1, t3, qtypeRename(t4, y, x1))
       isSubtype(F1, G1)
     } else throw new RuntimeException("Impossible")
   case (TRef(t1), TRef(t2)) => typeEq(t1, t2)
@@ -357,18 +304,12 @@ def isSubtype(t1: Type, t2: Type)(using Γ: TEnv): Boolean = (t1, t2) match {
   case (x@TVar(_), t) => isSubtype(Γ(x), t)
   case (F@TForall(f1, tvar1, qvar1, bound1, rt1), G@TForall(f2, tvar2, qvar2, bound2, rt2)) =>
     if (f1 == f2 && tvar1 == tvar2 && qvar1 == qvar2) {
-      val Γ1 = f1 match
-        case Some(funName) => Γ + (funName -> (F ^ ◆)) + ((tvar1, qvar1) <⦂ bound2)
-        case None => Γ + ((tvar1, qvar1) <⦂ bound2)
+      val Γ1 = Γ + (f1 -> (F ^ ◆)) + ((tvar1, qvar1) <⦂ bound2)
       isSubQType(bound2, bound1) && isSubQType(rt1, rt2)(using Γ1)
     } else if (f1 != f2) {
       val g = freshVar()
-      val F1 = f1 match
-        case Some(f) => TForall(Some(g), tvar1, qvar1, qtypeRename(bound1, f, g), qtypeRename(rt1, f, g))
-        case None => TForall(Some(g), tvar1, qvar1, bound1, rt1)
-      val G1 = f2 match
-        case Some(f) => TForall(Some(g), tvar2, qvar2, qtypeRename(bound2, f, g), qtypeRename(rt2, f, g))
-        case None => TForall(Some(g), tvar1, qvar1, bound2, rt2)
+      val F1 = TForall(g, tvar1, qvar1, qtypeRename(bound1, f1, g), qtypeRename(rt1, f1, g))
+      val G1 = TForall(g, tvar2, qvar2, qtypeRename(bound2, f2, g), qtypeRename(rt2, f2, g))
       isSubtype(F1, G1)
     } else if (tvar1 != tvar2) {
       val tvar3 = freshVar()
@@ -425,14 +366,14 @@ def qtypeFreeVars(qt: QType): Set[String] =
 def typeFreeVars(t: Type): Set[String] = t match
   case TUnit | TNum | TBool => Set()
   case TFun(f, x, t1, t2) =>
-    (qtypeFreeVars(t1) ++ qtypeFreeVars(t2)) -- (f.toSet ++ x.toSet)
+    (qtypeFreeVars(t1) ++ qtypeFreeVars(t2)) -- Set(x, f)
   case TRef(t) => typeFreeVars(t)
   case TTop => Set()
   case TVar(x) => Set()
   case TForall(f, tvar, qvar, bound, rt) =>
     val boundFreeVars = qtypeFreeVars(bound)
     val rtFreeVars = qtypeFreeVars(rt)
-    boundFreeVars ++ (rtFreeVars -- (f.toSet ++ Set(qvar)))
+    boundFreeVars ++ (rtFreeVars -- Set(f, qvar))
 
 def freeVars(e: Expr): Set[String] = e match {
   case EUnit | ENum(_) | EBool(_) => Set()
@@ -447,7 +388,7 @@ def freeVars(e: Expr): Set[String] = e match {
   case EDeref(e) => freeVars(e)
   case ECond(cnd, thn, els) => freeVars(cnd) ++ freeVars(thn) ++ freeVars(els)
   case ETyLam(f, tvar, qvar, ub, e, _) =>
-    freeVars(e) -- (f.toSet ++ Set(qvar))
+    freeVars(e) -- Set(f, qvar)
   case ETyApp(e, qt, _) =>
     freeVars(e) ++ qtypeFreeVars(qt)
 }
@@ -485,23 +426,22 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     typeCheckBinOp(e1, e2, op, typeCheck(e1), typeCheck(e2))
   case ELam(f, x, at, e, Some(rt)) =>
     // XXX allow annotating observable filter?
-    val ft = TFun(Some(f), Some(x), at, rt)
+    val ft = TFun(f, x, at, rt)
     qtypeWFCheck(ft)
     val fv = qtypeFreeVars(at) ++ qtypeFreeVars(rt) ++ freeVars(e) -- Set(f, x)
     val Γ1 = Γ.filter(fv) + (x -> at) + (f -> (ft ^ Qual(fv)))
     val t = typeCheck(e)(using Γ1)
     checkSubQType(t, rt)(using Γ1)
     ft ^ Qual(fv)
-  case ELam(_, x, at, e, None) =>
+  case ELam(f, x, at, e, None) =>
     qtypeWFCheck(at)
     val fv = qtypeFreeVars(at) ++ freeVars(e) - x
     val t = typeCheck(e)(using Γ.filter(fv) + (x -> at))
-    TFun(None, Some(x), at, t) ^ Qual(fv)
+    TFun(f, x, at, t) ^ Qual(fv)
   case EApp(e1, e2, Some(true)) =>
-    // FIXME: function type's qualifier needs to include free variables of types (not only terms)
     // T-App◆
     val t1@QType(TFun(f, x, atq@QType(at, aq), rtq@QType(rt, rq)), qf) = typeCheck(e1)
-    val codomBound: Qual = Qual(Γ.dom) ++ f.toSet ++ x.toSet ++ Set(◆)
+    val codomBound: Qual = Qual(Γ.dom) ++ Set(◆, f, x)
     if (!(rq ⊆ codomBound)) throw IllFormedQual(rq)
     val tq2@QType(t2, q2) = typeCheck(e2)
     // ◆ ∈ q2 ⇒ x ∉ fv(rt)
@@ -513,7 +453,7 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
   case EApp(e1, e2, Some(false)) =>
     // T-App
     val t1@QType(TFun(f, x, atq@QType(at, aq), rtq@QType(rt, rq)), qf) = typeCheck(e1)
-    val codomBound: Qual = Qual(Γ.dom) ++ f.toSet ++ x.toSet ++ Set(◆)
+    val codomBound: Qual = Qual(Γ.dom) ++ Set(◆, f, x)
     if (!(rq ⊆ codomBound)) throw IllFormedQual(rq)
     val tq2@QType(t2, q2) = typeCheck(e2)
     checkSubQType(tq2, atq)
@@ -522,7 +462,7 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
   case EApp(e1, e2, None) =>
     // Not specified which application rule to use, try heuristically
     val t1@QType(TFun(f, x, atq@QType(at, aq), rtq@QType(rt, rq)), qf) = typeCheck(e1)
-    val codomBound: Qual = Qual(Γ.dom) ++ f.toSet ++ x.toSet ++ Set(◆)
+    val codomBound: Qual = Qual(Γ.dom) ++ Set(◆, f, x)
     if (!(rq ⊆ codomBound)) throw IllFormedQual(rq)
     val tq2@QType(t2, q2) = typeCheck(e2)
     if (q2.isFresh) typeCheck(EApp(e1, e2, Some(true)))
@@ -570,25 +510,25 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     val t3 = typeCheck(els)
     checkQTypeEq(thn, t2, t3)
   // New F◆ terms
-  case ETyLam(Some(f), tvar, qvar, ub, e, Some(rt)) =>
-    val ft = TForall(Some(f), tvar, qvar, ub, rt)
+  case ETyLam(f, tvar, qvar, ub, e, Some(rt)) =>
+    val ft = TForall(f, tvar, qvar, ub, rt)
     val fv = qtypeFreeVars(ub) ++ qtypeFreeVars(rt) ++ freeVars(e) -- Set(f, qvar)
     val Γ1 = Γ.filter(fv) + ((tvar, qvar) <⦂ ub) + (f -> (ft ^ Qual(fv)))
     val t = typeCheck(e)(using Γ1)
     checkSubQType(t, rt)(using Γ1)
     ft ^ Qual(fv)
-  case ETyLam(_, tvar, qvar, ub, e, None) =>
+  case ETyLam(f, tvar, qvar, ub, e, None) =>
     val fv = qtypeFreeVars(ub) ++ freeVars(e) -- Set(qvar)
     val Γ1 = Γ.filter(fv) + ((tvar, qvar) <⦂ ub)
     val t = typeCheck(e)(using Γ1)
-    TForall(None, tvar, qvar, ub, t) ^ Qual(fv)
+    TForall(f, tvar, qvar, ub, t) ^ Qual(fv)
   case ETyApp(e, arg@QType(tyArg, qArg), Some(true)) =>
     // T-TApp◆
     qtypeWFCheck(arg)
     val t1 = typeCheck(e)
     val QType(TForall(f, tvar, qvar, ub, rt), qf) = qtypeExposure(t1)
     // qf may contain abstract qualifier variables (which seems fine?)
-    val codomBound: Qual = Qual(Γ.dom) ++ f.toSet ++ Set(qvar, ◆)
+    val codomBound: Qual = Qual(Γ.dom) ++ Set(f, qvar, ◆)
     if (!(rt.q ⊆ codomBound)) throw IllFormedQual(rt.q)
     if (!(qArg ⊆ Γ)) throw IllFormedQual(qArg)
     if (qArg.isFresh) checkDeepDep(rt.ty, qvar)
@@ -601,7 +541,7 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     val t1 = typeCheck(e)
     val QType(TForall(f, tvar, qvar, ub, rt), qf) = qtypeExposure(t1)
     // qf may contain abstract qualifier variables (which seems fine?)
-    val codomBound: Qual = Qual(Γ.dom) ++ f.toSet ++ Set(qvar, ◆)
+    val codomBound: Qual = Qual(Γ.dom) ++ Set(f, qvar, ◆)
     if (!(rt.q ⊆ codomBound)) throw IllFormedQual(rt.q)
     if (!(qArg ⊆ Γ)) throw IllFormedQual(qArg)
     if (qArg.isFresh) throw RequireTypeNonFresh(arg)
@@ -613,7 +553,7 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     val t1 = typeCheck(e)
     val QType(TForall(f, tvar, qvar, ub, rt), qf) = qtypeExposure(t1)
     // qf may contain abstract qualifier variables (which seems fine?)
-    val codomBound: Qual = Qual(Γ.dom) ++ f.toSet ++ Set(qvar, ◆)
+    val codomBound: Qual = Qual(Γ.dom) ++ Set(f, qvar, ◆)
     if (!(rt.q ⊆ codomBound)) throw IllFormedQual(rt.q)
     if (!(qArg ⊆ Γ)) throw IllFormedQual(qArg)
     if (qArg.isFresh) typeCheck(ETyApp(e, arg, Some(true)))

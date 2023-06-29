@@ -1,5 +1,7 @@
 package diamond.qualfsub.core
 
+import diamond._
+
 /* F◆ = System F-Sub + Reference + Diamond-flavored reachability types */
 
 // TODO: TRef with inner qualifier
@@ -8,12 +10,12 @@ enum Type:
   case TUnit
   case TNum
   case TBool
-  case TFun(id: Option[String], arg: Option[String], t1: QType, t2: QType)
+  case TFun(id: String, arg: String, t1: QType, t2: QType)
   case TRef(t: Type)
   // F◆ new types
   case TTop
   case TVar(x: String)
-  case TForall(f: Option[String], tvar: String, qvar: String, bound: QType, res: QType)
+  case TForall(f: String, tvar: String, qvar: String, bound: QType, res: QType)
 
 import Type._
 
@@ -48,7 +50,7 @@ enum Expr:
   case EDeref(e: Expr)
   case ECond(cnd: Expr, thn: Expr, els: Expr)
   // F◆ new expressions
-  case ETyLam(f: Option[String], tvar: String, qvar: String, bound: QType, body: Expr, rt: Option[QType])
+  case ETyLam(f: String, tvar: String, qvar: String, bound: QType, body: Expr, rt: Option[QType])
   case ETyApp(t: Expr, q: QType, fresh: Option[Boolean] = None)
 
 import Expr._
@@ -61,9 +63,9 @@ case class TypeBound(tvar: String, qvar: String, bound: QType = QType(TTop, Qual
 object TypeSyntax:
   val ◆ = Fresh()
   extension (t: QType)
-    def ~>(s: QType): TFun = TFun(None, None, t, s)
+    def ~>(s: QType): TFun = TFun(freshVar("AnnoFun"), freshVar("Arg"), t, s)
   extension (id: String)
-    def ♯(t: TFun): TFun = TFun(Some(id), t.arg, t.t1, t.t2)
+    def ♯(t: TFun): TFun = TFun(id, t.arg, t.t1, t.t2)
   extension (t: Type)
     def ^(q: Qual): QType = QType(t, q)
     def ^(q: QElem): QType = QType(t, Qual(Set(q)))
@@ -74,8 +76,8 @@ object TypeSyntax:
   // F◆ new syntax
   extension (id2: (String, String))
     def <⦂(qt: QType): TypeBound = TypeBound(id2._1, id2._2, qt)
-  def ∀(f: String, xt: TypeBound)(t: QType) = TForall(Some(f), xt.tvar, xt.qvar, xt.bound, t)
-  def ∀(xt: TypeBound)(t: QType) = TForall(None, xt.tvar, xt.qvar, xt.bound, t)
+  def ∀(f: String, xt: TypeBound)(t: QType) = TForall(f, xt.tvar, xt.qvar, xt.bound, t)
+  def ∀(xt: TypeBound)(t: QType) = TForall(freshVar("AnnoTFun"), xt.tvar, xt.qvar, xt.bound, t)
 
 object ExprSyntax:
   import Expr._
@@ -96,7 +98,7 @@ object ExprSyntax:
 
   case class BindTy(id: String, ty: QType) {
     def ⇐(e: Expr): Bind = Bind(id, e, Some(ty))
-    def ~>(rt: QType): TFun = TFun(None, Some(id), ty, rt)
+    def ~>(rt: QType): TFun = TFun(freshVar("AnnoFun"), id, ty, rt)
   }
   case class Bind(id: String, rhs: Expr, ty: Option[QType])
 
@@ -106,19 +108,19 @@ object ExprSyntax:
 
   def λ(f: String, x: String)(ft: TFun)(e: => Expr): ELam = ELam(f, x, ft.t1, e, Some(ft.t2))
   def λ(f: String, xt: BindTy, rt: QType)(e: => Expr): ELam = ELam(f, xt.id, xt.ty, e, Some(rt))
-  def λ(xt: BindTy)(e: => Expr): ELam = ELam("_", xt.id, xt.ty, e, None)
+  def λ(xt: BindTy)(e: => Expr): ELam = ELam(freshVar("AnnoFun"), xt.id, xt.ty, e, None)
   def ite(c: Expr)(thn: Expr)(els: Expr): Expr = ECond(c, thn, els)
   def let(xv: Bind)(e: Expr): Expr = ELet(xv.id, xv.ty, xv.rhs, e)
   def alloc(e: Expr): Expr = EAlloc(e)
   // F◆ new syntax
   def Λ(f: String, xt: TypeBound, res: QType)(e: => Expr): ETyLam =
-    ETyLam(Some(f), xt.tvar, xt.qvar, xt.bound, e, Some(res))
+    ETyLam(f, xt.tvar, xt.qvar, xt.bound, e, Some(res))
   def Λ(f: String, xt: TypeBound)(e: => Expr): ETyLam =
-    ETyLam(Some(f), xt.tvar, xt.qvar, xt.bound, e, None)
+    ETyLam(f, xt.tvar, xt.qvar, xt.bound, e, None)
   def Λ(xt: TypeBound, res: QType)(e: => Expr): ETyLam =
-    ETyLam(None, xt.tvar, xt.qvar, xt.bound, e, Some(res))
+    ETyLam(freshVar("AnnoTFun"), xt.tvar, xt.qvar, xt.bound, e, Some(res))
   def Λ(xt: TypeBound)(e: => Expr): ETyLam =
-    ETyLam(None, xt.tvar, xt.qvar, xt.bound, e, None)
+    ETyLam(freshVar("AnnoTFun"), xt.tvar, xt.qvar, xt.bound, e, None)
 
   extension (e: Expr)
     def apply(a: Expr): Expr = EApp(e, a)

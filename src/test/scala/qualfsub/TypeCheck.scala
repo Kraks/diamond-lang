@@ -1,6 +1,7 @@
 package diamond.qualfsub
 
 import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.matchers.should.Matchers
 
 import diamond.qualfsub.core._
 import diamond._
@@ -29,26 +30,26 @@ class QualFSubBasicTests extends AnyFunSuite {
     assert(t4 == QType(TNum, Qual(Set("x", Fresh()))))
 
     val t5: TFun = t4 ~> t3
-    assert(t5 == TFun(None,None,QType(TNum,Qual(Set("x", Fresh()))),QType(TNum,Qual(Set(Fresh())))))
+    assert(t5 == TFun("AnnoFun#0","Arg#1",QType(TNum,Qual(Set("x", Fresh()))),QType(TNum,Qual(Set(Fresh())))))
 
     val t6: QType = (𝑓 ♯ t5) ^ ◆
-    assert(t6 == QType(TFun(Some("f"), None,
+    assert(t6 == QType(TFun("f", "Arg#1",
       QType(TNum,Qual(Set("x", Fresh()))),QType(TNum,Qual(Set(Fresh())))),Qual(Set(Fresh()))))
 
     val t7: QType = (𝑓 ♯ (TNum ~> TNum)) ^ ◆
-    assert(t7 == QType(TFun(Some("f"),None,
+    assert(t7 == QType(TFun("f","Arg#3",
       QType(TNum,Qual(Set())),QType(TNum,Qual(Set()))),Qual(Set(Fresh()))))
 
     val t8: QType = (𝑓 ♯ ((TNum ^ 𝑦) ~> (TNum ^ (𝑦, 𝑧)))) ^ ◆
-    assert(t8 == QType(TFun(Some("f"), None,
+    assert(t8 == QType(TFun("f", "Arg#5",
       QType(TNum,Qual(Set("y"))),QType(TNum,Qual(Set("y", "z")))),Qual(Set(Fresh()))))
 
     val t9: QType = (𝑓 ♯ ((𝑥 ⦂ (TNum ^ 𝑦)) ~> (TNum ^ 𝑥))) ^ ◆
-    assert(t9 == QType(TFun(Some("f"),Some("x"),
+    assert(t9 == QType(TFun("f","x",
       QType(TNum,Qual(Set("y"))),QType(TNum,Qual(Set("x")))),Qual(Set(Fresh()))))
 
     val t10: QType = (𝑓 ♯ ((𝑥 ⦂ TNum) ~> (TNum ^ 𝑥))) ^ ◆
-    assert(t10 == QType(TFun(Some("f"),Some("x"),
+    assert(t10 == QType(TFun("f","x",
       QType(TNum,Qual(Set())),QType(TNum,Qual(Set("x")))),Qual(Set(Fresh()))))
   }
 
@@ -168,10 +169,10 @@ class QualFSubBasicTests extends AnyFunSuite {
 
   test("polymorphic reachability") {
     val id0 = λ("x" ⦂ (TRef(TNum) ^ ◆)) { x }
-    assert(topTypeCheck(id0) == (TFun(None, Some("x"), TRef(TNum)^ ◆, TRef(TNum)^"x") ^ ()))
+    assert(topTypeCheck(id0) == (TFun("AnnoFun#0", "x", TRef(TNum)^ ◆, TRef(TNum)^"x") ^ ()))
 
     val id = λ("id", "x")("id"♯((TRef(TNum) ^ ◆) ~> (TRef(TNum)^"x"))) { x }
-    assert(topTypeCheck(id) == (TFun(Some("id"), Some("x"), TRef(TNum)^ ◆, TRef(TNum)^"x") ^ ()))
+    assert(topTypeCheck(id) == (TFun("id", "x", TRef(TNum)^ ◆, TRef(TNum)^"x") ^ ()))
 
     assert(topTypeCheck(id(alloc(42))) == (TRef(TNum) ^ ◆))
     assert(topTypeCheck(id(EUntrackedAlloc(0))) == (TRef(TNum) ^ ()))
@@ -210,7 +211,7 @@ class QualFSubBasicTests extends AnyFunSuite {
       })) {
         EVar("f")(EVar("c"))
       }
-    assert(typeCheck(e2)(using Γ3) == (TFun(None, Some("_"), TUnit, (TRef(TNum)^"c"))^"c"))
+    assert(typeCheck(e2)(using Γ3) == (TFun("AnnoFun#4", "_", TUnit, (TRef(TNum)^"c"))^"c"))
   }
 
   test("escaping closures") {
@@ -218,25 +219,25 @@ class QualFSubBasicTests extends AnyFunSuite {
       let("x" ⇐ alloc(3)) {
         λ("f", "z")("f"♯(TNum ~> TNum)) { x.deref }
       }
-    assert(topTypeCheck(e1) == (TFun(Some("f"), Some("z"), TNum^(), TNum^()) ^ ◆))
+    assert(topTypeCheck(e1) == (TFun("f", "z", TNum^(), TNum^()) ^ ◆))
 
     val e2 =
       (λ("x" ⦂ (TRef(TNum) ^ ◆)) { λ("f", "z")("f"♯(TNum ~> TNum)) { x.deref } })(alloc(3))
-    assert(topTypeCheck(e2) == (TFun(Some("f"), Some("z"), TNum^(), TNum^()) ^ ◆))
+    assert(topTypeCheck(e2) == (TFun("f", "z", TNum^(), TNum^()) ^ ◆))
 
     //    let x = alloc(3) in λf(z).x
     // or ( λ(x). λf(z).x )(alloc(3))
     val e3 =
       (λ("x" ⦂ (TRef(TNum) ^ ◆)) { λ("f", "z")("f"♯(TNum ~> (TRef(TNum) ^ "x"))) { x } })(alloc(3))
     assert(intercept[DeepDependency] { topTypeCheck(e3) } ==
-      DeepDependency(TFun(Some("f"), Some("z"), TNum^(), TRef(TNum)^"x"), "x"))
+      DeepDependency(TFun("f", "z", TNum^(), TRef(TNum)^"x"), "x"))
 
     val e3_let =
       let("x" ⇐ alloc(0)) {
         λ("f", "z")("f"♯(TNum ~> (TRef(TNum) ^ "x"))) { x }
       }
     assert(intercept[DeepDependency] { topTypeCheck(e3_let) } ==
-      DeepDependency(TFun(Some("f"), Some("z"), TNum, TRef(TNum)^"x"), "x"))
+      DeepDependency(TFun("f", "z", TNum, TRef(TNum)^"x"), "x"))
 
     val e3_alias = {
       val f = λ("x" ⦂ (TRef(TNum) ^ ◆)) {
@@ -248,18 +249,18 @@ class QualFSubBasicTests extends AnyFunSuite {
       f(arg)
     }
     assert(intercept[DeepDependency] { topTypeCheck(e3_alias) } ==
-      DeepDependency(TFun(Some("f"), Some("z"), TNum^(), TRef(TNum)^"x"), "x"))
+      DeepDependency(TFun("f", "z", TNum^(), TRef(TNum)^"x"), "x"))
 
     // must upcast return qualifier to self-ref `f`
     val e4 =
       (λ("x" ⦂ (TRef(TNum) ^ ◆)) { λ("f", "z")("f"♯(TNum ~> (TRef(TNum) ^ "f"))) { x } })(alloc(3))
-    assert(topTypeCheck(e4) == (TFun(Some("f"), Some("z"), TNum^(), TRef(TNum)^"f") ^ ◆))
+    assert(topTypeCheck(e4) == (TFun("f", "z", TNum^(), TRef(TNum)^"f") ^ ◆))
 
     val e4_let = 
       let("x" ⇐ alloc(0)) {
         λ("f", "z")("f"♯(TNum ~> (TRef(TNum) ^ "f"))) { x }
       }
-    assert(topTypeCheck(e4_let) == (TFun(Some("f"), Some("z"), TNum^(), TRef(TNum)^"f") ^ ◆))
+    assert(topTypeCheck(e4_let) == (TFun("f", "z", TNum^(), TRef(TNum)^"f") ^ ◆))
 
     val e5 = {
       val f = λ("x" ⦂ (TRef(TNum) ^ ◆)) {
@@ -270,7 +271,7 @@ class QualFSubBasicTests extends AnyFunSuite {
       val arg = alloc(3)
       f(arg)
     }
-    assert(topTypeCheck(e5) == (TFun(Some("f"), Some("z"), TNum^(), TRef(TNum)^"f") ^ ◆))
+    assert(topTypeCheck(e5) == (TFun("f", "z", TNum^(), TRef(TNum)^"f") ^ ◆))
   }
 
   test("separation") {
@@ -386,8 +387,8 @@ class QualFSubBasicTests extends AnyFunSuite {
     val t2: QType = (𝑔 ♯ (t1 ~> (TRef(TNum) ^ 𝑓))) ^ (𝑦)
     Counter.reset
     assert(qtypeRename(t2, "f", "g") ==
-      QType(TFun(Some("g#0"),None,
-        QType(TFun(Some("f"),Some("x"),
+      QType(TFun("g#0","Arg#2",
+        QType(TFun("f","x",
           QType(TNum,Qual(Set())),
           QType(TNum,Qual(Set("x")))),
           Qual(Set(Fresh()))),
@@ -397,15 +398,15 @@ class QualFSubBasicTests extends AnyFunSuite {
     val t3: QType = (𝑓 ♯ ((𝑥 ⦂ TNum) ~> (TNum ^ (𝑥, 𝑦)))) ^ ◆
     Counter.reset
     assert(qtypeRename(t3, "y", "x") ==
-      QType(TFun(Some("f"),Some("x#0"),QType(TNum,Qual(Set())),QType(TNum,Qual(Set("x#0", "x")))),Qual(Set(Fresh()))))
+      QType(TFun("f","x#0",QType(TNum,Qual(Set())),QType(TNum,Qual(Set("x#0", "x")))),Qual(Set(Fresh()))))
 
     //      (𝑔 ♯ ((𝑓 ♯ ((𝑥 ∶ TNum) ~> (TNum ^ 𝑥))) ^ ◆ ~> (TRef(TNum) ^ 𝑓))) ^ (𝑦)
     // then (𝑔' ♯ ((𝑓 ♯ ((𝑥 ∶ TNum) ~> (TNum ^ 𝑥))) ^ ◆ ~> (TRef(TNum) ^ 𝑔))) ^ (𝑦)
     // then (𝑔' ♯ ((𝑓' ♯ ((𝑥 ∶ TNum) ~> (TNum ^ 𝑥))) ^ ◆ ~> (TRef(TNum) ^ 𝑓))) ^ (𝑦)
     Counter.reset
     assert(qtypeRename(qtypeRename(t2, "f", "g"), "g", "f") ==
-      QType(TFun(Some("g#0"),None,
-        QType(TFun(Some("f#1"),Some("x"),
+      QType(TFun("g#0","Arg#2",
+        QType(TFun("f#1","x",
           QType(TNum,Qual(Set())),
           QType(TNum,Qual(Set("x")))),
           Qual(Set(Fresh()))),
@@ -424,9 +425,9 @@ class QualFSubBasicTests extends AnyFunSuite {
     val f_def = λ("f", "y")(f_type) { f_body }
 
     assert(typeCheck(f_def)(using Γ) ==
-      (TFun(Some("f"), Some("y"),
+      (TFun("f", "y",
         TRef(TNum)^"x",
-        TFun(Some("g"), Some("x"), TRef(TNum) ^ ◆, TRef(TNum)^"y")^"y") ^ "x"))
+        TFun("g", "x", TRef(TNum) ^ ◆, TRef(TNum)^"y")^"y") ^ "x"))
 
     val e = let ("f" ⇐ f_def) {
       EVar("f")(EVar("x"))
@@ -434,7 +435,7 @@ class QualFSubBasicTests extends AnyFunSuite {
     Counter.reset
     // Check capture-free substitution of qualifiers
     assert(typeCheck(e)(using Γ) ==
-      (TFun(Some("g"), Some("x#1"), TRef(TNum) ^ ◆,TRef(TNum)^"x") ^ "x"))
+      (TFun("g", "x#1", TRef(TNum) ^ ◆,TRef(TNum)^"x") ^ "x"))
   }
 
   test("subtype") {
@@ -506,13 +507,13 @@ class QualFSubTests extends AnyFunSuite {
   test("fsub-syntax") {
     // ∀f(X^x <: Top^◆). X^x
     val t1 = ∀("f", ("X", "x") <⦂ (TTop ^ ◆))(TVar("X") ^ "x")
-    assert(t1 == TForall(Some("f"), "X", "x", TTop^ ◆, TVar("X")^ "x"))
+    assert(t1 == TForall("f", "X", "x", TTop^ ◆, TVar("X")^ "x"))
 
     // Λf(X^x <: Top^◆). λ(y: X^x). y
     val e1 = Λ("f", ("X", "x") <⦂ (TTop ^ ◆)) {
       λ("y" ⦂ (TVar("X") ^ "x")) { EVar("y") }
     }
-    assert(e1 == ETyLam(Some("f"), "X", "x", TTop^ ◆, ELam("_", "y", TVar("X")^"x", EVar("y"), None), None))
+    assert(e1 == ETyLam("f", "X", "x", TTop^ ◆, ELam("AnnoFun#2", "y", TVar("X")^"x", EVar("y"), None), None))
   }
 
   test("poly-id") {
@@ -522,7 +523,7 @@ class QualFSubTests extends AnyFunSuite {
     }
     val e2 = TRef(TNum)^ ◆
     val e3 = alloc(42)
-    assert(topTypeCheck(e1.applyFresh(e2)) == (TFun(None, Some("y"), TRef(TNum)^ ◆, TRef(TNum)^"y") ^()))
+    assert(topTypeCheck(e1.applyFresh(e2)) == (TFun("AnnoFun#4", "y", TRef(TNum)^ ◆, TRef(TNum)^"y") ^()))
     assert(topTypeCheck(e1.applyFresh(e2).applyFresh(e3)) == (TRef(TNum)^ ◆))
 
     val e4 = TNum^()
