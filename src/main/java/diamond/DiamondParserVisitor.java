@@ -35,23 +35,23 @@ public interface DiamondParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitIdQty(DiamondParser.IdQtyContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link DiamondParser#arg}.
+	 * Visit a parse tree produced by {@link DiamondParser#param}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitArg(DiamondParser.ArgContext ctx);
+	T visitParam(DiamondParser.ParamContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link DiamondParser#argList}.
+	 * Visit a parse tree produced by {@link DiamondParser#paramList}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitArgList(DiamondParser.ArgListContext ctx);
+	T visitParamList(DiamondParser.ParamListContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link DiamondParser#namedArgList}.
+	 * Visit a parse tree produced by {@link DiamondParser#namedParamList}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitNamedArgList(DiamondParser.NamedArgListContext ctx);
+	T visitNamedParamList(DiamondParser.NamedParamListContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link DiamondParser#funTy}.
 	 * @param ctx the parse tree
@@ -119,12 +119,6 @@ public interface DiamondParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitAlloc(DiamondParser.AllocContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link DiamondParser#assign}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitAssign(DiamondParser.AssignContext ctx);
-	/**
 	 * Visit a parse tree produced by {@link DiamondParser#deref}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
@@ -149,11 +143,25 @@ public interface DiamondParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitLet(DiamondParser.LetContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link DiamondParser#def}.
+	 * Visit a parse tree produced by the {@code MonoFunDef}
+	 * labeled alternative in {@link DiamondParser#funDef}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitDef(DiamondParser.DefContext ctx);
+	T visitMonoFunDef(DiamondParser.MonoFunDefContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code PolyFunDef}
+	 * labeled alternative in {@link DiamondParser#funDef}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitPolyFunDef(DiamondParser.PolyFunDefContext ctx);
+	/**
+	 * Visit a parse tree produced by {@link DiamondParser#funDefOrExpr}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitFunDefOrExpr(DiamondParser.FunDefOrExprContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link DiamondParser#program}.
 	 * @param ctx the parse tree

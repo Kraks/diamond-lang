@@ -24,11 +24,10 @@ FALSE : 'false';
 VAL : 'val';
 IN : 'in';
 DEF : 'def';
-REF : 'ref';
-TOP : 'top';
+REF : 'Ref';
 FORALL : 'forall';
 SUBTYPE : '<:';
-UNIT : '()';
+UNIT : 'unit';
 LAM : 'lam' ;
 TYLAM : 'Lam';
 

@@ -48,35 +48,35 @@ public interface DiamondParserListener extends ParseTreeListener {
 	 */
 	void exitIdQty(DiamondParser.IdQtyContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link DiamondParser#arg}.
+	 * Enter a parse tree produced by {@link DiamondParser#param}.
 	 * @param ctx the parse tree
 	 */
-	void enterArg(DiamondParser.ArgContext ctx);
+	void enterParam(DiamondParser.ParamContext ctx);
 	/**
-	 * Exit a parse tree produced by {@link DiamondParser#arg}.
+	 * Exit a parse tree produced by {@link DiamondParser#param}.
 	 * @param ctx the parse tree
 	 */
-	void exitArg(DiamondParser.ArgContext ctx);
+	void exitParam(DiamondParser.ParamContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link DiamondParser#argList}.
+	 * Enter a parse tree produced by {@link DiamondParser#paramList}.
 	 * @param ctx the parse tree
 	 */
-	void enterArgList(DiamondParser.ArgListContext ctx);
+	void enterParamList(DiamondParser.ParamListContext ctx);
 	/**
-	 * Exit a parse tree produced by {@link DiamondParser#argList}.
+	 * Exit a parse tree produced by {@link DiamondParser#paramList}.
 	 * @param ctx the parse tree
 	 */
-	void exitArgList(DiamondParser.ArgListContext ctx);
+	void exitParamList(DiamondParser.ParamListContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link DiamondParser#namedArgList}.
+	 * Enter a parse tree produced by {@link DiamondParser#namedParamList}.
 	 * @param ctx the parse tree
 	 */
-	void enterNamedArgList(DiamondParser.NamedArgListContext ctx);
+	void enterNamedParamList(DiamondParser.NamedParamListContext ctx);
 	/**
-	 * Exit a parse tree produced by {@link DiamondParser#namedArgList}.
+	 * Exit a parse tree produced by {@link DiamondParser#namedParamList}.
 	 * @param ctx the parse tree
 	 */
-	void exitNamedArgList(DiamondParser.NamedArgListContext ctx);
+	void exitNamedParamList(DiamondParser.NamedParamListContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link DiamondParser#funTy}.
 	 * @param ctx the parse tree
@@ -188,16 +188,6 @@ public interface DiamondParserListener extends ParseTreeListener {
 	 */
 	void exitAlloc(DiamondParser.AllocContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link DiamondParser#assign}.
-	 * @param ctx the parse tree
-	 */
-	void enterAssign(DiamondParser.AssignContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link DiamondParser#assign}.
-	 * @param ctx the parse tree
-	 */
-	void exitAssign(DiamondParser.AssignContext ctx);
-	/**
 	 * Enter a parse tree produced by {@link DiamondParser#deref}.
 	 * @param ctx the parse tree
 	 */
@@ -238,15 +228,39 @@ public interface DiamondParserListener extends ParseTreeListener {
 	 */
 	void exitLet(DiamondParser.LetContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link DiamondParser#def}.
+	 * Enter a parse tree produced by the {@code MonoFunDef}
+	 * labeled alternative in {@link DiamondParser#funDef}.
 	 * @param ctx the parse tree
 	 */
-	void enterDef(DiamondParser.DefContext ctx);
+	void enterMonoFunDef(DiamondParser.MonoFunDefContext ctx);
 	/**
-	 * Exit a parse tree produced by {@link DiamondParser#def}.
+	 * Exit a parse tree produced by the {@code MonoFunDef}
+	 * labeled alternative in {@link DiamondParser#funDef}.
 	 * @param ctx the parse tree
 	 */
-	void exitDef(DiamondParser.DefContext ctx);
+	void exitMonoFunDef(DiamondParser.MonoFunDefContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code PolyFunDef}
+	 * labeled alternative in {@link DiamondParser#funDef}.
+	 * @param ctx the parse tree
+	 */
+	void enterPolyFunDef(DiamondParser.PolyFunDefContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code PolyFunDef}
+	 * labeled alternative in {@link DiamondParser#funDef}.
+	 * @param ctx the parse tree
+	 */
+	void exitPolyFunDef(DiamondParser.PolyFunDefContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link DiamondParser#funDefOrExpr}.
+	 * @param ctx the parse tree
+	 */
+	void enterFunDefOrExpr(DiamondParser.FunDefOrExprContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link DiamondParser#funDefOrExpr}.
+	 * @param ctx the parse tree
+	 */
+	void exitFunDefOrExpr(DiamondParser.FunDefOrExprContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link DiamondParser#program}.
 	 * @param ctx the parse tree

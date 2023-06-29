@@ -22,22 +22,22 @@ qual :
 
 idQty : ID ':' qty;
 
-arg :
+param :
   qty
 | idQty
 ;
 
-argList :
-  arg (',' arg)*
+paramList :
+  param (',' param)*
 ;
 
-namedArgList :
+namedParamList :
   idQty (',' idQty)*
 ;
 
 funTy :
-  ID '(' argList? ')' '=>' qty
-| '(' argList? ')' '=>' qty
+  ID '(' paramList? ')' '=>' qty
+| '(' paramList? ')' '=>' qty
 ;
 
 tyParam :
@@ -56,7 +56,7 @@ tyFunTy :
 ;
 
 ty :
-  ID // int, unit, top, bool, top, type variable
+  ID // Int, Unit, Top, Bool, type variable
 | REF '(' qty ')'
 | funTy
 | tyFunTy
@@ -99,9 +99,7 @@ expr:
 | value
 | op1 expr
 | expr op2 expr
-| let
 | alloc
-| assign
 | deref
 | '(' expr ')'
 | '{' expr '}'
@@ -111,14 +109,15 @@ expr:
 // type applications
 | expr     '[' qty ']'
 | expr '@' '[' qty ']'
+// binding
+| let
+| funDef ';' expr
+// assign
+| expr ':=' expr
 ;
 
 alloc :
-  'ref' expr
-;
-
-assign :
-  ID ':=' expr
+  'Ref' expr
 ;
 
 deref :
@@ -126,8 +125,8 @@ deref :
 ;
 
 lam :
-  LAM ID '(' namedArgList? ')' (':' qty)? '{' expr '}'
-| LAM '(' namedArgList? ')' (':' qty)? '{' expr '}'
+  LAM ID '(' namedParamList? ')' (':' qty)? '{' expr '}'
+| LAM '(' namedParamList? ')' (':' qty)? '{' expr '}'
 ;
 
 tyLam :
@@ -142,11 +141,13 @@ let :
 
 /* definition */
 
-def :
-  DEF ID '(' namedArgList? ')' (':' qty)? EQ expr
-| DEF ID '[' tyParamList ']' '(' namedArgList? ')' (':' qty)? EQ expr
+funDef :
+  DEF ID '(' namedParamList? ')' (':' qty)? EQ expr                     #MonoFunDef
+| DEF ID '[' tyParamList ']' '(' namedParamList? ')' (':' qty)? EQ expr #PolyFunDef
 ;
 
 /* top-level */
 
-program : ( def | expr )* EOF;
+funDefOrExpr : funDef | expr;
+
+program : funDefOrExpr* EOF;

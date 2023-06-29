@@ -1,13 +1,14 @@
 package diamond.qualfsub
 
 import diamond._
+import diamond.qualfsub.core._
 
-import Type._
-import Expr._
+import core.Type._
+import core.Expr._
 
-import TypeSyntax._
-import TypeSyntax.given_Conversion_Type_QType
-import ExprSyntax._
+import core.TypeSyntax._
+import core.TypeSyntax.given_Conversion_Type_QType
+import core.ExprSyntax._
 
 given Conversion[Set[String], Set[QElem]] = _.asInstanceOf[Set[QElem]]
 

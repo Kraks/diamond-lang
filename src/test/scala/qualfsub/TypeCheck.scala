@@ -2,6 +2,7 @@ package diamond.qualfsub
 
 import org.scalatest.funsuite.AnyFunSuite
 
+import diamond.qualfsub.core._
 import diamond._
 import Type._
 import Expr._

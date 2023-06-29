@@ -65,37 +65,37 @@ public class DiamondParserBaseListener implements DiamondParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterArg(DiamondParser.ArgContext ctx) { }
+	@Override public void enterParam(DiamondParser.ParamContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void exitArg(DiamondParser.ArgContext ctx) { }
+	@Override public void exitParam(DiamondParser.ParamContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterArgList(DiamondParser.ArgListContext ctx) { }
+	@Override public void enterParamList(DiamondParser.ParamListContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void exitArgList(DiamondParser.ArgListContext ctx) { }
+	@Override public void exitParamList(DiamondParser.ParamListContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterNamedArgList(DiamondParser.NamedArgListContext ctx) { }
+	@Override public void enterNamedParamList(DiamondParser.NamedParamListContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void exitNamedArgList(DiamondParser.NamedArgListContext ctx) { }
+	@Override public void exitNamedParamList(DiamondParser.NamedParamListContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
@@ -233,18 +233,6 @@ public class DiamondParserBaseListener implements DiamondParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterAssign(DiamondParser.AssignContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
-	@Override public void exitAssign(DiamondParser.AssignContext ctx) { }
-	/**
-	 * {@inheritDoc}
-	 *
-	 * <p>The default implementation does nothing.</p>
-	 */
 	@Override public void enterDeref(DiamondParser.DerefContext ctx) { }
 	/**
 	 * {@inheritDoc}
@@ -293,13 +281,37 @@ public class DiamondParserBaseListener implements DiamondParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterDef(DiamondParser.DefContext ctx) { }
+	@Override public void enterMonoFunDef(DiamondParser.MonoFunDefContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void exitDef(DiamondParser.DefContext ctx) { }
+	@Override public void exitMonoFunDef(DiamondParser.MonoFunDefContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterPolyFunDef(DiamondParser.PolyFunDefContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitPolyFunDef(DiamondParser.PolyFunDefContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterFunDefOrExpr(DiamondParser.FunDefOrExprContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitFunDefOrExpr(DiamondParser.FunDefOrExprContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

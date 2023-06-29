@@ -1,4 +1,4 @@
-package diamond.qualfsub
+package diamond.qualfsub.core
 
 /* F◆ = System F-Sub + Reference + Diamond-flavored reachability types */
 
@@ -29,7 +29,7 @@ case class Qual(set: Set[QElem]):
     if (set.isEmpty) "∅"
     else if (set.size == 1) set.head.toString
     else s"""{${set.mkString(",")}}"""
-case class QType(ty: Type, q: Qual):
+case class QType(ty: Type, q: Qual = Qual.untrack):
   override def toString = s"$ty^$q"
 
 enum Expr:
