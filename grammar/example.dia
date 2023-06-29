@@ -34,6 +34,7 @@ def g[T^z <: Top^<>](x: T^<>): T^x =
   def f1(x: T): T = x;
   def f2[A](x: A): T = { x + 5 };
   def f3[A^a <: Top^<>, B^b <: Top^<>](a: A): B = { x };
+  val zz = f();
   x + 5
 
 def f(x: Int): () => Int = lam () { 3 }

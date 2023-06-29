@@ -94,6 +94,14 @@ value :
 | tyLam
 ;
 
+args :
+  expr (',' expr)*
+;
+
+tyArgs :
+  qty (','  qty)*
+;
+
 expr:
   ID
 | value
@@ -104,11 +112,11 @@ expr:
 | '(' expr ')'
 | '{' expr '}'
 // applications
-| expr     '(' expr (',' expr)* ')'
-| expr '@' '(' expr (',' expr)* ')'
+| expr     '(' args? ')'
+| expr '@' '(' args? ')'
 // type applications
-| expr     '[' qty ']'
-| expr '@' '[' qty ']'
+| expr     '[' tyArgs ']'
+| expr '@' '[' tyArgs ']'
 // binding
 | let
 | funDef ';' expr

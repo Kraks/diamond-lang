@@ -27,6 +27,9 @@ package ir {
   case class TyParamList(tyParams: List[TyParam]) extends IR
   case class TyParam(tvar: String, qvar: Option[String], bound: core.QType) extends IR
 
+  case class ArgList(args: List[core.Expr]) extends IR
+  case class TyArgList(args: List[core.QType]) extends IR
+
   case class Expr(e: core.Expr) extends IR with TopLevel {
     def toCore: core.Expr = e
   }
@@ -145,13 +148,13 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
   }
 
   override def visitLam(ctx: LamContext): Expr = {
-    val name = if (ctx.ID != null) ctx.ID.getText.toString else "_"
+    val name = if (ctx.ID != null) ctx.ID.getText.toString else ""
     val args = visitNamedParamList(ctx.namedParamList).params
     val rt = if (ctx.qty != null) Some(visitQty(ctx.qty).toCore) else None
     val body = visitExpr(ctx.expr)
     // TODO: multi-argument lambda functions
     if (args.size == 0) {
-      Expr(core.Expr.ELam(name, "_", core.QType(core.Type.TUnit), body.toCore, rt))
+      Expr(core.Expr.ELam(name, "", core.QType(core.Type.TUnit), body.toCore, rt))
     } else if (args.size == 1) {
       Expr(core.Expr.ELam(name, args(0).name.get, args(0).qty, body.toCore, rt))
     } else error
@@ -181,11 +184,31 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
 
   override def visitDeref(ctx: DerefContext): Expr = Expr(core.Expr.EDeref(visitExpr(ctx.expr).toCore))
 
+  override def visitLet(ctx: LetContext): Expr = {
+    val rhs = visitExpr(ctx.expr(0)).toCore
+    val body = visitExpr(ctx.expr(1)).toCore
+    if (ctx.ID != null) {
+      val x = ctx.ID.getText.toString
+      Expr(core.Expr.ELet(x, None, rhs, body))
+    } else {
+      val Param(x, qty) = visitIdQty(ctx.idQty)
+      Expr(core.Expr.ELet(x.get, Some(qty), rhs, body))
+    }
+  }
+
+  override def visitArgs(ctx: ArgsContext): ArgList =
+    ArgList(ctx.expr.asScala.map(visitExpr(_).toCore).toList)
+
+  override def visitTyArgs(ctx: TyArgsContext): TyArgList =
+    TyArgList(ctx.qty.asScala.map(visitQty(_).toCore).toList)
+
   override def visitExpr(ctx: ExprContext): Expr = {
     val e: core.Expr =
       if (ctx.ID != null) core.Expr.EVar(ctx.ID.getText.toString)
-      else if (ctx.op1 != null) ???
-      else if (ctx.op2 != null) {
+      else if (ctx.op1 != null) {
+        val e = visitExpr(ctx.expr(0)).toCore
+        core.Expr.EUnaryOp(ctx.op1.getText.toString, e)
+      } else if (ctx.op2 != null) {
         val arg1 = visitExpr(ctx.expr(0)).toCore
         val arg2 = visitExpr(ctx.expr(1)).toCore
         core.Expr.EBinOp(ctx.op2.getText.toString, arg1, arg2)
@@ -193,9 +216,33 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
         val lhs = visitExpr(ctx.expr(0)).toCore
         val rhs = visitExpr(ctx.expr(1)).toCore
         core.Expr.EAssign(lhs, rhs)
-      } else if (ctx.AT != null) {
-        // TODO
-        ???
+      } else if (ctx.funDef != null) {
+        val body = visitExpr(ctx.expr(0)).toCore
+        // TODO: multi-arg definitions
+        val (f, rhs, rhsTy) = super.visit(ctx.funDef) match {
+          case MonoFunDef(f, params, rt, e) =>
+            val argName = params(0).name.getOrElse("")
+            val argTy = params(0).qty
+            val rhs = core.Expr.ELam(f, argName, argTy, e.toCore, rt.map(_.toCore))
+            val rhsTy = None
+            (f, rhs, rhsTy)
+          case PolyFunDef(f, tyParams, params, rt, e) =>
+            // FIXME
+            (f, core.Expr.ENum(0), None)
+        }
+        core.Expr.ELet(f, rhsTy, rhs, body)
+      } else if (ctx.args != null) {
+        // TODO: multi-argument application
+        val e = visitExpr(ctx.expr(0)).toCore
+        val args = visitArgs(ctx.args).args
+        if (ctx.AT != null) core.Expr.EApp(e, args(0), Some(true))
+        else core.Expr.EApp(e, args(0), None)
+      } else if (ctx.tyArgs != null) {
+        // TODO: multi-argument application
+        val e = visitExpr(ctx.expr(0)).toCore
+        val tyArgs = visitTyArgs(ctx.tyArgs).args
+        if (ctx.AT != null) core.Expr.ETyApp(e, tyArgs(0), Some(true))
+        else core.Expr.ETyApp(e, tyArgs(0), None)
       } else if (ctx.LPAREN != null && ctx.RPAREN != null) {
         visitExpr(ctx.expr(0)).toCore
       } else if (ctx.LCURLY != null && ctx.RCURLY != null) {
@@ -226,6 +273,7 @@ object Parser {
   def parseFile(filepath: String): ir.IR = parse(scala.io.Source.fromFile(filepath).mkString)
 
   def main(args: Array[String]): Unit = {
-    parseFile("grammar/example.dia")
+    val res = parseFile("grammar/" + args(0)) //example.dia
+    println(res)
   }
 }

@@ -37,6 +37,7 @@ enum Expr:
   case ENum(n: Int)
   case EBool(b: Boolean)
   case EVar(x: String)
+  case EUnaryOp(op: String, e: Expr) // FIXME
   case EBinOp(op: String, e1: Expr, e2: Expr)
   case ELam(f: String, x: String, at: QType, body: Expr, rt: Option[QType])
   case EApp(e1: Expr, e2: Expr, fresh: Option[Boolean] = None)
