@@ -2,7 +2,7 @@
 
 ![Scala CI](https://github.com/Kraks/Diamond-lang/actions/workflows/scala.yml/badge.svg)
 
-<img src="rust_diamond.png" alt="A rusty diamond by Midjourney" width="512px" height="512px"/>
+<img src="rusty_diamond.png?raw=true" alt="A rusty diamond by Midjourney" width="512px" height="512px"/>
 
 Implementing the Reachability Types.
 
