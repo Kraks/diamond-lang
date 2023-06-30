@@ -137,6 +137,7 @@ def qualSubst(q: Qual, from: String, to: Qual): Qual =
 def typeSubst(t: Type, from: String, to: Qual): Type = t match {
   case TUnit | TNum | TBool => t
   case TFun(Some(f), Some(x), t1, t2) =>
+    // FIXME: should check if f == from || x == from
     val f1 = if (to.contains(f)) Counter.fresh(f) else f
     val x1 = if (to.contains(x)) Counter.fresh(x) else x
     val at = qtypeRename(t1, f, f1)

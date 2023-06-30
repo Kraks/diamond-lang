@@ -173,21 +173,27 @@ def qualSubst(q: Qual, from: String, to: Qual): Qual =
 def typeSubstQual(t: Type, from: String, to: Qual): Type = t match {
   case TUnit | TNum | TBool => t
   case TFun(f, x, t1, t2) =>
-    val f1 = if (to.contains(f)) freshVar(f) else f
-    val x1 = if (to.contains(x)) freshVar(x) else x
-    val at = qtypeRename(t1, f, f1)
-    val rt = qtypeRename(qtypeRename(t2, x, x1), f, f1)
-    TFun(f1, x1, qtypeSubstQual(at, from, to), qtypeSubstQual(rt, from, to))
+    if (f == from || x == from) t
+    else {
+      val f1 = if (to.contains(f)) freshVar(f) else f
+      val x1 = if (to.contains(x)) freshVar(x) else x
+      val at = qtypeRename(t1, f, f1)
+      val rt = qtypeRename(qtypeRename(t2, x, x1), f, f1)
+      TFun(f1, x1, qtypeSubstQual(at, from, to), qtypeSubstQual(rt, from, to))
+    }
   case TRef(t) => TRef(typeSubstQual(t, from, to))
   // New F◆ types
   case TTop => TTop
   case TVar(x) => TVar(x)
   case TForall(f, tvar, qvar, t1, t2) =>
-    val f1 = if (to.contains(f)) freshVar(f) else f
-    val qvar1 = if (to.contains(qvar)) freshVar(qvar) else qvar
-    val bound = qtypeRename(t1, f, f1)
-    val rt = qtypeRename(qtypeRename(t2, qvar, qvar1), f, f1)
-    TForall(f1, tvar, qvar1, qtypeSubstQual(bound, from, to), qtypeSubstQual(rt, from, to))
+    if (f == from || qvar == from) t
+    else {
+      val f1 = if (to.contains(f)) freshVar(f) else f
+      val qvar1 = if (to.contains(qvar)) freshVar(qvar) else qvar
+      val bound = qtypeRename(t1, f, f1)
+      val rt = qtypeRename(qtypeRename(t2, qvar, qvar1), f, f1)
+      TForall(f1, tvar, qvar1, qtypeSubstQual(bound, from, to), qtypeSubstQual(rt, from, to))
+    }
 }
 
 def qtypeSubstQual(qt: QType, from: String, to: Qual): QType =
@@ -496,6 +502,7 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
   case ELet(x, None, rhs, body) =>
     val qt@QType(t, q) = typeCheck(rhs)
     val rt = typeCheck(body)(using Γ + (x -> qt))
+    // if rt already using the
     if (q.isFresh) checkDeepDep(rt.ty, Some(x))
     qtypeSubstQual(rt, x, q)
   case EAlloc(e) =>

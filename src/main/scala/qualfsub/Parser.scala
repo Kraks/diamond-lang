@@ -54,8 +54,12 @@ package ir {
   case class MonoFunDef(name: String, params: List[Param], rt: Option[QType], body: core.Expr) extends Def {
     // TODO: multi-arg functions
     def toLet(e: core.Expr): core.Expr.ELet = {
-      val argName = params(0).name
-      val argTy = params(0).qty
+      val argName =
+        if (params.size == 0) freshVar("AnnoVar")
+        else params(0).name
+      val argTy =
+        if (params.size == 0) core.QType(core.Type.TUnit, core.Qual.untrack)
+        else params(0).qty
       val rhs = core.Expr.ELam(name, argName, argTy, body, rt.map(_.toCore))
       val rhsTy = None
       core.Expr.ELet(name, rhsTy, rhs, e)
@@ -91,11 +95,14 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
     else error
   }
 
-  override def visitParamList(ctx: ParamListContext): ParamList = ParamList(ctx.param.asScala.map(visitParam(_)).toList)
+  override def visitParamList(ctx: ParamListContext): ParamList =
+    ParamList(ctx.param.asScala.map(visitParam(_)).toList)
 
   override def visitFunTy(ctx: FunTyContext): Type = {
     val f = if (ctx.ID != null) ctx.ID.getText.toString else freshVar("AnnoFun")
-    val args = visitParamList(ctx.paramList).params
+    val args =
+      if (ctx.paramList != null) visitParamList(ctx.paramList).params
+      else List()
     val ret = visitQty(ctx.qty).toCore
     // TODO: multi-argument function types
     if (args.size == 0) {
@@ -167,7 +174,10 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
 
   override def visitMonoFunDef(ctx: MonoFunDefContext): MonoFunDef = {
     val name = ctx.ID.getText.toString
-    val args = visitNamedParamList(ctx.namedParamList).params
+    val args =
+      if (ctx.namedParamList != null)
+        visitNamedParamList(ctx.namedParamList).params
+      else List()
     val rt = if (ctx.qty != null) Some(visitQty(ctx.qty)) else None
     val body = visitExpr(ctx.expr).toCore
     MonoFunDef(name, args, rt, body)
@@ -175,21 +185,30 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
 
   override def visitPolyFunDef(ctx: PolyFunDefContext): PolyFunDef = {
     val name = ctx.ID.getText.toString
-    val tyArgs = visitTyParamList(ctx.tyParamList).tyParams
-    val args = visitNamedParamList(ctx.namedParamList).params
+    val tyArgs =
+      if (ctx.tyParamList != null)
+        visitTyParamList(ctx.tyParamList).tyParams
+      else List()
+    val args =
+      if (ctx.namedParamList != null)
+        visitNamedParamList(ctx.namedParamList).params
+      else List()
     val rt = if (ctx.qty != null) Some(visitQty(ctx.qty)) else None
     val body = visitExpr(ctx.expr).toCore
     PolyFunDef(name, tyArgs, args, rt, body)
   }
 
   override def visitLam(ctx: LamContext): Expr = {
-    val name = if (ctx.ID != null) ctx.ID.getText.toString else ""
-    val args = visitNamedParamList(ctx.namedParamList).params
+    val name = if (ctx.ID != null) ctx.ID.getText.toString else freshVar("AnnoFun")
+    val args =
+      if (ctx.namedParamList != null)
+        visitNamedParamList(ctx.namedParamList).params
+      else List()
     val rt = if (ctx.qty != null) Some(visitQty(ctx.qty).toCore) else None
     val body = visitExpr(ctx.expr).toCore
     // TODO: multi-argument lambda functions
     if (args.size == 0) {
-      Expr(core.Expr.ELam(name, "", core.QType(core.Type.TUnit), body, rt))
+      Expr(core.Expr.ELam(name, freshVar("AnnoVar"), core.QType(core.Type.TUnit), body, rt))
     } else if (args.size == 1) {
       Expr(core.Expr.ELam(name, args(0).name, args(0).qty, body, rt))
     } else error
@@ -197,7 +216,10 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
 
   override def visitTyLam(ctx: TyLamContext): Expr = {
     val name = if (ctx.ID != null) ctx.ID.getText.toString else freshVar("AnnoTFun")
-    val tyArgs = visitTyParamList(ctx.tyParamList).tyParams
+    val tyArgs =
+      if (ctx.tyParamList != null)
+        visitTyParamList(ctx.tyParamList).tyParams
+      else List()
     val rt = if (ctx.qty != null) Some(visitQty(ctx.qty).toCore) else None
     val body = visitExpr(ctx.expr).toCore
     if (tyArgs.size == 1) {
