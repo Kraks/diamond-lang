@@ -142,9 +142,11 @@ tyLam :
 | TYLAM '[' tyParamList ']' (':' qty)? '{' expr '}'
 ;
 
+valDecl : VAL | TOPVAL;
+
 let :
-  VAL ID '=' expr ';' expr
-| VAL idQty '=' expr ';' expr
+  valDecl ID '=' expr ';' expr
+| valDecl idQty '=' expr ';' expr
 ;
 
 /* definition */

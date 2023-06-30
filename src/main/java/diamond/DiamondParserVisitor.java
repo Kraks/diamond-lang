@@ -149,6 +149,12 @@ public interface DiamondParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitTyLam(DiamondParser.TyLamContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link DiamondParser#valDecl}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitValDecl(DiamondParser.ValDeclContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link DiamondParser#let}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

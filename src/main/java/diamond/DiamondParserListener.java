@@ -238,6 +238,16 @@ public interface DiamondParserListener extends ParseTreeListener {
 	 */
 	void exitTyLam(DiamondParser.TyLamContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link DiamondParser#valDecl}.
+	 * @param ctx the parse tree
+	 */
+	void enterValDecl(DiamondParser.ValDeclContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link DiamondParser#valDecl}.
+	 * @param ctx the parse tree
+	 */
+	void exitValDecl(DiamondParser.ValDeclContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link DiamondParser#let}.
 	 * @param ctx the parse tree
 	 */

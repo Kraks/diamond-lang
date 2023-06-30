@@ -257,12 +257,13 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
   override def visitLet(ctx: LetContext): Expr = {
     val rhs = visitExpr(ctx.expr(0)).toCore
     val body = visitExpr(ctx.expr(1)).toCore
+    val isGlobal = (ctx.valDecl.TOPVAL != null)
     if (ctx.ID != null) {
       val x = ctx.ID.getText.toString
-      Expr(core.Expr.ELet(x, None, rhs, body))
+      Expr(core.Expr.ELet(x, None, rhs, body, isGlobal))
     } else {
       val Param(x, qty) = visitIdQty(ctx.idQty)
-      Expr(core.Expr.ELet(x, Some(qty), rhs, body))
+      Expr(core.Expr.ELet(x, Some(qty), rhs, body, isGlobal))
     }
   }
 
@@ -330,4 +331,8 @@ object Parser {
   }
 
   def parseFile(filepath: String): ir.Program = parse(scala.io.Source.fromFile(filepath).mkString)
+
+  def parseToCore(input: String) = parse(input).toCore
+
+  def parseFileToCore(filepath: String) = parseFile(filepath).toCore
 }

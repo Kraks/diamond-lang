@@ -43,7 +43,7 @@ enum Expr:
   case EBinOp(op: String, e1: Expr, e2: Expr)
   case ELam(f: String, x: String, at: QType, body: Expr, rt: Option[QType])
   case EApp(e1: Expr, e2: Expr, fresh: Option[Boolean] = None)
-  case ELet(x: String, t: Option[QType], rhs: Expr, body: Expr)
+  case ELet(x: String, t: Option[QType], rhs: Expr, body: Expr, global: Boolean = false)
   case EAlloc(init: Expr)
   case EUntrackedAlloc(init: Expr)
   case EAssign(lhs: Expr, rhs: Expr)

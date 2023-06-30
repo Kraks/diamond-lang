@@ -293,6 +293,18 @@ public class DiamondParserBaseListener implements DiamondParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterValDecl(DiamondParser.ValDeclContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitValDecl(DiamondParser.ValDeclContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterLet(DiamondParser.LetContext ctx) { }
 	/**
 	 * {@inheritDoc}

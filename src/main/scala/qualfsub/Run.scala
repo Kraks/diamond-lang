@@ -43,7 +43,7 @@ object RunDiamond {
     println(s"Evaluation: $str")
 
   def main(args: Array[String]): Unit = {
-    val res = Parser.parseFile("examples/" + args(0)).toCore //example.dia
+    val res = Parser.parseFileToCore("examples/" + args(0)) //example.dia
     println(s"Parsed core AST: $res")
     val t = topTypeCheck(res)
     prettyPrint(t)

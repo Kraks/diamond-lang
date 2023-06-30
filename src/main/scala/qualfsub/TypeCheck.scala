@@ -398,7 +398,7 @@ def freeVars(e: Expr): Set[String] = e match {
   case EBinOp(op, e1, e2) => freeVars(e1) ++ freeVars(e2)
   case ELam(f, x, _, e, _) => freeVars(e) -- Set(f, x)
   case EApp(e1, e2, _) => freeVars(e1) ++ freeVars(e2)
-  case ELet(x, _, rhs, body) => freeVars(rhs) ++ (freeVars(body) - x)
+  case ELet(x, _, rhs, body, _) => freeVars(rhs) ++ (freeVars(body) - x)
   case EAlloc(e) => freeVars(e)
   case EUntrackedAlloc(e) => freeVars(e)
   case EAssign(e1, e2) => freeVars(e1) ++ freeVars(e2)
@@ -490,7 +490,7 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
       try typeCheck(EApp(e1, e2, Some(true)))
       catch case ex: RuntimeException => typeCheck(EApp(e1, e2, Some(false)))
     }
-  case ELet(x, Some(qt1), rhs, body) =>
+  case ELet(x, Some(qt1), rhs, body, isGlobal) =>
     qtypeWFCheck(qt1)
     val QType(t1, q1) = qt1
     val qt2 = typeCheck(rhs)
@@ -498,13 +498,15 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     val rt = typeCheck(body)(using Γ + (x -> qt1))
     // Note: here we are not using the more precise qualifier for substitution
     if (q1.isFresh) checkDeepDep(rt.ty, Some(x))
-    qtypeSubstQual(rt, x, q1)
-  case ELet(x, None, rhs, body) =>
+    if (isGlobal) rt
+    else qtypeSubstQual(rt, x, q1)
+  case ELet(x, None, rhs, body, isGlobal) =>
     val qt@QType(t, q) = typeCheck(rhs)
     val rt = typeCheck(body)(using Γ + (x -> qt))
     // if rt already using the
     if (q.isFresh) checkDeepDep(rt.ty, Some(x))
-    qtypeSubstQual(rt, x, q)
+    if (isGlobal) rt
+    else qtypeSubstQual(rt, x, q)
   case EAlloc(e) =>
     val QType(t, q) = typeCheck(e)
     checkUntrackQual(q)

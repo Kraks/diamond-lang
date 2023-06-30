@@ -71,7 +71,7 @@ def eval(e: Expr, ρ: Env, σ: Store): (Value, Store) = e match {
     val (v, σ2) = eval(e2, ρ, σ1)
     val (ℓ, σ3) = σ2.alloc
     eval(body, ρ1 + (x -> ℓ), σ3 + (ℓ -> v))
-  case ELet(x, _, rhs, body) =>
+  case ELet(x, _, rhs, body, _) =>
     val (v, σ1) = eval(rhs, ρ, σ)
     val (ℓ, σ2) = σ1.alloc
     eval(body, ρ + (x -> ℓ), σ2 + (ℓ -> v))

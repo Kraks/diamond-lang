@@ -23,7 +23,7 @@ To get started with the project, you need `sbt`, the build tool for Scala projec
 You can install `sbt` and JVM environment using [Coursier](https://get-coursier.io/docs/cli-installation).
 
 You can play with the type checker and interpreter by writing programs under `examples` and run
-the following command to test it (e.g. `run polyId.dia`).
+the following command to see its type and evaluation result (e.g. `run polyId.dia`).
 
 ```
 sbt:Diamond> run <filename.dia>

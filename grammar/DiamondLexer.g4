@@ -22,6 +22,7 @@ TRUE : 'true';
 FALSE : 'false';
 
 VAL : 'val';
+TOPVAL : 'topval';
 IN : 'in';
 DEF : 'def';
 REF : 'Ref';
