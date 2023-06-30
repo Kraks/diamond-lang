@@ -26,7 +26,7 @@ class QualFSubEvalTests extends AnyFunSuite {
     assert(v == VLoc(2))
     assert(σ ==
       Store(Map(
-        VLoc(0) -> VPolyFun(ELam("AnnoFun#1","y",TVar("T")^ ◆,EVar("y"),None),
+        VLoc(0) -> VPolyFun("AnnoTFun#0", ELam("AnnoFun#1","y",TVar("T")^ ◆,EVar("y"),None),
           Env(Map("AnnoTFun#0" -> VLoc(0)))),
         VLoc(1) -> VFun("AnnoFun#1","y",EVar("y"),
           Env(Map(

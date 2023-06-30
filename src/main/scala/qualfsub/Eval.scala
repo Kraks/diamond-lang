@@ -12,7 +12,7 @@ enum Value:
   case VBool(b: Boolean)
   case VLoc(n: Int)
   case VFun(f: String, x: String, e: Expr, env: Env)
-  case VPolyFun(e: Expr, env: Env)
+  case VPolyFun(f: String, e: Expr, env: Env)
 
 import Value._
 
@@ -78,10 +78,10 @@ def eval(e: Expr, ρ: Env, σ: Store): (Value, Store) = e match {
   case ETyLam(f, _, _, _, body, _) =>
     val (ℓ, σ1) = σ.alloc
     val ρ1 = ρ + (f -> ℓ)
-    val fv = VPolyFun(body, ρ1)
+    val fv = VPolyFun(f, body, ρ1)
     (fv, σ1 + (ℓ -> fv))
   case ETyApp(e, t, _) =>
-    val (VPolyFun(body, ρ1), σ1) = eval(e, ρ, σ)
+    val (VPolyFun(_, body, ρ1), σ1) = eval(e, ρ, σ)
     eval(body, ρ1, σ1)
   case EAlloc(e) =>
     val (v, σ1) = eval(e, ρ, σ)

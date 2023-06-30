@@ -4,7 +4,7 @@
 
 <img src="rusty_diamond.png?raw=true" alt="A rusty diamond by Midjourney" width="512px" height="512px"/>
 
-Implementing the Reachability Types.
+A prototype programming language with polymorphic reachability types.
 
 ## Examples
 
@@ -20,7 +20,7 @@ x + (! c)                        // : Int^∅
 ## How-To
 
 To get started with the project, you need `sbt`, the build tool for Scala projects.
-You can install `sbt` and JVM environment using [Couriser](https://get-coursier.io/docs/cli-installation).
+You can install `sbt` and JVM environment using [Coursier](https://get-coursier.io/docs/cli-installation).
 
 You can play with the type checker and interpreter by writing programs under `examples` and run
 the following command to test it (e.g. `run polyId.dia`).
@@ -37,7 +37,7 @@ sbt:Diamond> test
 
 ## Structure
 
-- `src/main/scala/qualfsub`:
+- `src/main/scala/qualfsub`
     * `CoreLang.scala` the core language definitions.
     * `TypeCheck.scala` the type checker.
     * `Eval.scala` the interpreter.

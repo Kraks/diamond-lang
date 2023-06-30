@@ -5,6 +5,19 @@ import diamond.parser._
 import org.antlr.v4.runtime._
 import scala.collection.JavaConverters._
 
+// Italic style letters are prefixes for anonymous entities generated during parsing
+
+val letPre = "ℓ"
+def letPre(n: Int): String = letPre + "#" + n
+val tyFunPre = "𝐹"
+def tyFunPre(n: Int): String = tyFunPre + "#" + n
+val funPre = "𝑓"
+def funPre(n: Int): String = funPre + "#" + n
+val varPre = "𝑥"
+def varPre(n: Int): String = varPre + "#" + n
+val tyVarPre = "𝑋"
+def tyVarPre(n: Int): String = tyVarPre + "#" + n
+
 package ir {
   abstract class IR
   trait TopLevel
@@ -16,7 +29,7 @@ package ir {
       }
       newTops.foldRight(last) {
         case (Expr(e), last) =>
-          core.Expr.ELet(freshVar("AnnoLet"), None, e, last)
+          core.Expr.ELet(freshVar(letPre), None, e, last)
         case (d: Def, last) =>
           d.toLet(last)
       }
@@ -55,7 +68,7 @@ package ir {
     // TODO: multi-arg functions
     def toLet(e: core.Expr): core.Expr.ELet = {
       val argName =
-        if (params.size == 0) freshVar("AnnoVar")
+        if (params.size == 0) freshVar(varPre)
         else params(0).name
       val argTy =
         if (params.size == 0) core.QType(core.Type.TUnit, core.Qual.untrack)
@@ -69,7 +82,7 @@ package ir {
     // TODO: multi-arg functions
     def toLet(e: core.Expr): core.Expr.ELet = {
       val ty = tyParams(0)
-      val lamBody = core.Expr.ELam(freshVar("AnnoFun"), params(0).name, params(0).qty, body, rt.map(_.toCore))
+      val lamBody = core.Expr.ELam(freshVar(funPre), params(0).name, params(0).qty, body, rt.map(_.toCore))
       val rhs = core.Expr.ETyLam(name, ty.tvar, ty.qvar, ty.bound, lamBody, None)
       val rhsTy = None
       core.Expr.ELet(name, rhsTy, rhs, e)
@@ -99,14 +112,14 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
     ParamList(ctx.param.asScala.map(visitParam(_)).toList)
 
   override def visitFunTy(ctx: FunTyContext): Type = {
-    val f = if (ctx.ID != null) ctx.ID.getText.toString else freshVar("AnnoFun")
+    val f = if (ctx.ID != null) ctx.ID.getText.toString else freshVar(funPre)
     val args =
       if (ctx.paramList != null) visitParamList(ctx.paramList).params
       else List()
     val ret = visitQty(ctx.qty).toCore
     // TODO: multi-argument function types
     if (args.size == 0) {
-      Type(core.Type.TFun(f, freshVar("Arg"), core.QType(core.Type.TUnit), ret))
+      Type(core.Type.TFun(f, freshVar(varPre), core.QType(core.Type.TUnit), ret))
     } else if (args.size == 1) {
       Type(core.Type.TFun(f, args(0).name, args(0).qty, ret))
     } else error
@@ -114,9 +127,9 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
 
   override def visitTyParam(ctx: TyParamContext): TyParam = {
     if (ctx.ID.size == 1 && ctx.ty == null) {
-      TyParam(ctx.ID(0).getText.toString, freshVar("AnnoQVar"), coreTop)
+      TyParam(ctx.ID(0).getText.toString, freshVar(varPre), coreTop)
     } else if (ctx.ID.size == 1 && ctx.ty != null) {
-      TyParam(ctx.ID(0).getText.toString, freshVar("AnnoQVar"), core.QType(visitTy(ctx.ty).toCore, core.Qual.fresh))
+      TyParam(ctx.ID(0).getText.toString, freshVar(varPre), core.QType(visitTy(ctx.ty).toCore, core.Qual.fresh))
     } else if (ctx.ID.size == 2) {
       TyParam(ctx.ID(0).getText.toString, ctx.ID(1).getText.toString, visitQty(ctx.qty).toCore)
     } else error
@@ -125,7 +138,7 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
   override def visitTyParamList(ctx: TyParamListContext): TyParamList = TyParamList(ctx.tyParam.asScala.map(visitTyParam(_)).toList)
 
   override def visitTyFunTy(ctx: TyFunTyContext): Type = {
-    val f = if (ctx.ID != null) ctx.ID.getText.toString else freshVar("AnnoTFun")
+    val f = if (ctx.ID != null) ctx.ID.getText.toString else freshVar(tyFunPre)
     val args = visitTyParamList(ctx.tyParamList).tyParams
     val ret = visitQty(ctx.qty).toCore
     if (args.size == 1) {
@@ -199,7 +212,7 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
   }
 
   override def visitLam(ctx: LamContext): Expr = {
-    val name = if (ctx.ID != null) ctx.ID.getText.toString else freshVar("AnnoFun")
+    val name = if (ctx.ID != null) ctx.ID.getText.toString else freshVar(funPre)
     val args =
       if (ctx.namedParamList != null)
         visitNamedParamList(ctx.namedParamList).params
@@ -208,14 +221,14 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
     val body = visitExpr(ctx.expr).toCore
     // TODO: multi-argument lambda functions
     if (args.size == 0) {
-      Expr(core.Expr.ELam(name, freshVar("AnnoVar"), core.QType(core.Type.TUnit), body, rt))
+      Expr(core.Expr.ELam(name, freshVar(varPre), core.QType(core.Type.TUnit), body, rt))
     } else if (args.size == 1) {
       Expr(core.Expr.ELam(name, args(0).name, args(0).qty, body, rt))
     } else error
   }
 
   override def visitTyLam(ctx: TyLamContext): Expr = {
-    val name = if (ctx.ID != null) ctx.ID.getText.toString else freshVar("AnnoTFun")
+    val name = if (ctx.ID != null) ctx.ID.getText.toString else freshVar(tyFunPre)
     val tyArgs =
       if (ctx.tyParamList != null)
         visitTyParamList(ctx.tyParamList).tyParams
