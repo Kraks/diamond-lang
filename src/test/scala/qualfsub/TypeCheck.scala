@@ -505,6 +505,8 @@ class QualFSubBasicTests extends AnyFunSuite {
 
 class QualFSubTests extends AnyFunSuite {
   test("fsub-syntax") {
+    Counter.reset
+
     // ∀f(X^x <: Top^◆). X^x
     val t1 = ∀("f", ("X", "x") <⦂ (TTop ^ ◆))(TVar("X") ^ "x")
     assert(t1 == TForall("f", "X", "x", TTop^ ◆, TVar("X")^ "x"))
@@ -513,7 +515,7 @@ class QualFSubTests extends AnyFunSuite {
     val e1 = Λ("f", ("X", "x") <⦂ (TTop ^ ◆)) {
       λ("y" ⦂ (TVar("X") ^ "x")) { EVar("y") }
     }
-    assert(e1 == ETyLam("f", "X", "x", TTop^ ◆, ELam("AnnoFun#2", "y", TVar("X")^"x", EVar("y"), None), None))
+    assert(e1 == ETyLam("f", "X", "x", TTop^ ◆, ELam("AnnoFun#0", "y", TVar("X")^"x", EVar("y"), None), None))
   }
 
   test("poly-id") {
@@ -523,7 +525,7 @@ class QualFSubTests extends AnyFunSuite {
     }
     val e2 = TRef(TNum)^ ◆
     val e3 = alloc(42)
-    assert(topTypeCheck(e1.applyFresh(e2)) == (TFun("AnnoFun#4", "y", TRef(TNum)^ ◆, TRef(TNum)^"y") ^()))
+    assert(topTypeCheck(e1.applyFresh(e2)) == (TFun("AnnoFun#2", "y", TRef(TNum)^ ◆, TRef(TNum)^"y") ^()))
     assert(topTypeCheck(e1.applyFresh(e2).applyFresh(e3)) == (TRef(TNum)^ ◆))
 
     val e4 = TNum^()

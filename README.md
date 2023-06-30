@@ -1,19 +1,21 @@
 # The Diamond Language
 
+![Scala CI](https://github.com/Kraks/Diamond-lang/actions/workflows/scala.yml/badge.svg)
+
+<img src="rust_diamond.png" alt="A rusty diamond by Midjourney" width="512px" height="512px"/>
+
 Implementing the Reachability Types.
 
-## Structure
+## Examples
 
-- `src/main/scala/qualfsub`:
-    * `CoreLang.scala` the core language definitions.
-    * `TypeCheck.scala` the type checker.
-        + top-level driver `topTypeCheck` and `typeCheck`.
-        + subtype relation `isSubQType`, `isSubType`, `isSubQual`.
-    * `Eval.scala` the interpreter.
-    * `Parser.scala` parser that translates the Diamond front-end language to the core language.
-- `src/test/scala` test cases.
-- `examples` examples written in the Diamond front-end language.
-- `coq`: Coq proof for the metatheory of algorithmic subtyping used in the implementation.
+- Polymorphic identity function (`examples/polyId.dia`):
+
+```scala
+def polyId[T <: Top](x: T^<>): T^x = x
+val x = id[Int](3);              // : Int^∅
+val c = id[Ref[Int]^<>](Ref 42); // : Ref[Int]^◆
+x + (! c)                        // : Int^∅
+```
 
 ## How-To
 
@@ -21,7 +23,7 @@ To get started with the project, you need `sbt`, the build tool for Scala projec
 You can install `sbt` and JVM environment using [Couriser](https://get-coursier.io/docs/cli-installation).
 
 You can play with the type checker and interpreter by writing programs under `examples` and run
-the following command to test it:
+the following command to test it (e.g. `run polyId.dia`).
 
 ```
 sbt:Diamond> run <filename.dia>
@@ -32,6 +34,17 @@ You can also run `test` to check all mechanized test cases.
 ```
 sbt:Diamond> test
 ```
+
+## Structure
+
+- `src/main/scala/qualfsub`:
+    * `CoreLang.scala` the core language definitions.
+    * `TypeCheck.scala` the type checker.
+    * `Eval.scala` the interpreter.
+    * `Parser.scala` the parser that translates the Diamond front-end language to the core language.
+- `src/test/scala` test cases.
+- `examples` examples written in the Diamond front-end language.
+- `coq`: Coq proof for the metatheory of algorithmic subtyping used in the implementation.
 
 ## References
 
