@@ -7,7 +7,7 @@ f1(0)
 // Ok
 def f2(x: Int): (g() => Ref[Int]^g)^<> =
   val c = Ref x;
-  lam g(): Ref[Int]^g { c };
+  lam g(): Ref[Int]^g { c }
 f2(0)
 
 // Ok
