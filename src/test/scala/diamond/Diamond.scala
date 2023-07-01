@@ -26,6 +26,14 @@ class DiamondTest extends AnyFunSuite {
     """
     assert(parseAndCheck(p1) == (TNum^()))
 
+    val p1_simple = """
+    def id[T](x: T^<>) = x;
+    val x = id[Int](3);              // : Int^∅
+    val c = id[Ref[Int]^<>](Ref 42); // : Ref[Int]^◆
+    x + (! c)                        // : Int^∅
+    """
+    assert(parseAndCheck(p1_simple) == (TNum^()))
+
     // Sec 2.2.4
     val p2 = """
     val x = 42;
@@ -40,6 +48,16 @@ class DiamondTest extends AnyFunSuite {
     id[Ref[Int]^<>](y)
     """
     assert(parseAndCheck(p3) == (TRef(TNum)^"y"))
+
+    val p4 = """
+    def id[T^z <: Top^<>](x: T^z): T^x = x;    // Now x's qualifier is abstract z
+    val x = id[Int](3);                        // : Int^∅
+    // val c = id[Ref[Int]^<>](Ref 42);        // error because of deep dependency of z when z is fresh
+    val c1 = Ref 42;
+    val c2 = id[Ref[Int]^c1](c1);
+    x + (! c2)                                 // : Int^∅
+    """
+    assert(parseAndCheck(p4) == (TNum^()))
   }
 
   test("fake-id") {
