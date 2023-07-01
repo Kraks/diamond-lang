@@ -25,6 +25,21 @@ class DiamondTest extends AnyFunSuite {
     x + (! c)                        // : Int^∅
     """
     assert(parseAndCheck(p1) == (TNum^()))
+
+    // Sec 2.2.4
+    val p2 = """
+    val x = 42;
+    def id[T <: Top](x: T^<>): T^x = x;
+    id[Int](x)
+    """
+    assert(parseAndCheck(p2) == (TNum^()))
+
+    val p3 = """
+    topval y = Ref 42;
+    def id[T <: Top](x: T^<>): T^x = x;
+    id[Ref[Int]^<>](y)
+    """
+    assert(parseAndCheck(p3) == (TRef(TNum)^"y"))
   }
 
   test("fake-id") {
@@ -68,12 +83,15 @@ class DiamondTest extends AnyFunSuite {
     """
     assert(parseAndCheck(p2) == (TRef(TNum) ^ "c2"))
 
+    // Sec 2.2.6 from the paper:
+    // qualifier-dependent application (non-fresh)
     val p3 = """
     topval c = Ref 42;
     def f(x: Ref[Int]^c): (() => Ref[Int]^x)^x = lam () { x };
     f(c)
     """
     assert(parseAndCheck(p3) == (TFun("𝑓#0","𝑥#1",TUnit^(),TRef(TNum)^"c")^"c"))
+
   }
 
   test("separation") {
@@ -116,6 +134,52 @@ class DiamondTest extends AnyFunSuite {
     f@(c1)
     """
     assert(parseAndCheck(p5) == (TNum ^ ()))
+
+    def p6(allow: String, use: String, arg: String) = s"""
+    def id(x: Ref[Int]^<>): Ref[Int]^x = x;
+    val x = Ref 42;
+    val y = id(x);
+    def f(z: Ref[Int]^{<>, $allow}): Int = (! $use) + (! z);
+    f@($arg)
+    """
+    assert(parseAndCheck(p6("x", "x", "x")) == (TNum^()))
+    assert(parseAndCheck(p6("x", "x", "y")) == (TNum^()))
+    assert(parseAndCheck(p6("x", "y", "x")) == (TNum^()))
+    assert(parseAndCheck(p6("x", "y", "y")) == (TNum^()))
+    assert(parseAndCheck(p6("y", "x", "x")) == (TNum^()))
+    assert(parseAndCheck(p6("y", "x", "y")) == (TNum^()))
+    assert(parseAndCheck(p6("y", "y", "x")) == (TNum^()))
+    assert(parseAndCheck(p6("y", "y", "y")) == (TNum^()))
+
+    def p7(use: String, arg: String) = s"""
+    def id(x: Ref[Int]^<>): Ref[Int]^x = x;
+    val x = Ref 42;
+    val y = id(x);
+    def f(z: Ref[Int]^{<>}): Int = (! $use) + (! z);
+    f@($arg)
+    """
+    intercept[NonOverlap] { parseAndCheck(p7("x", "x")) }
+    intercept[NonOverlap] { parseAndCheck(p7("x", "y")) }
+    intercept[NonOverlap] { parseAndCheck(p7("y", "x")) }
+    intercept[NonOverlap] { parseAndCheck(p7("y", "y")) }
+  }
+
+  test("free-var-in-type") {
+    // Permitting g and f have overlap x
+    val p1 = """
+    val x = Ref 0;
+    def f(g: ((Int) => Ref[Int]^x)^x): Ref[Int]^x = g(0);
+    f(lam (y: Int) { x })
+    """
+    assert(parseAndCheck(p1) == (TRef(TNum)^ ◆))
+
+    // Do not permit any overlap between g and f
+    val p2 = """
+    val x = Ref 0;
+    def f(g: ((Int) => Ref[Int]^x)): Ref[Int]^x = g(0);
+    f@(lam (y: Int) { x }) // to enforce checking overlap
+    """
+    intercept[NonOverlap] { parseAndCheck(p2) }
   }
 
   test("escape") {
@@ -130,7 +194,7 @@ class DiamondTest extends AnyFunSuite {
     val p2 = """
     def f2(x: Int): (g() => Ref[Int]^g)^<> =
       val c = Ref x;
-      lam g(): Ref[Int]^g { c } 
+      lam g(): Ref[Int]^g { c }
     f2(0)
     """
     assert(parseAndCheck(p2) == (TFun("g","𝑥#0",TUnit^(),TRef(TNum)^"g")^ ◆))
