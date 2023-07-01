@@ -489,7 +489,7 @@ class QualSTLCTests extends AnyFunSuite {
           EVar("f")( λ("y" ⦂ TNum) { EVar("x") } )
         }
       }
-    println(topTypeCheck(let0))
+    assert(topTypeCheck(let0) == (TRef(TNum)^ ◆))
 
     /* val x = alloc(0)
      * def f(g: (Int -> Ref[Int]^x)^∅): Ref[Int]^x = g(0)
