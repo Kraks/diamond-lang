@@ -17,7 +17,7 @@ val c = id[Ref[Int]^<>](Ref 42); // : Ref[Int]^◆
 x + (! c)                        // : Int^∅
 ```
 
-## How-To
+## Get Started
 
 To get started with the project, you need `sbt`, the build tool for Scala projects.
 You can install `sbt` and JVM environment using [Coursier](https://get-coursier.io/docs/cli-installation).
