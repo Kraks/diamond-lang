@@ -243,5 +243,28 @@ class DiamondTest extends AnyFunSuite {
     f5(0)
     """
     assert(parseAndCheck(p5) == (TFun("g","𝑥#0",TUnit^(),TRef(TNum)^"g")^ ◆))
+
+    val p6 = """
+    def f6(x: Int): (g() => Ref[Int]^g)^<> =
+      val c = Ref x;
+      val g: (g() => Ref[Int]^g)^c = lam g() { c };
+      g;
+    f6(0)
+    """
+    // Not okay: `lam g() { c };` is first typed as `(g() => Ref(Int)^c)^c`,
+    // but it is not a subtype of `(g() => Ref(Int)^g)^c`.
+    // Because S-Fun rule assign fresh as the qualifier to the function type of `g`,
+    // which prevents from using Q-Self to upcast `c` to `g`.
+    intercept[NotSubQType] { parseAndCheck(p6) }
+
+    // Similarly this case, but the error happens a bit later when leaving
+    // the scope of `c`.
+    val p7 = """
+    def f7(x: Int): (g() => Ref[Int]^g)^<> =
+      val c = Ref x;
+      lam g() { c };
+    f7(0)
+    """
+    intercept[DeepDependency] { parseAndCheck(p7) }
   }
 }
