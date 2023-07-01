@@ -158,6 +158,4 @@ funDef :
 
 /* top-level */
 
-funDefOrExpr : funDef | expr;
-
-program : funDefOrExpr* EOF;
+program : expr* EOF;

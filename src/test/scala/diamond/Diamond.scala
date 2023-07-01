@@ -19,7 +19,7 @@ class DiamondTest extends AnyFunSuite {
 
   test("poly-id") {
     val p1 = """
-    def id[T <: Top](x: T^<>): T^x = x
+    def id[T <: Top](x: T^<>): T^x = x;
     val x = id[Int](3);              // : Int^∅
     val c = id[Ref[Int]^<>](Ref 42); // : Ref[Int]^◆
     x + (! c)                        // : Int^∅
@@ -44,7 +44,7 @@ class DiamondTest extends AnyFunSuite {
 
   test("fake-id") {
     val p1 = """
-    def id(x: Ref[Int]^<>): Ref[Int]^x = Ref 42
+    def id(x: Ref[Int]^<>): Ref[Int]^x = Ref 42;
     id
     """
     assert(intercept[NotSubQType] { parseAndCheck(p1) }
@@ -186,7 +186,7 @@ class DiamondTest extends AnyFunSuite {
     val p1 = """
     def f1(x: Int) =                                                                            
       val c = Ref x;
-      lam g(): Ref[Int]^g { c } 
+      lam g(): Ref[Int]^g { c };
     f1(0)
     """
     assert(parseAndCheck(p1) == (TFun("g","𝑥#0",TUnit^(),TRef(TNum)^"g")^ ◆))
@@ -194,7 +194,7 @@ class DiamondTest extends AnyFunSuite {
     val p2 = """
     def f2(x: Int): (g() => Ref[Int]^g)^<> =
       val c = Ref x;
-      lam g(): Ref[Int]^g { c }
+      lam g(): Ref[Int]^g { c };
     f2(0)
     """
     assert(parseAndCheck(p2) == (TFun("g","𝑥#0",TUnit^(),TRef(TNum)^"g")^ ◆))
@@ -203,7 +203,7 @@ class DiamondTest extends AnyFunSuite {
     def f3(x: Int): (g() => Ref[Int]^g)^<> =
       val c = Ref x;
       def g(): Ref[Int]^g = c;
-      g
+      g;
     f3(0)
     """
     assert(parseAndCheck(p3) == (TFun("g","𝑥#0",TUnit^(),TRef(TNum)^"g")^ ◆))
@@ -212,7 +212,7 @@ class DiamondTest extends AnyFunSuite {
     def f4(x: Int): (g() => Ref[Int]^g)^<> =
       val c = Ref x;
       val g = lam g(): Ref[Int]^g { c };
-      g
+      g;
     f4(0)
     """
     assert(parseAndCheck(p4) == (TFun("g","𝑥#0",TUnit^(),TRef(TNum)^"g")^ ◆))
@@ -221,7 +221,7 @@ class DiamondTest extends AnyFunSuite {
     def f5(x: Int): (g() => Ref[Int]^g)^<> =
       val c = Ref x;
       val g: (g() => Ref[Int]^g)^c = lam g(): Ref[Int]^g { c };
-      g
+      g;
     f5(0)
     """
     assert(parseAndCheck(p5) == (TFun("g","𝑥#0",TUnit^(),TRef(TNum)^"g")^ ◆))

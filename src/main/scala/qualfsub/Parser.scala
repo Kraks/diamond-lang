@@ -21,17 +21,14 @@ def tyVarPre(n: Int): String = tyVarPre + "#" + n
 package ir {
   abstract class IR
   trait TopLevel
-  case class Program(tops: List[TopLevel]) extends IR {
+  case class Program(tops: List[Expr]) extends IR {
     def toCore: core.Expr = {
       val (newTops, last) = tops.last match {
         case Expr(e) => (tops.dropRight(1), e)
-        case _ => (tops, core.Expr.EUnit)
       }
       newTops.foldRight(last) {
         case (Expr(e), last) =>
           core.Expr.ELet(freshVar(letPre), None, e, last)
-        case (d: Def, last) =>
-          d.toLet(last)
       }
     }
   }
@@ -57,11 +54,11 @@ package ir {
   case class ArgList(args: List[core.Expr]) extends IR
   case class TyArgList(args: List[core.QType]) extends IR
 
-  case class Expr(e: core.Expr) extends IR with TopLevel {
+  case class Expr(e: core.Expr) extends IR {
     def toCore: core.Expr = e
   }
 
-  abstract class Def extends IR with TopLevel {
+  abstract class Def extends IR {
     def toLet(e: core.Expr): core.Expr.ELet
   }
   case class MonoFunDef(name: String, params: List[Param], rt: Option[QType], body: core.Expr) extends Def {
@@ -313,8 +310,8 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
   }
 
   override def visitProgram(ctx: ProgramContext): IR = {
-    val topLevels  = ctx.funDefOrExpr.asScala.map(visit(_)).toList
-    Program(topLevels.asInstanceOf[List[TopLevel]])
+    val exprs = ctx.expr.asScala.map(visit(_)).toList
+    Program(exprs.asInstanceOf[List[Expr]])
   }
 }
 

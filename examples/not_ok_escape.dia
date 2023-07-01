@@ -3,12 +3,12 @@
 def f6(x: Int): (g() => Ref[Int]^g)^<> =
   val c = Ref x;
   val g: (g() => Ref[Int]^g)^c = lam g() { c };
-  g
+  g;
 f6(0)
 
 // Not Ok
 def f7(x: Int): (g() => Ref[Int]^g)^<> =
   val c = Ref x;
-  lam g() { c }
+  lam g() { c };
 
 f7(0)

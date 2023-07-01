@@ -1,14 +1,14 @@
 def f(x: Int, y: Int ^ {x, y, <>}) =
   val a = 3+fo0;
-  x && y
+  x && y;
 
-def id(z: Ref(Int)^♦, n: Int): Int^{z, ♦} = x
+def id(z: Ref[Int]^♦, n: Int): Int^{z, ♦} = x;
 
-def polyId[T](x: T): T = x
+def polyId[T](x: T): T = x;
 
-def polyId[T <: Top](x: T): T = x
+def polyId[T <: Top](x: T): T = x;
 
-def polyId[T^z <: Top^<>](x: T^<>): T^x =  x
+def polyId[T^z <: Top^<>](x: T^<>): T^x =  x;
 
 val polyId: forall[A] => (A) => A =
   Lam [A] { lam(x: A) { x } };
@@ -16,10 +16,10 @@ val polyId: forall[A] => (A) => A =
 val polyId: (forall polyId[A^a <: Top^<>] => ((x: A^a) => A^x)^{w})^{w} =
   Lam polyId[A^a <: Top^<>] { lam(x: A^a) { x } };
 
-val _ = polyId[Ref(Int)^<>](alloc(0));
+val _ = polyId[Ref[Int]^<>](alloc(0));
 val x = alloc@(0);
-val g = lam f(g: g(zz: Ref(Int)^x, Int, w: Unit) => Int) { g(0) };
-val f = lam f(g: g(zz: Ref(Int)^x, Int, w: Unit) => Int): Int^{x} { g(0) };
+val g = lam f(g: g(zz: Ref[Int]^x, Int, w: Unit) => Int) { g(0) };
+val f = lam f(g: g(zz: Ref[Int]^x, Int, w: Unit) => Int): Int^{x} { g(0) };
 val _ = ! x;
 val z = ! (Ref x) + 3;
 z
@@ -28,15 +28,16 @@ def f2[T^z <: Top^<>](x: T^<>): T^x =
   val f1 = lam(x: T): T { x };
   val f2 = Lam g[A]: Int { x + 5 };
   val f3 = Lam [A^a <: Top^<>, B^b <: Top^<>]: (A) => B { lam(x: A) { x } };
-  x + 5
+  x + 5;
 
 def g[T^z <: Top^<>](x: T^<>): T^x =
   def f1(x: T): T = x;
   def f2[A](x: A): T = { x + 5 };
   def f3[A^a <: Top^<>, B^b <: Top^<>](a: A): B = { x };
   val zz = f();
-  x + 5
+  x + 5;
 
-def f(x: Int): () => Int = lam () { 3 }
+def f(x: Int): () => Int = lam () { 3 };
 
-def g(x: Int): (Unit) => Int = lam (u: Unit) { 3 }
+def g(x: Int): (Unit) => Int = lam (u: Unit) { 3 };
+0

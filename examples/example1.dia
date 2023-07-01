@@ -2,13 +2,13 @@
 
 def f(x: Int^{y}) =
   val a = 3+fo0;
-  x && y
+  x && y;
 
-def polyId[T](x: T): T = x
+def polyId[T](x: T): T = x;
 
-def polyId[T <: Top](x: T): T = x
+def polyId[T <: Top](x: T): T = x;
 
-def polyId[T^z <: Top^<>](x: T^<>): T^x =  x
+def polyId[T^z <: Top^<>](x: T^<>): T^x =  x;
 
 val polyId: forall[A] => (A) => A =
   Lam [A] { lam(x: A) { x } };
@@ -16,7 +16,7 @@ val polyId: forall[A] => (A) => A =
 val polyId: (forall polyId[A^a <: Top^<>] => ((x: A^a) => A^x)^{w})^{w} =
   Lam polyId[A^a <: Top^<>] { lam(x: A^a) { x } };
 
-val _ = polyId[Ref(Int)^<>](alloc(0));
+val _ = polyId[Ref[Int]^<>](alloc(0));
 val x = alloc@(0);
 val _ = ! x;
 val z = ! (Ref x) + 3;

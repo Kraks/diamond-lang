@@ -1,4 +1,4 @@
-def polyId[T^z <: Top^<>](x: T^<>): T^x = x
+def polyId[T^z <: Top^<>](x: T^<>): T^x = x;
 val three = polyId[Int](3);
 val cell1 = Ref three;
 val cell2 = polyId[Ref[Int]^<>](cell1);

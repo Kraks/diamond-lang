@@ -175,12 +175,6 @@ public interface DiamondParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitPolyFunDef(DiamondParser.PolyFunDefContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link DiamondParser#funDefOrExpr}.
-	 * @param ctx the parse tree
-	 * @return the visitor result
-	 */
-	T visitFunDefOrExpr(DiamondParser.FunDefOrExprContext ctx);
-	/**
 	 * Visit a parse tree produced by {@link DiamondParser#program}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

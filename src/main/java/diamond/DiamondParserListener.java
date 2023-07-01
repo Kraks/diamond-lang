@@ -282,16 +282,6 @@ public interface DiamondParserListener extends ParseTreeListener {
 	 */
 	void exitPolyFunDef(DiamondParser.PolyFunDefContext ctx);
 	/**
-	 * Enter a parse tree produced by {@link DiamondParser#funDefOrExpr}.
-	 * @param ctx the parse tree
-	 */
-	void enterFunDefOrExpr(DiamondParser.FunDefOrExprContext ctx);
-	/**
-	 * Exit a parse tree produced by {@link DiamondParser#funDefOrExpr}.
-	 * @param ctx the parse tree
-	 */
-	void exitFunDefOrExpr(DiamondParser.FunDefOrExprContext ctx);
-	/**
 	 * Enter a parse tree produced by {@link DiamondParser#program}.
 	 * @param ctx the parse tree
 	 */
