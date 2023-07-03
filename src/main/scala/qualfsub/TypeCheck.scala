@@ -85,11 +85,11 @@ extension (q: Qual)
     val Qual(s) = q
     s.subsetOf(Γ.dom + ◆)
   }
-  // saturated is supposed to be called only within ⋒
-  def saturated(using Γ: TEnv): Set[String] = reach(q.varSet, Set())
+  def satVars(using Γ: TEnv): Set[String] = reach(q.varSet, Set())
+  def sat(using Γ: TEnv): Qual =
+    if (!q.isFresh) Qual(satVars) else Qual(satVars) + Fresh()
   def ⋒(q2: Qual)(using Γ: TEnv): Qual =
-    //println(s"${q.saturated} ⋒ ${q2.saturated}")
-    Qual(q.saturated.intersect(q2.saturated)) + Fresh()
+    Qual(q.satVars.intersect(q2.satVars)) + Fresh()
 
 def reach(worklist: Set[String], acc: Set[String])(using Γ: TEnv): Set[String] =
   if (worklist.isEmpty) acc
@@ -129,8 +129,8 @@ def typeEq(t1: Type, t2: Type)(using Γ: TEnv): Boolean = isSubtype(t1, t2) && i
 def qtypeEq(t1: QType, t2: QType)(using Γ: TEnv): Boolean = isSubQType(t1, t2) && isSubQType(t2, t1)
 
 def checkQualEq(q1: Qual, q2: Qual)(using Γ: TEnv): Qual =
-  if (qualEq(q1, q2)) q1
-  else throw QualMismatch(q1, q2)
+  if (qualEq(q1.sat, q2.sat)) q1
+  else throw QualMismatch(q1.sat, q2.sat)
 
 def checkTypeEq(e: Expr, actual: Type, exp: Type)(using Γ: TEnv): Type =
   if (typeEq(actual, exp)) actual
@@ -153,7 +153,7 @@ def expandSelf(q: Set[QElem])(using Γ: TEnv): Set[QElem] =
 def boundedBy(e: QElem, b: Set[QElem])(using Γ: TEnv): Boolean =
   b.contains(e) || { e match
     case x: String => Γ(x) match
-      case QType(t, q) if !t.isInstanceOf[TFun] && !q.isFresh  =>
+      case QType(t, q) if !q.isFresh => // Q-Var
         q.set.forall(boundedBy(_, b))
       case q@Qual(_) if !q.isFresh => // Q-QVar
         q.set.forall(boundedBy(_, b))
@@ -181,7 +181,7 @@ def typeSubstQual(t: Type, from: String, to: Qual): Type = t match {
       val rt = qtypeRename(qtypeRename(t2, x, x1), f, f1)
       TFun(f1, x1, qtypeSubstQual(at, from, to), qtypeSubstQual(rt, from, to))
     }
-  case TRef(t) => TRef(typeSubstQual(t, from, to))
+  case TRef(t) => TRef(qtypeSubstQual(t, from, to))
   // New F◆ types
   case TTop => TTop
   case TVar(x) => TVar(x)
@@ -210,7 +210,7 @@ def typeSubstType(t: Type, from: String, to: Type): Type = t match {
   case TUnit | TNum | TBool => t
   case TFun(f, x, t1, t2) =>
     TFun(f, x, qtypeSubstType(t1, from, to), qtypeSubstType(t2, from, to))
-  case TRef(t) => typeSubstType(t, from, to)
+  case TRef(t) => TRef(qtypeSubstType(t, from, to))
   // New F◆ types
   case TTop => t
   case TVar(x) =>
@@ -252,7 +252,7 @@ def typeRename(t: Type, from: String, to: String): Type = t match {
       typeRename(TFun(f, y, argType, retType), from, to)
     } else TFun(f, x, qtypeRename(t1, from, to), qtypeRename(t2, from, to))
   case TRef(t) =>
-    TRef(typeRename(t, from, to))
+    TRef(qtypeRename(t, from, to))
   // New F◆ types
   case TTop => TTop
   case TVar(x) => TVar(x)
@@ -279,7 +279,7 @@ def typeRenameTVar(t: Type, from: String, to: String): Type = t match {
   case TFun(f, x, t1, t2) =>
     TFun(f, x, qtypeRenameTVar(t1, from, to), qtypeRenameTVar(t2, from, to))
   case TRef(t) =>
-    typeRenameTVar(t, from, to)
+    TRef(qtypeRenameTVar(t, from, to))
   // New F◆ types
   case TTop => t
   case TVar(x) =>
@@ -313,7 +313,7 @@ def isSubtype(t1: Type, t2: Type)(using Γ: TEnv): Boolean = (t1, t2) match {
       val G1 = TFun(g, x1, t3, qtypeRename(t4, y, x1))
       isSubtype(F1, G1)
     } else throw new RuntimeException("Impossible")
-  case (TRef(t1), TRef(t2)) => typeEq(t1, t2)
+  case (TRef(t1), TRef(t2)) => qtypeEq(t1, t2)
   // New F◆ types
   case (_, TTop) => true
   case (TVar(x), TVar(y)) if x == y => true
@@ -342,14 +342,14 @@ def isSubtype(t1: Type, t2: Type)(using Γ: TEnv): Boolean = (t1, t2) match {
 }
 
 def checkSubtype(T: Type, S: Type)(using Γ: TEnv): Unit =
-  //println(s"$Γ ⊢ $T <: $S")
   if (isSubtype(T, S)) ()
   else throw NotSubtype(T, S)(Some(Γ))
 
 def isSubQType(T: QType, S: QType)(using Γ: TEnv): Boolean =
+  //println(s"$Γ ⊢ $T <: $S")
   val QType(t1, q1) = T
   val QType(t2, q2) = S
-  isSubtype(t1, t2) && isSubqual(q1, q2)
+  isSubtype(t1, t2) && isSubqual(q1.sat, q2.sat)
 
 def checkSubQType(T: QType, S: QType)(using Γ: TEnv): Unit =
   //println(s"$Γ ⊢ $T <: $S")
@@ -360,8 +360,8 @@ def checkSubtypeOverlap(T: QType, S: QType)(using Γ: TEnv): Unit =
   val QType(t1, q1) = T
   val QType(t2, q2) = S
   if (isSubtype(t1, t2)) {
-    val sq1 = Qual(q1.saturated)
-    val sq2 = Qual(q2.saturated)
+    val sq1 = Qual(q1.satVars)
+    val sq2 = Qual(q2.satVars)
     if (isSubqual(sq1, sq2)) ()
     else throw NonOverlap(sq2, sq1 \ sq2)
   } else throw NotSubtype(t1, t2)()
@@ -383,7 +383,7 @@ def typeFreeVars(t: Type): Set[String] = t match
   case TUnit | TNum | TBool => Set()
   case TFun(f, x, t1, t2) =>
     (qtypeFreeVars(t1) ++ qtypeFreeVars(t2)) -- Set(x, f)
-  case TRef(t) => typeFreeVars(t)
+  case TRef(t) => qtypeFreeVars(t)
   case TTop => Set()
   case TVar(x) => Set()
   case TForall(f, tvar, qvar, bound, rt) =>
@@ -447,14 +447,14 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     // XXX allow annotating observable filter?
     val ft = TFun(f, x, at, rt)
     qtypeWFCheck(ft)
-    val fv = qtypeFreeVars(at) ++ qtypeFreeVars(rt) ++ freeVars(e) -- Set(f, x)
+    val fv = Qual(qtypeFreeVars(at) ++ qtypeFreeVars(rt) ++ freeVars(e) -- Set(f, x)).satVars
     val Γ1 = Γ.filter(fv) + (x -> at) + (f -> (ft ^ Qual(fv)))
     val t = typeCheck(e)(using Γ1)
     checkSubQType(t, rt)(using Γ1)
     ft ^ Qual(fv)
   case ELam(f, x, at, e, None) =>
     qtypeWFCheck(at)
-    val fv = qtypeFreeVars(at) ++ freeVars(e) - x
+    val fv = Qual(qtypeFreeVars(at) ++ freeVars(e) - x).satVars
     val t = typeCheck(e)(using Γ.filter(fv) + (x -> at))
     TFun(f, x, at, t) ^ Qual(fv)
   case EApp(e1, e2, Some(true)) =>
@@ -512,22 +512,25 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
       qtypeSubstQual(rt, x, q)
     }
   case EAlloc(e) =>
-    val QType(t, q) = typeCheck(e)
-    checkUntrackQual(q)
-    TRef(t) ^ ◆
+    val tq@QType(t, q) = typeCheck(e)
+    if (q.isFresh) throw RequireNonFresh(e, tq)
+    TRef(QType(t, q)) ^ (q ++ Set(◆))
   case EUntrackedAlloc(e) =>
+    // Only for testing
     val QType(t, q) = typeCheck(e)
     checkUntrackQual(q)
     TRef(t) ^ ()
   case EAssign(e1, e2) =>
-    val QType(TRef(t1), q1) = typeCheck(e1)
-    val QType(t2, q2) = typeCheck(e2)
-    checkUntrackQual(q2)
+    val QType(TRef(QType(t1, q1)), p) = typeCheck(e1)
+    val tq2@QType(t2, q2) = typeCheck(e2)
+    if (q1.isFresh || q2.isFresh) throw RequireNonFresh(e2, tq2)
+    checkQualEq(q1, q2)
     checkTypeEq(e2, t2, t1)
     TUnit
   case EDeref(e) =>
-    val QType(TRef(t), q) = typeCheck(e)
-    t
+    val QType(TRef(tq@QType(t, p)), q) = typeCheck(e)
+    if (p.isFresh) throw RequireNonFresh(e, tq)
+    t ^ p
   case ECond(cnd, thn, els) =>
     // XXX: instead of requiring the same type, could compute their join
     val t1 = typeCheck(cnd)

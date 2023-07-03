@@ -4,14 +4,12 @@ import diamond._
 
 /* F◆ = System F-Sub + Reference + Diamond-flavored reachability types */
 
-// TODO: TRef with inner qualifier
-
 enum Type:
   case TUnit
   case TNum
   case TBool
   case TFun(id: String, arg: String, t1: QType, t2: QType)
-  case TRef(t: Type)
+  case TRef(t: QType)
   // F◆ new types
   case TTop
   case TVar(x: String)

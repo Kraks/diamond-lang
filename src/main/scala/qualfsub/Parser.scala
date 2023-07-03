@@ -152,9 +152,7 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
       else if (s == "Bool") Type(core.Type.TBool)
       else Type(core.Type.TVar(s))
     } else if (ctx.REF != null) {
-      val qty = visitQty(ctx.qty)
-      // TODO: nested ref types
-      Type(core.Type.TRef(qty.t))
+      Type(core.Type.TRef(visitQty(ctx.qty).toCore))
     }
     else if (ctx.funTy != null) visitFunTy(ctx.funTy)
     else if (ctx.tyFunTy != null) visitTyFunTy(ctx.tyFunTy)

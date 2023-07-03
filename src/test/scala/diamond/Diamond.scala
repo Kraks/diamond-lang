@@ -7,8 +7,8 @@ import diamond.qualfsub.core._
 import diamond._
 import Type._
 import Expr._
+import Value._
 import TypeSyntax._
-import ExprSyntax._
 import Parser._
 
 import TypeSyntax.given_Conversion_Type_QType
@@ -16,8 +16,9 @@ import ExprSyntax.given_Conversion_Int_ENum
 
 class DiamondTest extends AnyFunSuite {
   def parseAndCheck(s: String): QType = topTypeCheck(parseToCore(s))
+  def parseAndEval(s: String): Value = topEval(parseToCore(s))._1
 
-  test("poly-id") {
+  test("poly id") {
     val p1 = """
     def id[T <: Top](x: T^<>): T^x = x;
     val x = id[Int](3);              // : Int^∅
@@ -60,7 +61,7 @@ class DiamondTest extends AnyFunSuite {
     assert(parseAndCheck(p4) == (TNum^()))
   }
 
-  test("fake-id") {
+  test("fake id") {
     val p1 = """
     def id(x: Ref[Int]^<>): Ref[Int]^x = Ref 42;
     id
@@ -75,7 +76,7 @@ class DiamondTest extends AnyFunSuite {
       == NotSubQType(TRef(TNum) ^ ◆, TRef(TNum) ^ "x")())
   }
 
-  test("reachability-polymorphism") {
+  test("reachability polymorphism") {
     // paper Sec 2.2.3
     // Note: we use keyword "topval" to declare c1 and c2 as top-level capabilities,
     // which prevents subsitution of the body from c1/c2 to their actual qualifiers.
@@ -182,7 +183,7 @@ class DiamondTest extends AnyFunSuite {
     intercept[NonOverlap] { parseAndCheck(p7("y", "y")) }
   }
 
-  test("free-var-in-type") {
+  test("free var in type") {
     // Permitting g and f have overlap x
     val p1 = """
     val x = Ref 0;
@@ -266,5 +267,60 @@ class DiamondTest extends AnyFunSuite {
     f7(0)
     """
     intercept[DeepDependency] { parseAndCheck(p7) }
+  }
+
+  test("nested references") {
+    val p1 = """
+    val x = 42;                                                                          
+    val c1 = Ref x;
+    val c2 = Ref c1; 
+    val c3 = ! c2; // that is c1
+    c3
+    """
+    assert(parseAndCheck(p1) == (TRef(TNum^())^ ◆))
+
+    val p2 = """
+    topval x = 42;                                                                          
+    topval c1 = Ref x;
+    val c2 = Ref c1; 
+    val c3 = ! c2; // that is c1
+    c3
+    """
+    assert(parseAndCheck(p2) == (TRef(TNum^"x")^"c1"))
+
+    val p3 = """
+    topval c = Ref 100;
+    val f1 = lam (): Int { !c };
+    val hc = Ref f1;
+    hc
+    """
+    assert(parseAndCheck(p3) == (TRef(TFun("𝑓#0","𝑥#1",TUnit^(),TNum^())^"c")^(◆,"c")))
+
+    val p4 = """
+    topval c = Ref 100;
+    val f1 = lam (): Int { !c };
+    val f2 = lam (): Int { (!c) + (!c) };
+    val hc = Ref f1;
+    val _ = hc := f2;
+    val x: Int = (! hc)(unit);
+    val _ = hc := f1;
+    val y: Int = (! hc)(unit);
+    hc
+    """
+    assert(parseAndCheck(p4) == (TRef(TFun("𝑓#0","𝑥#1",TUnit^(),TNum^())^"c")^(◆,"c")))
+
+    val p5 = """
+    topval c = Ref 100;
+    val f1 = lam (): Int { !c };
+    val f2 = lam (): Int { (!c) + (!c) };
+    val hc = Ref f1;
+    val _ = hc := f2;
+    val x: Int = (! hc)(unit); // 200
+    val _ = hc := f1;
+    val y: Int = (! hc)(unit); // 100
+    x + y
+    """
+    assert(parseAndCheck(p5) == (TNum^()))
+    assert(parseAndEval(p5) == VNum(300))
   }
 }

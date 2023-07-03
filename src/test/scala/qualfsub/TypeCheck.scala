@@ -130,13 +130,10 @@ class QualFSubBasicTests extends AnyFunSuite {
     assert(topTypeCheck(alloc(42)) == (TRef(TNum) ^ ◆))
 
     val Γ1 = TEnv.empty + ("x" -> TNum)
-    assert(typeCheck(alloc(x))(using Γ1) == (TRef(TNum) ^ ◆))
+    assert(typeCheck(alloc(x))(using Γ1) == (TRef(TNum ^ "x") ^ ("x", ◆)))
 
     val Γ2 = TEnv.empty + ("x" -> (TNum ^ ◆))
-    val thrown = intercept[QualMismatch] {
-      typeCheck(alloc(x))(using Γ2)
-    }
-    assert(thrown == QualMismatch(Qual(Set("x")), Qual(Set())))
+    assert(typeCheck(alloc(x))(using Γ2) == (TRef(TNum ^ "x") ^ ("x", ◆)))
   }
 
   test("let") {
@@ -465,13 +462,18 @@ class QualFSubBasicTests extends AnyFunSuite {
 
   test("saturation") {
     val Γ1 = TEnv.empty + ("f" -> (TNum ^ ("x", "y"))) + ("x" -> (TNum ^ ◆)) + ("y" -> (TNum ^ ◆))
-    assert(Qual.singleton("f").saturated(using Γ1) == Set("x", "y", "f"))
+    assert(Qual.singleton("f").satVars(using Γ1) == Set("x", "y", "f"))
 
     val Γ2 = TEnv.empty + ("f" -> (TNum ^ ("x", "y"))) + ("x" -> (TNum ^ "y")) + ("y" -> (TNum ^ ◆))
-    assert(Qual.singleton("f").saturated(using Γ2) == Set("x", "y", "f"))
+    assert(Qual.singleton("f").satVars(using Γ2) == Set("x", "y", "f"))
 
     val Γ3 = TEnv.empty + ("a" -> (TNum ^ ())) + ("z" -> (TNum ^ "a")) + ("x" -> (TNum ^ "z")) + ("y" -> (TNum ^ "x"))
-    assert(Qual.singleton("x").saturated(using Γ3) == Set("x", "z", "a"))
+    assert(Qual.singleton("x").satVars(using Γ3) == Set("x", "z", "a"))
+
+    val Γ4 = TEnv.empty + ("f2",TFun("f2","x0",TUnit^(),TNum^())^"c") +
+      ("f1",TFun("f1", "x1",TUnit^(),TNum^())^"c") + ("c",TRef(TNum^())^ ◆)
+
+    assert(isSubqual(Qual(Set("c", "f1")), Qual(Set("c", "f2")))(using Γ4))
   }
 
   test("free-var-in-type") {
