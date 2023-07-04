@@ -479,16 +479,22 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     if (q2.isFresh) throw RequireNonFresh(e2, tq2)
     qtypeSubstQual(qtypeSubstQual(rtq, x, q2), f, qf)
   case EApp(e1, e2, None) =>
-    // Not specified which application rule to use, try heuristically
-    val t1@QType(TFun(f, x, atq@QType(at, aq), rtq@QType(rt, rq)), qf) = typeCheck(e1)
-    val codomBound: Qual = Qual(Γ.dom) ++ Set(◆, f, x)
-    if (!(rq ⊆ codomBound)) throw IllFormedQual(rq)
-    val tq2@QType(t2, q2) = typeCheck(e2)
-    if (q2.isFresh) typeCheck(EApp(e1, e2, Some(true)))
-    else {
-      // When q2 is not fresh, both T-App◆ and T-App are applicable
-      try typeCheck(EApp(e1, e2, Some(true)))
-      catch case ex: RuntimeException => typeCheck(EApp(e1, e2, Some(false)))
+    typeCheck(e1) match {
+      case QType(TForall(f, tvar, qvar, bound, rt), qf) =>
+        val tq2 = typeCheck(e2)
+        typeCheck(EApp(ETyApp(e1, tq2, None), e2, None))
+      case t1@QType(TFun(f, x, atq@QType(at, aq), rtq@QType(rt, rq)), qf) =>
+        // Not specified which application rule to use, try heuristically
+        val codomBound: Qual = Qual(Γ.dom) ++ Set(◆, f, x)
+        if (!(rq ⊆ codomBound)) throw IllFormedQual(rq)
+        val tq2@QType(t2, q2) = typeCheck(e2)
+        // TODO: double check the logic here
+        if (q2.isFresh) typeCheck(EApp(e1, e2, Some(true)))
+        else {
+          // When q2 is not fresh, both T-App◆ and T-App are applicable
+          try typeCheck(EApp(e1, e2, Some(true)))
+          catch case ex: RuntimeException => typeCheck(EApp(e1, e2, Some(false)))
+        }
     }
   case ELet(x, Some(qt1), rhs, body, isGlobal) =>
     qtypeWFCheck(qt1)
@@ -505,10 +511,13 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
   case ELet(x, None, rhs, body, isGlobal) =>
     val qt@QType(t, q) = typeCheck(rhs)
     val rt = typeCheck(body)(using Γ + (x -> qt))
-    // if rt already using the
     if (isGlobal) rt
     else {
-      if (q.isFresh) checkDeepDep(rt.ty, Some(x))
+      if (q.isFresh) {
+        //println(qt)
+        //println(e)
+        checkDeepDep(rt.ty, Some(x))
+      }
       qtypeSubstQual(rt, x, q)
     }
   case EAlloc(e) =>

@@ -14,10 +14,23 @@ import Parser._
 import TypeSyntax.given_Conversion_Type_QType
 import ExprSyntax.given_Conversion_Int_ENum
 
-class DiamondTest extends AnyFunSuite {
-  def parseAndCheck(s: String): QType = topTypeCheck(parseToCore(s))
-  def parseAndEval(s: String): Value = topEval(parseToCore(s))._1
+def parseAndCheck(s: String): QType = topTypeCheck(parseToCore(s))
+def parseAndEval(s: String): Value = topEval(parseToCore(s))._1
 
+class Playground extends AnyFunSuite {
+  // TODO: make this work
+  /*
+  val p7 = """
+    def f7(x: Int): (g() => Ref[Int]^g)^<> =
+      val c = Ref x;
+      lam g() { c };
+    f7(0)
+    """
+   parseAndCheck(p7)
+   */
+}
+
+class DiamondTest extends AnyFunSuite {
   test("poly id") {
     val p1 = """
     def id[T <: Top](x: T^<>): T^x = x;
@@ -322,5 +335,16 @@ class DiamondTest extends AnyFunSuite {
     """
     assert(parseAndCheck(p5) == (TNum^()))
     assert(parseAndEval(p5) == VNum(300))
+  }
+
+  test("type arg infer") {
+    val p1 = """
+    def id[T <: Top](x: T^<>): T^x = x;
+    val x = id(3);                  // : Int^∅
+    val c = id(Ref 42);             // : Ref[Int]^◆
+    val y = id(x)                   // : Int^∅
+    x + y + (! c)                   // : Int^∅
+    """
+    assert(parseAndCheck(p1) == (TNum^()))
   }
 }
