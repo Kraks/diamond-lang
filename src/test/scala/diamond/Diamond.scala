@@ -79,6 +79,7 @@ class DiamondTest extends AnyFunSuite {
       == NotSubQType(TRef(TNum) ^ ◆, TRef(TNum) ^ "x")())
   }
 
+
   test("reachability polymorphism") {
     // paper Sec 2.2.3
     // Note: we use keyword "topval" to declare c1 and c2 as top-level capabilities,
@@ -113,7 +114,6 @@ class DiamondTest extends AnyFunSuite {
     f(c)
     """
     assert(parseAndCheck(p3) == (TFun("𝑓#0","𝑥#1",TUnit^(),TRef(TNum)^"c")^"c"))
-
   }
 
   test("separation") {
@@ -127,7 +127,7 @@ class DiamondTest extends AnyFunSuite {
 
     val p2 = """
     val c1 = Ref 1;
-    def f(x: Ref[Int]^c1): Int = { (!x) + (!c1) };
+    def f(x: Ref[Int]^{c1, <>}): Int = { (!x) + (!c1) };
     f@(c1) // enforce using fresh application
     """
     assert(parseAndCheck(p2) == (TNum ^ ()))
@@ -144,7 +144,7 @@ class DiamondTest extends AnyFunSuite {
     val p4 = """
     val c1 = Ref 1;
     val c2 = c1;
-    def f(x: Ref[Int]^c2): Int = { (!x) + (!c1) };
+    def f(x: Ref[Int]^{c2, <>}): Int = { (!x) + (!c1) };
     f@(c2)
     """
     assert(parseAndCheck(p4) == (TNum ^ ()))
@@ -152,7 +152,7 @@ class DiamondTest extends AnyFunSuite {
     val p5 = """
     val c1 = Ref 1;
     val c2 = c1;
-    def f(x: Ref[Int]^c2): Int = { (!x) + (!c1) };
+    def f(x: Ref[Int]^{c2, <>}): Int = { (!x) + (!c1) };
     f@(c1)
     """
     assert(parseAndCheck(p5) == (TNum ^ ()))
@@ -345,7 +345,7 @@ class DiamondTest extends AnyFunSuite {
     def id[T <: Top](x: T^<>): T^x = x;
     val x = id(3);                  // : Int^∅
     val c = id(Ref 42);             // : Ref[Int]^◆
-    val y = id(x)                   // : Int^∅
+    val y = id(x);                  // : Int^∅
     x + y + (! c)                   // : Int^∅
     """
     assert(parseAndCheck(p1) == (TNum^()))

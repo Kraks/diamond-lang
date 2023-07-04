@@ -362,10 +362,10 @@ def checkSubtypeOverlap(T: QType, S: QType)(using Γ: TEnv): Unit =
   val QType(t1, q1) = T
   val QType(t2, q2) = S
   if (isSubtype(t1, t2)) {
-    val sq1 = Qual(q1.satVars)
-    val sq2 = Qual(q2.satVars)
+    val sq1 = q1.sat
+    val sq2 = q2.sat
     if (isSubqual(sq1, sq2)) ()
-    else throw NonOverlap(sq2, sq1 \ sq2)
+    else throw NonOverlap(sq2 - Fresh(), sq1 \ sq2)
   } else throw NotSubtype(t1, t2)()
 
 def checkDeepDep(t: Type, x: String): Unit =
@@ -490,16 +490,8 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
         typeCheck(EApp(ETyApp(e1, tq2, None), e2, None))
       case t1@QType(TFun(f, x, atq@QType(at, aq), rtq@QType(rt, rq)), qf) =>
         // Not specified which application rule to use, try heuristically
-        val codomBound: Qual = Qual(Γ.dom) ++ Set(◆, f, x)
-        if (!(rq ⊆ codomBound)) throw IllFormedQual(rq)
-        val tq2@QType(t2, q2) = typeCheck(e2)
-        // TODO: double check the logic here
-        if (q2.isFresh) typeCheck(EApp(e1, e2, Some(true)))
-        else {
-          // When q2 is not fresh, both T-App◆ and T-App are applicable
-          try typeCheck(EApp(e1, e2, Some(true)))
-          catch case ex: RuntimeException => typeCheck(EApp(e1, e2, Some(false)))
-        }
+        if (aq.isFresh) typeCheck(EApp(e1, e2, Some(true)))
+        else typeCheck(EApp(e1, e2, Some(false)))
     }
   case ELet(x, Some(qt1), rhs, body, isGlobal) =>
     qtypeWFCheck(qt1)
@@ -507,10 +499,11 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     val qt2 = typeCheck(rhs)
     checkSubQType(qt2, qt1)
     val rt = typeCheck(body)(using Γ + (x -> qt1))
-    // Note: here we are not using the more precise qualifier for substitution
     if (isGlobal) rt
     else {
       if (q1.isFresh) checkDeepDep(rt.ty, x)
+      // Note: here we are not using the more precise qualifier (qt2) for substitution,
+      // since it has been up-cast to q1 explicitly.
       qtypeSubstQual(rt, x, q1)
     }
   case ELet(x, None, rhs, body, isGlobal) =>
@@ -518,10 +511,10 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     val rt = typeCheck(body)(using Γ + (x -> qt))
     if (isGlobal) rt
     else {
-      try {
+      try
         if (q.isFresh) checkDeepDep(rt.ty, x)
         qtypeSubstQual(rt, x, q)
-      } catch case ex@DeepDependency(_, `x`) => {
+      catch case ex@DeepDependency(_, `x`) =>
         // If returning a literal lambda term without return type annotation,
         // try upcast the codomain type using the self-ref.
         body match {
@@ -530,7 +523,6 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
             typeCheck(ELet(x, None, rhs, ELam(f, a, at, fbody, newRt), isGlobal))
           case _ => throw ex
         }
-       }
     }
   case EAlloc(e) =>
     val tq@QType(t, q) = typeCheck(e)
