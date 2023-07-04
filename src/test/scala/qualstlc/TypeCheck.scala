@@ -12,8 +12,6 @@ import TypeSyntax.given_Conversion_Type_QType
 import ExprSyntax.given_Conversion_Int_ENum
 
 class Playground extends AnyFunSuite {
-  test("playground") {
-  }
 }
 
 class QualSTLCTests extends AnyFunSuite {

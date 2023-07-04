@@ -29,7 +29,6 @@ class DiamondTest extends AnyFunSuite {
     3 + 4 * 5
     """
     assert(parseAndCheck(p1) == (TNum^()))
-    assert(parseAndEval(p1) == VNum(23))
 
     val p2 = """
     true
@@ -43,7 +42,17 @@ class DiamondTest extends AnyFunSuite {
 
     val p4 = """ unit """
     assert(parseAndCheck(p4) == (TUnit^()))
-    
+  }
+
+  test("precedence") {
+    val p1 = """ 3 + 4 * 5 """
+    assert(parseAndEval(p1) == VNum(23))
+
+    val p2 = "(3 + 4) * 5"
+    assert(parseAndEval(p2) == VNum(35))
+
+    val p3 = "3 * 4 / 2 + 1"
+    assert(parseAndEval(p3) == VNum(7))
   }
 
   test("poly id") {
@@ -376,4 +385,7 @@ class DiamondTest extends AnyFunSuite {
     assert(parseAndCheck(p1) == (TNum^()))
   }
 
+
+  test("transparent pair") {
+  }
 }
