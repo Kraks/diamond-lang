@@ -18,16 +18,6 @@ def parseAndCheck(s: String): QType = topTypeCheck(parseToCore(s))
 def parseAndEval(s: String): Value = topEval(parseToCore(s))._1
 
 class Playground extends AnyFunSuite {
-  // TODO: make this work
-  /*
-  val p7 = """
-    def f7(x: Int): (g() => Ref[Int]^g)^<> =
-      val c = Ref x;
-      lam g() { c };
-    f7(0)
-    """
-   parseAndCheck(p7)
-   */
 }
 
 class DiamondTest extends AnyFunSuite {
@@ -215,6 +205,16 @@ class DiamondTest extends AnyFunSuite {
   }
 
   test("escape") {
+    // No annotation is required for this case, since we infer the type
+    // of the returned literal lambda using self-reference.
+    val p0 = """
+    def f0(x: Int) =
+      val c = Ref x;
+      lam g() { c };
+    f0(0)
+    """
+    assert(parseAndCheck(p0) == (TFun("g","𝑥#0",TUnit^(),TRef(TNum)^"g")^ ◆))
+
     val p1 = """
     def f1(x: Int) =                                                                            
       val c = Ref x;
@@ -258,28 +258,31 @@ class DiamondTest extends AnyFunSuite {
     """
     assert(parseAndCheck(p5) == (TFun("g","𝑥#0",TUnit^(),TRef(TNum)^"g")^ ◆))
 
+    // written as anonymous functions:
     val p6 = """
     def f6(x: Int): (g() => Ref[Int]^g)^<> =
+      (lam (c: Ref[Int]^<>) {
+         lam g(): Ref[Int]^g { c }
+      })(Ref x);
+    f6(0)
+    """
+    // TODO: also make this case work without Ref[Int]^g?
+    assert(parseAndCheck(p6) == (TFun("g","𝑥#0",TUnit^(),TRef(TNum)^"g")^ ◆))
+  }
+
+  test("cannot escape") {
+    val p1 = """
+    def f1(x: Int): (g() => Ref[Int]^g)^<> =
       val c = Ref x;
       val g: (g() => Ref[Int]^g)^c = lam g() { c };
       g;
-    f6(0)
+    f1(0)
     """
     // Not okay: `lam g() { c };` is first typed as `(g() => Ref(Int)^c)^c`,
     // but it is not a subtype of `(g() => Ref(Int)^g)^c`.
     // Because S-Fun rule assign fresh as the qualifier to the function type of `g`,
     // which prevents from using Q-Self to upcast `c` to `g`.
-    intercept[NotSubQType] { parseAndCheck(p6) }
-
-    // Similarly this case, but the error happens a bit later when leaving
-    // the scope of `c`.
-    val p7 = """
-    def f7(x: Int): (g() => Ref[Int]^g)^<> =
-      val c = Ref x;
-      lam g() { c };
-    f7(0)
-    """
-    intercept[DeepDependency] { parseAndCheck(p7) }
+    intercept[NotSubQType] { parseAndCheck(p1) }
   }
 
   test("nested references") {

@@ -59,7 +59,8 @@ case class TEnv(m: AssocList[String, QType], tm: AssocList[TVar, Type], qm: Asso
     case (x, t: QType) => TEnv(m + (x -> t), tm, qm)
   }
   def +(tb: TypeBound) = TEnv(m, tm + (TVar(tb.tvar) -> tb.bound.ty), qm + (tb.qvar -> tb.bound.q))
-  def filter(q: Set[String]) = TEnv(m.filter(q), tm, qm.filter(q))
+  def filter(q: Set[String]): TEnv = TEnv(m.filter(q), tm, qm.filter(q))
+  def filter(q: Qual): TEnv = filter(q.varSet)
   def dom: Set[String] = m.dom ++ qm.dom
 
 object TEnv:
@@ -86,6 +87,7 @@ extension (q: Qual)
     s.subsetOf(Γ.dom + ◆)
   }
   def satVars(using Γ: TEnv): Set[String] = reach(q.varSet, Set())
+  def satVarsQual(using Γ: TEnv): Qual = Qual(satVars)
   def sat(using Γ: TEnv): Qual =
     if (!q.isFresh) Qual(satVars) else Qual(satVars) + Fresh()
   def ⋒(q2: Qual)(using Γ: TEnv): Qual =
@@ -370,11 +372,6 @@ def checkDeepDep(t: Type, x: String): Unit =
   if (!typeFreeVars(t).contains(x)) ()
   else throw DeepDependency(t, x)
 
-def checkDeepDep(t: Type, x: Option[String]): Unit =
-  x match
-    case Some(x) => checkDeepDep(t, x)
-    case None => ()
-
 def qtypeFreeVars(qt: QType): Set[String] =
   val QType(t, q) = qt
   typeFreeVars(t) ++ q.varSet
@@ -447,37 +444,45 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     // XXX allow annotating observable filter?
     val ft = TFun(f, x, at, rt)
     qtypeWFCheck(ft)
-    val fv = Qual(qtypeFreeVars(at) ++ qtypeFreeVars(rt) ++ freeVars(e) -- Set(f, x)).satVars
-    val Γ1 = Γ.filter(fv) + (x -> at) + (f -> (ft ^ Qual(fv)))
+    val fv = Qual(qtypeFreeVars(at) ++ qtypeFreeVars(rt) ++ freeVars(e) -- Set(f, x)).satVarsQual
+    val Γ1 = Γ.filter(fv) + (x -> at) + (f -> (ft ^ fv))
     val t = typeCheck(e)(using Γ1)
     checkSubQType(t, rt)(using Γ1)
-    ft ^ Qual(fv)
+    ft ^ fv
   case ELam(f, x, at, e, None) =>
     qtypeWFCheck(at)
-    val fv = Qual(qtypeFreeVars(at) ++ freeVars(e) - x).satVars
-    val t = typeCheck(e)(using Γ.filter(fv) + (x -> at))
-    TFun(f, x, at, t) ^ Qual(fv)
-  case EApp(e1, e2, Some(true)) =>
-    // T-App◆
-    val t1@QType(TFun(f, x, atq@QType(at, aq), rtq@QType(rt, rq)), qf) = typeCheck(e1)
-    val codomBound: Qual = Qual(Γ.dom) ++ Set(◆, f, x)
-    if (!(rq ⊆ codomBound)) throw IllFormedQual(rq)
-    val tq2@QType(t2, q2) = typeCheck(e2)
-    // ◆ ∈ q2 ⇒ x ∉ fv(rt)
-    if (q2.isFresh) checkDeepDep(rt, x)
-    // ◆ ∈ qf ⇒ f ∉ fv(rt)
-    if (qf.isFresh) checkDeepDep(rt, f)
-    checkSubtypeOverlap(t2 ^ (q2 ⋒ qf), atq)
-    qtypeSubstQual(qtypeSubstQual(rtq, x, q2), f, qf)
-  case EApp(e1, e2, Some(false)) =>
-    // T-App
-    val t1@QType(TFun(f, x, atq@QType(at, aq), rtq@QType(rt, rq)), qf) = typeCheck(e1)
-    val codomBound: Qual = Qual(Γ.dom) ++ Set(◆, f, x)
-    if (!(rq ⊆ codomBound)) throw IllFormedQual(rq)
-    val tq2@QType(t2, q2) = typeCheck(e2)
-    checkSubQType(tq2, atq)
-    if (q2.isFresh) throw RequireNonFresh(e2, tq2)
-    qtypeSubstQual(qtypeSubstQual(rtq, x, q2), f, qf)
+    val fv = Qual(qtypeFreeVars(at) ++ freeVars(e) - x).satVarsQual
+    val tq@QType(t, q) = typeCheck(e)(using Γ.filter(fv) + (x -> at))
+    TFun(f, x, at, tq) ^ fv
+  case EApp(e1, e2, Some(true)) => // T-App◆
+    typeCheck(e1) match {
+      case QType(TForall(f, tvar, qvar, bound, rt), qf) =>
+        val tq2 = typeCheck(e2)
+        typeCheck(EApp(ETyApp(e1, tq2, None), e2, Some(true)))
+      case t1@QType(TFun(f, x, atq@QType(at, aq), rtq@QType(rt, rq)), qf) =>
+        val codomBound: Qual = Qual(Γ.dom) ++ Set(◆, f, x)
+        if (!(rq ⊆ codomBound)) throw IllFormedQual(rq)
+        val tq2@QType(t2, q2) = typeCheck(e2)
+        // ◆ ∈ q2 ⇒ x ∉ fv(rt)
+        if (q2.isFresh) checkDeepDep(rt, x)
+        // ◆ ∈ qf ⇒ f ∉ fv(rt)
+        if (qf.isFresh) checkDeepDep(rt, f)
+        checkSubtypeOverlap(t2 ^ (q2 ⋒ qf), atq)
+        qtypeSubstQual(qtypeSubstQual(rtq, x, q2), f, qf)
+    }
+  case EApp(e1, e2, Some(false)) => // T-App
+    typeCheck(e1) match {
+      case QType(TForall(f, tvar, qvar, bound, rt), qf) =>
+        val tq2 = typeCheck(e2)
+        typeCheck(EApp(ETyApp(e1, tq2, None), e2, Some(false)))
+      case t1@QType(TFun(f, x, atq@QType(at, aq), rtq@QType(rt, rq)), qf) =>
+        val codomBound: Qual = Qual(Γ.dom) ++ Set(◆, f, x)
+        if (!(rq ⊆ codomBound)) throw IllFormedQual(rq)
+        val tq2@QType(t2, q2) = typeCheck(e2)
+        checkSubQType(tq2, atq)
+        if (q2.isFresh) throw RequireNonFresh(e2, tq2)
+        qtypeSubstQual(qtypeSubstQual(rtq, x, q2), f, qf)
+    }
   case EApp(e1, e2, None) =>
     typeCheck(e1) match {
       case QType(TForall(f, tvar, qvar, bound, rt), qf) =>
@@ -505,7 +510,7 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     // Note: here we are not using the more precise qualifier for substitution
     if (isGlobal) rt
     else {
-      if (q1.isFresh) checkDeepDep(rt.ty, Some(x))
+      if (q1.isFresh) checkDeepDep(rt.ty, x)
       qtypeSubstQual(rt, x, q1)
     }
   case ELet(x, None, rhs, body, isGlobal) =>
@@ -513,12 +518,19 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     val rt = typeCheck(body)(using Γ + (x -> qt))
     if (isGlobal) rt
     else {
-      if (q.isFresh) {
-        //println(qt)
-        //println(e)
-        checkDeepDep(rt.ty, Some(x))
-      }
-      qtypeSubstQual(rt, x, q)
+      try {
+        if (q.isFresh) checkDeepDep(rt.ty, x)
+        qtypeSubstQual(rt, x, q)
+      } catch case ex@DeepDependency(_, `x`) => {
+        // If returning a literal lambda term without return type annotation,
+        // try upcast the codomain type using the self-ref.
+        body match {
+          case ELam(f, a, at, fbody, None) =>
+            val newRt = Some(QType(rt.ty.asInstanceOf[TFun].t2.ty, Qual.singleton(f)))
+            typeCheck(ELet(x, None, rhs, ELam(f, a, at, fbody, newRt), isGlobal))
+          case _ => throw ex
+        }
+       }
     }
   case EAlloc(e) =>
     val tq@QType(t, q) = typeCheck(e)
