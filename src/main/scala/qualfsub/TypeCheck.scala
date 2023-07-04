@@ -595,14 +595,8 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     val t1 = typeCheck(e)
     val QType(TForall(f, tvar, qvar, ub, rt), qf) = qtypeExposure(t1)
     // qf may contain abstract qualifier variables (which seems fine?)
-    val codomBound: Qual = Qual(Γ.dom) ++ Set(f, qvar, ◆)
-    if (!(rt.q ⊆ codomBound)) throw IllFormedQual(rt.q)
-    if (!(qArg ⊆ Γ)) throw IllFormedQual(qArg)
-    if (qArg.isFresh) typeCheck(ETyApp(e, arg, Some(true)))
-    else {
-      try typeCheck(ETyApp(e, arg, Some(true)))
-      catch case ex: RuntimeException => typeCheck(ETyApp(e, arg, Some(false)))
-    }
+    if (ub.q.isFresh) typeCheck(ETyApp(e, arg, Some(true)))
+    else typeCheck(ETyApp(e, arg, Some(false)))
 }
 
 def topTypeCheck(e: Expr): QType = {
