@@ -173,13 +173,13 @@ public class DiamondParserBaseListener implements DiamondParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void enterOp2(DiamondParser.Op2Context ctx) { }
+	@Override public void enterBoolOp2(DiamondParser.BoolOp2Context ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
-	@Override public void exitOp2(DiamondParser.Op2Context ctx) { }
+	@Override public void exitBoolOp2(DiamondParser.BoolOp2Context ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

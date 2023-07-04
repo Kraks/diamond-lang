@@ -109,7 +109,7 @@ public class DiamondParserBaseVisitor<T> extends AbstractParseTreeVisitor<T> imp
 	 * <p>The default implementation returns the result of calling
 	 * {@link #visitChildren} on {@code ctx}.</p>
 	 */
-	@Override public T visitOp2(DiamondParser.Op2Context ctx) { return visitChildren(ctx); }
+	@Override public T visitBoolOp2(DiamondParser.BoolOp2Context ctx) { return visitChildren(ctx); }
 	/**
 	 * {@inheritDoc}
 	 *

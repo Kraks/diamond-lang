@@ -70,15 +70,11 @@ qty :
 
 /* expressions */
 
-op2:
+boolOp2:
   AND
 | OR
 | EQ2
 | NEQ
-| '+'
-| '-'
-| '*'
-| '/'
 ;
 
 op1:
@@ -106,7 +102,9 @@ expr:
   ID
 | value
 | op1 expr
-| expr op2 expr
+| expr ('*' | '/') expr
+| expr ('+' | '-') expr
+| expr boolOp2 expr
 | alloc
 | deref
 | '(' expr ')'
@@ -133,8 +131,8 @@ deref :
 ;
 
 lam :
-  LAM ID '(' namedParamList? ')' (':' qty)? '{' expr '}'
-| LAM '(' namedParamList? ')' (':' qty)? '{' expr '}'
+  ID '(' namedParamList? ')' (':' qty)? RIGHTARROW '{' expr '}'
+| '(' namedParamList? ')' (':' qty)? RIGHTARROW '{' expr '}'
 ;
 
 tyLam :

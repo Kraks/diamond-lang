@@ -23,13 +23,15 @@ package ir {
   trait TopLevel
   case class Program(tops: List[Expr]) extends IR {
     def toCore: core.Expr = {
-      val (newTops, last) = tops.last match {
-        case Expr(e) => (tops.dropRight(1), e)
-      }
-      newTops.foldRight(last) {
-        case (Expr(e), last) =>
-          core.Expr.ELet(freshVar(letPre), None, e, last)
-      }
+      if (tops.size > 0) {
+        val (newTops, last) = tops.last match {
+          case Expr(e) => (tops.dropRight(1), e)
+        }
+        newTops.foldRight(last) {
+          case (Expr(e), last) =>
+            core.Expr.ELet(freshVar(letPre), None, e, last)
+        }
+      } else core.Expr.EUnit
     }
   }
 
@@ -274,10 +276,26 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
       else if (ctx.op1 != null) {
         val e = visitExpr(ctx.expr(0)).toCore
         core.Expr.EUnaryOp(ctx.op1.getText.toString, e)
-      } else if (ctx.op2 != null) {
+      } else if (ctx.boolOp2 != null) {
         val arg1 = visitExpr(ctx.expr(0)).toCore
         val arg2 = visitExpr(ctx.expr(1)).toCore
-        core.Expr.EBinOp(ctx.op2.getText.toString, arg1, arg2)
+        core.Expr.EBinOp(ctx.boolOp2.getText.toString, arg1, arg2)
+      } else if (ctx.ADD != null) {
+        val arg1 = visitExpr(ctx.expr(0)).toCore
+        val arg2 = visitExpr(ctx.expr(1)).toCore
+        core.Expr.EBinOp("+", arg1, arg2)
+      } else if (ctx.MINUS != null) {
+        val arg1 = visitExpr(ctx.expr(0)).toCore
+        val arg2 = visitExpr(ctx.expr(1)).toCore
+        core.Expr.EBinOp("-", arg1, arg2)
+      } else if (ctx.MULT != null) {
+        val arg1 = visitExpr(ctx.expr(0)).toCore
+        val arg2 = visitExpr(ctx.expr(1)).toCore
+        core.Expr.EBinOp("*", arg1, arg2)
+      } else if (ctx.DIV != null) {
+        val arg1 = visitExpr(ctx.expr(0)).toCore
+        val arg2 = visitExpr(ctx.expr(1)).toCore
+        core.Expr.EBinOp("/", arg1, arg2)
       } else if (ctx.COLONEQ != null) {
         val lhs = visitExpr(ctx.expr(0)).toCore
         val rhs = visitExpr(ctx.expr(1)).toCore

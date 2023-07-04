@@ -89,11 +89,11 @@ public interface DiamondParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitQty(DiamondParser.QtyContext ctx);
 	/**
-	 * Visit a parse tree produced by {@link DiamondParser#op2}.
+	 * Visit a parse tree produced by {@link DiamondParser#boolOp2}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
 	 */
-	T visitOp2(DiamondParser.Op2Context ctx);
+	T visitBoolOp2(DiamondParser.BoolOp2Context ctx);
 	/**
 	 * Visit a parse tree produced by {@link DiamondParser#op1}.
 	 * @param ctx the parse tree

@@ -21,6 +21,31 @@ class Playground extends AnyFunSuite {
 }
 
 class DiamondTest extends AnyFunSuite {
+
+  test("simple expression") {
+    val p1 = """
+    1
+    2
+    3 + 4 * 5
+    """
+    assert(parseAndCheck(p1) == (TNum^()))
+    assert(parseAndEval(p1) == VNum(23))
+
+    val p2 = """
+    true
+    false
+    true || true || (true && false)
+    """
+    assert(parseAndCheck(p2) == (TBool^()))
+
+    val p3 = """ """
+    assert(parseAndCheck(p3) == (TUnit^()))
+
+    val p4 = """ unit """
+    assert(parseAndCheck(p4) == (TUnit^()))
+    
+  }
+
   test("poly id") {
     val p1 = """
     def id[T <: Top](x: T^<>): T^x = x;
@@ -73,7 +98,7 @@ class DiamondTest extends AnyFunSuite {
       == NotSubQType(TRef(TNum) ^ ◆, TRef(TNum) ^ "x")())
 
     val p2 = """
-    lam id(x: Ref[Int]^<>): Ref[Int]^x { Ref 42 }
+    (id(x: Ref[Int]^<>): Ref[Int]^x => { Ref 42 })
     """
     assert(intercept[NotSubQType] { parseAndCheck(p2) }
       == NotSubQType(TRef(TNum) ^ ◆, TRef(TNum) ^ "x")())
@@ -110,7 +135,7 @@ class DiamondTest extends AnyFunSuite {
     // qualifier-dependent application (non-fresh)
     val p3 = """
     topval c = Ref 42;
-    def f(x: Ref[Int]^c): (() => Ref[Int]^x)^x = lam () { x };
+    def f(x: Ref[Int]^c): (() => Ref[Int]^x)^x = () => { x };
     f(c)
     """
     assert(parseAndCheck(p3) == (TFun("𝑓#0","𝑥#1",TUnit^(),TRef(TNum)^"c")^"c"))
@@ -191,7 +216,7 @@ class DiamondTest extends AnyFunSuite {
     val p1 = """
     val x = Ref 0;
     def f(g: ((Int) => Ref[Int]^x)^x): Ref[Int]^x = g(0);
-    f(lam (y: Int) { x })
+    f((y: Int) => { x })
     """
     assert(parseAndCheck(p1) == (TRef(TNum)^ ◆))
 
@@ -199,7 +224,7 @@ class DiamondTest extends AnyFunSuite {
     val p2 = """
     val x = Ref 0;
     def f(g: ((Int) => Ref[Int]^x)): Ref[Int]^x = g(0);
-    f@(lam (y: Int) { x }) // to enforce checking overlap
+    f@((y: Int) => { x }) // to enforce checking overlap
     """
     intercept[NonOverlap] { parseAndCheck(p2) }
   }
@@ -210,7 +235,7 @@ class DiamondTest extends AnyFunSuite {
     val p0 = """
     def f0(x: Int) =
       val c = Ref x;
-      lam g() { c };
+      g() => { c };
     f0(0)
     """
     assert(parseAndCheck(p0) == (TFun("g","𝑥#0",TUnit^(),TRef(TNum)^"g")^ ◆))
@@ -218,7 +243,7 @@ class DiamondTest extends AnyFunSuite {
     val p1 = """
     def f1(x: Int) =                                                                            
       val c = Ref x;
-      lam g(): Ref[Int]^g { c };
+      g(): Ref[Int]^g => { c };
     f1(0)
     """
     assert(parseAndCheck(p1) == (TFun("g","𝑥#0",TUnit^(),TRef(TNum)^"g")^ ◆))
@@ -226,7 +251,7 @@ class DiamondTest extends AnyFunSuite {
     val p2 = """
     def f2(x: Int): (g() => Ref[Int]^g)^<> =
       val c = Ref x;
-      lam g(): Ref[Int]^g { c };
+      g(): Ref[Int]^g => { c };
     f2(0)
     """
     assert(parseAndCheck(p2) == (TFun("g","𝑥#0",TUnit^(),TRef(TNum)^"g")^ ◆))
@@ -243,7 +268,7 @@ class DiamondTest extends AnyFunSuite {
     val p4 = """
     def f4(x: Int): (g() => Ref[Int]^g)^<> =
       val c = Ref x;
-      val g = lam g(): Ref[Int]^g { c };
+      val g = g(): Ref[Int]^g => { c };
       g;
     f4(0)
     """
@@ -252,7 +277,7 @@ class DiamondTest extends AnyFunSuite {
     val p5 = """
     def f5(x: Int): (g() => Ref[Int]^g)^<> =
       val c = Ref x;
-      val g: (g() => Ref[Int]^g)^c = lam g(): Ref[Int]^g { c };
+      val g: (g() => Ref[Int]^g)^c = g(): Ref[Int]^g => { c };
       g;
     f5(0)
     """
@@ -261,8 +286,8 @@ class DiamondTest extends AnyFunSuite {
     // written as anonymous functions:
     val p6 = """
     def f6(x: Int): (g() => Ref[Int]^g)^<> =
-      (lam (c: Ref[Int]^<>) {
-         lam g(): Ref[Int]^g { c }
+      ((c: Ref[Int]^<>) => {
+         g(): Ref[Int]^g => { c }
       })(Ref x);
     f6(0)
     """
@@ -274,11 +299,11 @@ class DiamondTest extends AnyFunSuite {
     val p1 = """
     def f1(x: Int): (g() => Ref[Int]^g)^<> =
       val c = Ref x;
-      val g: (g() => Ref[Int]^g)^c = lam g() { c };
+      val g: (g() => Ref[Int]^g)^c = g() => { c };
       g;
     f1(0)
     """
-    // Not okay: `lam g() { c };` is first typed as `(g() => Ref(Int)^c)^c`,
+    // Not okay: `() => { c };` is first typed as `(g() => Ref(Int)^c)^c`,
     // but it is not a subtype of `(g() => Ref(Int)^g)^c`.
     // Because S-Fun rule assign fresh as the qualifier to the function type of `g`,
     // which prevents from using Q-Self to upcast `c` to `g`.
@@ -306,7 +331,7 @@ class DiamondTest extends AnyFunSuite {
 
     val p3 = """
     topval c = Ref 100;
-    val f1 = lam (): Int { !c };
+    val f1 = (): Int => { !c };
     val hc = Ref f1;
     hc
     """
@@ -314,8 +339,8 @@ class DiamondTest extends AnyFunSuite {
 
     val p4 = """
     topval c = Ref 100;
-    val f1 = lam (): Int { !c };
-    val f2 = lam (): Int { (!c) + (!c) };
+    val f1 = (): Int => { !c };
+    val f2 = (): Int => { (!c) + (!c) };
     val hc = Ref f1;
     val _ = hc := f2;
     val x: Int = (! hc)(unit);
@@ -327,8 +352,8 @@ class DiamondTest extends AnyFunSuite {
 
     val p5 = """
     topval c = Ref 100;
-    val f1 = lam (): Int { !c };
-    val f2 = lam (): Int { (!c) + (!c) };
+    val f1 = (): Int => { !c };
+    val f2 = (): Int => { (!c) + (!c) };
     val hc = Ref f1;
     val _ = hc := f2;
     val x: Int = (! hc)(unit); // 200
@@ -350,4 +375,5 @@ class DiamondTest extends AnyFunSuite {
     """
     assert(parseAndCheck(p1) == (TNum^()))
   }
+
 }
