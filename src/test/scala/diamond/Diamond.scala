@@ -79,6 +79,39 @@ class Playground extends AnyFunSuite {
     """
     println(parseAndCheck(p1))
     println(parseAndEval(p1))
+
+    val p2 = s"""
+    val makePair = ($makePair);
+    val fst = ($fst);
+    val snd = ($snd);
+    topval u = Ref 12;
+    topval v = Ref 34;
+    val p = makePair[Ref[Int]^u][Ref[Int]^v](u)(v);
+    fst[Ref[Int]^u][Ref[Int]^v](p)
+    """
+    assert(parseAndCheck(p2) == (TRef(TNum^())^"u"))
+
+    val p3 = s"""
+    val makePair = ($makePair);
+    val fst = ($fst);
+    val snd = ($snd);
+    topval u = Ref 12;
+    topval v = Ref 34;
+    val p = makePair[Ref[Int]^u][Ref[Int]^v](u)(v);
+    snd[Ref[Int]^u][Ref[Int]^v](p)
+    """
+    assert(parseAndCheck(p3) == (TRef(TNum^())^"v"))
+
+    val p4 = s"""
+    val makePair = ($makePair);
+    val fst = ($fst);
+    val snd = ($snd);
+    val p = makePair[Ref[Int]^<>][Ref[Int]^<>](Ref 1)(Ref 2);
+    snd[Ref[Int]^<>][Ref[Int]^<>](p)
+    """
+    // Should be an error
+    //println(parseAndCheck(p4))
+
   }
 }
 
