@@ -363,6 +363,8 @@ class DiamondPairTest extends AnyFunSuite {
       val fst = ${TransparentPair.fst};
       val snd = ${TransparentPair.snd};
       val conv = [A^a <: Top^<>] => { [B^b <: Top^{a, <>}] => {
+        // return type is optional:
+        // (p: (${TransparentPair.tyPair})^{a, b, <>}) => {
         (p: (${TransparentPair.tyPair})^{a, b, <>}): (${OpaquePair.tyOPair("A", "B")})^{a, b} => {
           makeOPair[A^a][B^b](fst[A^a][B^b](p))(snd[A^a][B^b](p))
         }
@@ -384,6 +386,7 @@ class DiamondPairTest extends AnyFunSuite {
       val c1 = Ref x;
       val c2 = Ref (x+1);
       val p = makeTPair[Ref[Int]^c1][Ref[Int]^c2](c1)(c2);
+      // conv[Ref[Int]^p][Ref[Int]^p](p)   // works too
       conv[Ref[Int]^c1][Ref[Int]^c2](p)
     };
     topval p = f(1);
