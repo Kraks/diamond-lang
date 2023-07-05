@@ -466,7 +466,8 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     // XXX allow annotating observable filter?
     val ft = TFun(f, x, at, rt)
     qtypeWFCheck(ft)
-    val fv = Qual((qtypeFreeVars(rt) ++ freeVars(body)) -- Set(f, x))
+    //val fv = Qual((qtypeFreeVars(rt) ++ freeVars(body)) -- Set(f, x))
+    val fv = Qual(freeVars(body) -- Set(f, x))
     val Γ1 = (Γ + (x -> at) + (f -> (ft ^ fv))).filter(fv ++ Set(x, f))
     val t = typeCheck(body)(using Γ1)
     checkSubQType(t, rt)(using Γ1)
@@ -579,7 +580,8 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
   case ETyLam(f, tvar, qvar, ub, e, Some(rt)) =>
     val ft = TForall(f, tvar, qvar, ub, rt)
     //val fv = qtypeFreeVars(ub) ++ qtypeFreeVars(rt) ++ freeVars(e) -- Set(f, qvar)
-    val fv = qtypeFreeVars(rt) ++ freeVars(e) -- Set(f, qvar)
+    //val fv = qtypeFreeVars(rt) ++ freeVars(e) -- Set(f, qvar)
+    val fv = freeVars(e) -- Set(f, qvar)
     val Γ1 = (Γ + ((tvar, qvar) <⦂ ub) + (f -> (ft ^ Qual(fv)))).filter(fv ++ Set(qvar, f))
     val t = typeCheck(e)(using Γ1)
     checkSubQType(t, rt)(using Γ1)
