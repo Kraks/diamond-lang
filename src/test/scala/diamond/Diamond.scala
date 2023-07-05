@@ -43,6 +43,8 @@ class Playground extends AnyFunSuite {
                   //TVar("C")^"c")^("x","y","c"))^("x","y"))^("x"))^("a","b"))^"a")^()))
                   TVar("C")^"c")^("x","y","c"))^("x","y"))^("x"))^())^())^()))
 
+    // Note: how do we compute function qualifier algorithmically without
+    // user annotation?
     println(RunDiamond.prettyQType(parseAndCheck(makePair)))
 
     val tyPair = "forall [C^c <: Top^{a, b, <>}] => (((x: A^a) => ((y: B^b) => C^c)^x) => C^c)^{c, a, b}"
@@ -65,6 +67,18 @@ class Playground extends AnyFunSuite {
     """
     println(parseToCore(snd))
     println(parseAndCheck(snd))
+
+    val p1 = s"""
+    val makePair = ($makePair);
+    val p = makePair[Int][Int](1)(2);
+    val fst = ($fst);
+    val n = fst[Int][Int](p);
+    val snd = ($snd);
+    val m = snd[Int][Int](p);
+    n + m
+    """
+    println(parseAndCheck(p1))
+    println(parseAndEval(p1))
   }
 }
 
