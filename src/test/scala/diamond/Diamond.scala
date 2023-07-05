@@ -171,6 +171,20 @@ class DiamondPairTest extends AnyFunSuite {
     snd[Ref[Int]^u][Ref[Int]^u](p)
     """
     assert(parseAndCheck(p6) == (TRef(TNum^())^"u"))
+
+    // Transparent pairs cannot be used for escaping (should use opaque pairs):
+    val p7 = s"""
+    val makePair = ($makePair);
+    val fst = ($fst);
+    val snd = ($snd);
+    def f(x: Int) = {
+      val c1 = Ref x;
+      val c2 = Ref (x+1);
+      makePair[Ref[Int]^c1][Ref[Int]^c2](c1)(c2)
+    };
+    f(1)
+    """
+    intercept[DeepDependency] { parseAndCheck(p7) }
   }
 
   test("opaque pairs") {
@@ -323,12 +337,59 @@ class DiamondPairTest extends AnyFunSuite {
     inc
     """
     assert(prettyQType(parseAndCheck(inc)) == "(𝑓#21(𝑥#22: Unit^∅) => Unit^∅)^p")
+    
+    val callInc = s"""
+    $counterPrelude
+    inc(unit)
+    """
+    assert(prettyQType(parseAndCheck(callInc)) == "Unit^∅")
 
     val dec = s"""
     $counterPrelude
     dec
     """
     assert(prettyQType(parseAndCheck(dec)) == "(𝑓#27(𝑥#28: Unit^∅) => Unit^∅)^p")
+
+    val callDec = s"""
+    $counterPrelude
+    dec(unit)
+    """
+    assert(prettyQType(parseAndCheck(callDec)) == "Unit^∅")
+  }
+
+  test("transparent pair to opaque pair") {
+    val convPrelude = s"""
+      val makeOPair = ${OpaquePair.makePair};
+      val fst = ${TransparentPair.fst};
+      val snd = ${TransparentPair.snd};
+      val conv = [A^a <: Top^<>] => { [B^b <: Top^{a, <>}] => {
+        (p: (${TransparentPair.tyPair})^{a, b, <>}): (${OpaquePair.tyOPair("A", "B")})^{a, b} => {
+          makeOPair[A^a][B^b](fst[A^a][B^b](p))(snd[A^a][B^b](p))
+        }
+      } };
+    """
+
+    val conv = s"""
+    $convPrelude
+    conv
+    """
+    //println(prettyQType(parseAndCheck(conv)))
+
+    val example = s"""
+    $convPrelude
+    val makeTPair = ${TransparentPair.makePair};
+    val opairFst = ${OpaquePair.fst};
+    val opairSnd = ${OpaquePair.snd};
+    def f(x: Int) = {
+      val c1 = Ref x;
+      val c2 = Ref (x+1);
+      val p = makeTPair[Ref[Int]^c1][Ref[Int]^c2](c1)(c2);
+      conv[Ref[Int]^c1][Ref[Int]^c2](p)
+    };
+    topval p = f(1);
+    opairFst[Ref[Int]^p][Ref[Int]^p](p)
+    """
+    assert(prettyQType(parseAndCheck(example)) == "Ref[TNum^∅]^p")
   }
 }
 
