@@ -18,6 +18,54 @@ def parseAndCheck(s: String): QType = topTypeCheck(parseToCore(s))
 def parseAndEval(s: String): Value = topEval(parseToCore(s))._1
 
 class Playground extends AnyFunSuite {
+
+  test("transparent pair") {
+    val makePair = """
+    [A^a <: Top^<>] => { [B^b <: Top^{a, <>}] => {
+      (x: A^a) => { (y: B^b) => {
+        [C^c <: Top^{a, b, <>}] => {
+          (f: ((x: A^a) => ((y: B^b) => C^c)^x)): C^c => { f(x)(y) }
+        }
+      } }
+    } }
+    """
+    println(parseAndCheck(makePair))
+    assert(parseAndCheck(makePair) ==
+      (TForall("𝐹#0","A","a",TTop^ ◆,
+        TForall("𝐹#1","B","b",TTop^("a",◆),
+          TFun("𝑓#2","x",TVar("A")^"a",
+            TFun("𝑓#3","y",TVar("B")^"b",
+              TForall("𝐹#4","C","c",TTop^("a","b",◆),
+                TFun("𝑓#5","f",
+                  TFun("𝑓#6","x",TVar("A")^"a",
+                    TFun("𝑓#7","y",TVar("B")^"b",
+                      TVar("C")^"c")^"x")^(),
+                  //TVar("C")^"c")^("x","y","c"))^("x","y"))^("x"))^("a","b"))^"a")^()))
+                  TVar("C")^"c")^("x","y","c"))^("x","y"))^("x"))^())^())^()))
+
+    println(RunDiamond.prettyQType(parseAndCheck(makePair)))
+
+    val tyPair = "forall [C^c <: Top^{a, b, <>}] => (((x: A^a) => ((y: B^b) => C^c)^x) => C^c)^{c, a, b}"
+    val fst = s"""
+    [A^a <: Top^<>] => { [B^b <: Top^{a, <>}] => {
+      (p: (${tyPair})^{a, b, <>}) => {
+        p[A^a]( (x: A^a) => { (y: B^b) => { x } } )
+      }
+    } }
+    """
+    println(parseToCore(fst))
+    println(parseAndCheck(fst))
+
+    val snd = s"""
+    [A^a <: Top^<>] => { [B^b <: Top^{a, <>}] => {
+      (p: (${tyPair})^{a, b, <>}) => {
+        p[B^b]( (x: A^a) => { (y: B^b) => { y } } )
+      }
+    } }
+    """
+    println(parseToCore(snd))
+    println(parseAndCheck(snd))
+  }
 }
 
 class DiamondTest extends AnyFunSuite {
@@ -236,6 +284,18 @@ class DiamondTest extends AnyFunSuite {
     f@((y: Int) => { x }) // to enforce checking overlap
     """
     intercept[NonOverlap] { parseAndCheck(p2) }
+
+    // Because f's return type captures `x`, so it
+    // also appears in f's function qualifier.
+    val p3 = """
+    topval x = Ref 0;
+    def f(g: ((Int) => Ref[Int]^x)^x): Ref[Int]^x = g(0);
+    f
+    """
+    assert(parseAndCheck(p3) ==
+      (TFun("f","g",
+        TFun("𝑓#0","Arg#1",TNum^(),TRef(TNum^())^"x")^"x",
+        TRef(TNum^())^"x")^"x"))
   }
 
   test("escape") {
@@ -385,7 +445,14 @@ class DiamondTest extends AnyFunSuite {
     assert(parseAndCheck(p1) == (TNum^()))
   }
 
-
-  test("transparent pair") {
+  test("forall type") {
+    val p = """
+    val p: forall [A^a <: Top^<>] => ((x: A^a) => A^x)^a =
+      ([A^a <: Top^<>] => { (x: A^a) => { x } });
+    p
+    """
+    assert(parseAndCheck(p) ==
+      (TForall("𝐹#2","A","a",TTop^ ◆,
+        TFun("𝑓#3","x",TVar("A")^"a",TVar("A")^"x")^"a")^()))
   }
 }

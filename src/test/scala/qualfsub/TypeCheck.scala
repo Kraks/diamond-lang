@@ -424,7 +424,7 @@ class QualFSubBasicTests extends AnyFunSuite {
     assert(typeCheck(f_def)(using Γ) ==
       (TFun("f", "y",
         TRef(TNum)^"x",
-        TFun("g", "x", TRef(TNum) ^ ◆, TRef(TNum)^"y")^"y") ^ "x"))
+        TFun("g", "x", TRef(TNum) ^ ◆, TRef(TNum)^"y")^"y") ^ ()))
 
     val e = let ("f" ⇐ f_def) {
       EVar("f")(EVar("x"))

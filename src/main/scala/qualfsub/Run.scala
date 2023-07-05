@@ -19,6 +19,7 @@ object RunDiamond {
       case TVar(x) => x
       case TForall(f, tvar, qvar, bound, res) => s"∀$f($tvar^$qvar <: ${prettyQType(bound)}).${prettyQType(res)}"
     }
+
   def prettyQType(tq: QType): String = {
     val QType(t, q) = tq
     val tyStr = prettyType(t)

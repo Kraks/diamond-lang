@@ -45,9 +45,9 @@ case class RequireTypeNonFresh(t: QType)
 case class RequireNonFresh(e: Expr, t: QType)
   extends RuntimeException(s"$e: $t should be non-fresh")
 
-case class TEnv(m: AssocList[String, QType], tm: AssocList[TVar, Type], qm: AssocList[String, Qual]):
+case class TEnv(m: AssocList[String, QType], tm: AssocList[TVar, Type], qm: AssocList[String, Qual], observable: Set[String] = Set()):
   def apply(x: String): QType | Qual =
-    assert(!(m.contains(x) && qm.contains(x)), "overlap")
+    assert(!(m.contains(x) && qm.contains(x)), s"overlap $x")
     if (m.contains(x)) m(x)
     else qm(x)
   def apply(x: TVar): Type = tm(x)
@@ -55,11 +55,14 @@ case class TEnv(m: AssocList[String, QType], tm: AssocList[TVar, Type], qm: Asso
   def containsQualVar(q: String): Boolean = qm.contains(q)
 
   def +(xt: (String, (Type|QType))) = xt match {
-    case (x, t: Type) => TEnv(m + (x -> t), tm, qm)
-    case (x, t: QType) => TEnv(m + (x -> t), tm, qm)
+    case (x, t: Type) => TEnv(m + (x -> t), tm, qm, observable + x)
+    case (x, t: QType) => TEnv(m + (x -> t), tm, qm, observable + x)
   }
-  def +(tb: TypeBound) = TEnv(m, tm + (TVar(tb.tvar) -> tb.bound.ty), qm + (tb.qvar -> tb.bound.q))
-  def filter(q: Set[String]): TEnv = TEnv(m.filter(q), tm, qm.filter(q))
+  def +(tb: TypeBound) = TEnv(m, tm + (TVar(tb.tvar) -> tb.bound.ty), qm + (tb.qvar -> tb.bound.q), observable)
+  def filter(q: Set[String]): TEnv = {
+    //println(s"shrink from ${observable} to ${observable.intersect(q)}")
+    TEnv(m, tm, qm, observable.intersect(q))
+  }
   def filter(q: Qual): TEnv = filter(q.varSet)
   def dom: Set[String] = m.dom ++ qm.dom
 
@@ -379,7 +382,7 @@ def qtypeFreeVars(qt: QType): Set[String] =
 def typeFreeVars(t: Type): Set[String] = t match
   case TUnit | TNum | TBool => Set()
   case TFun(f, x, t1, t2) =>
-    (qtypeFreeVars(t1) ++ qtypeFreeVars(t2)) -- Set(x, f)
+    qtypeFreeVars(t1) ++ (qtypeFreeVars(t2) -- Set(x, f))
   case TRef(t) => qtypeFreeVars(t)
   case TTop => Set()
   case TVar(x) => Set()
@@ -393,7 +396,16 @@ def freeVars(e: Expr): Set[String] = e match {
   case EVar(x) => Set(x)
   case EUnaryOp(op, e) => freeVars(e) 
   case EBinOp(op, e1, e2) => freeVars(e1) ++ freeVars(e2)
-  case ELam(f, x, _, e, _) => freeVars(e) -- Set(f, x)
+  case ELam(f, x, at, e, rt) => freeVars(e) -- Set(f, x)
+    /*
+  case ELam(f, x, at, e, rt) =>
+    val atFv = qtypeFreeVars(at)
+    val rtFv = rt match {
+      case Some(rt) => qtypeFreeVars(rt)
+      case none => Set()
+    }
+     atFv ++ (rtFv ++ freeVars(e) -- Set(f, x))
+     */
   case EApp(e1, e2, _) => freeVars(e1) ++ freeVars(e2)
   case ELet(x, _, rhs, body, _) => freeVars(rhs) ++ (freeVars(body) - x)
   case EAlloc(e) => freeVars(e)
@@ -401,8 +413,17 @@ def freeVars(e: Expr): Set[String] = e match {
   case EAssign(e1, e2) => freeVars(e1) ++ freeVars(e2)
   case EDeref(e) => freeVars(e)
   case ECond(cnd, thn, els) => freeVars(cnd) ++ freeVars(thn) ++ freeVars(els)
-  case ETyLam(f, tvar, qvar, ub, e, _) =>
+  case ETyLam(f, tvar, qvar, ub, e, rt) =>
     freeVars(e) -- Set(f, qvar)
+    /*
+  case ETyLam(f, tvar, qvar, ub, e, rt) =>
+    val atFv = qtypeFreeVars(ub)
+    val rtFv = rt match {
+      case Some(rt) => qtypeFreeVars(rt)
+      case None => Set()
+    }
+     atFv ++ (rtFv ++ freeVars(e) -- Set(f, qvar))
+     */
   case ETyApp(e, qt, _) =>
     freeVars(e) ++ qtypeFreeVars(qt)
 }
@@ -435,25 +456,28 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
   case EBool(_) => TBool
   case EVar(x) =>
     val QType(t, _) = Γ(x)
+    assert(Γ.observable.contains(x), s"$x is not observable")
     t ^ x
   case EUnaryOp(op, e) =>
     typeCheckUnaryOp(e, op, typeCheck(e))
   case EBinOp(op, e1, e2) =>
     typeCheckBinOp(e1, e2, op, typeCheck(e1), typeCheck(e2))
-  case ELam(f, x, at, e, Some(rt)) =>
+  case ELam(f, x, at, body, Some(rt)) =>
     // XXX allow annotating observable filter?
     val ft = TFun(f, x, at, rt)
     qtypeWFCheck(ft)
-    val fv = Qual(qtypeFreeVars(at) ++ qtypeFreeVars(rt) ++ freeVars(e) -- Set(f, x)).satVarsQual
-    val Γ1 = Γ.filter(fv) + (x -> at) + (f -> (ft ^ fv))
-    val t = typeCheck(e)(using Γ1)
+    val fv = Qual((qtypeFreeVars(rt) ++ freeVars(body)) -- Set(f, x))
+    val Γ1 = (Γ + (x -> at) + (f -> (ft ^ fv))).filter(fv ++ Set(x, f))
+    val t = typeCheck(body)(using Γ1)
     checkSubQType(t, rt)(using Γ1)
     ft ^ fv
-  case ELam(f, x, at, e, None) =>
+  case ELam(f, x, at, body, None) =>
     qtypeWFCheck(at)
-    val fv = Qual(qtypeFreeVars(at) ++ freeVars(e) - x).satVarsQual
-    val tq@QType(t, q) = typeCheck(e)(using Γ.filter(fv) + (x -> at))
-    TFun(f, x, at, tq) ^ fv
+    val fv = Qual(freeVars(body) - x)
+    val Γ1 = (Γ + (x -> at)).filter(fv ++ Set(x))
+    val tq@QType(t, q) = typeCheck(body)(using Γ1)
+    val ft = TFun(f, x, at, tq)
+    ft ^ fv
   case EApp(e1, e2, Some(true)) => // T-App◆
     typeCheck(e1) match {
       case QType(TForall(f, tvar, qvar, bound, rt), qf) =>
@@ -554,14 +578,16 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
   // New F◆ terms
   case ETyLam(f, tvar, qvar, ub, e, Some(rt)) =>
     val ft = TForall(f, tvar, qvar, ub, rt)
-    val fv = qtypeFreeVars(ub) ++ qtypeFreeVars(rt) ++ freeVars(e) -- Set(f, qvar)
-    val Γ1 = Γ.filter(fv) + ((tvar, qvar) <⦂ ub) + (f -> (ft ^ Qual(fv)))
+    //val fv = qtypeFreeVars(ub) ++ qtypeFreeVars(rt) ++ freeVars(e) -- Set(f, qvar)
+    val fv = qtypeFreeVars(rt) ++ freeVars(e) -- Set(f, qvar)
+    val Γ1 = (Γ + ((tvar, qvar) <⦂ ub) + (f -> (ft ^ Qual(fv)))).filter(fv ++ Set(qvar, f))
     val t = typeCheck(e)(using Γ1)
     checkSubQType(t, rt)(using Γ1)
     ft ^ Qual(fv)
   case ETyLam(f, tvar, qvar, ub, e, None) =>
-    val fv = qtypeFreeVars(ub) ++ freeVars(e) -- Set(qvar)
-    val Γ1 = Γ.filter(fv) + ((tvar, qvar) <⦂ ub)
+    //val fv = qtypeFreeVars(ub) ++ freeVars(e) -- Set(qvar)
+    val fv = freeVars(e) -- Set(qvar)
+    val Γ1 = (Γ + ((tvar, qvar) <⦂ ub)).filter(fv + qvar)
     val t = typeCheck(e)(using Γ1)
     TForall(f, tvar, qvar, ub, t) ^ Qual(fv)
   case ETyApp(e, arg@QType(tyArg, qArg), Some(true)) =>

@@ -136,8 +136,8 @@ lam :
 ;
 
 tyLam :
-  ID '[' tyParamList ']' (':' qty)? '{' expr '}'
-| '[' tyParamList ']' (':' qty)? '{' expr '}'
+  ID '[' tyParamList ']' (':' qty)? RIGHTARROW '{' expr '}'
+| '[' tyParamList ']' (':' qty)? RIGHTARROW '{' expr '}'
 ;
 
 valDecl : VAL | TOPVAL;
