@@ -109,8 +109,18 @@ class Playground extends AnyFunSuite {
     val p = makePair[Ref[Int]^<>][Ref[Int]^<>](Ref 1)(Ref 2);
     snd[Ref[Int]^<>][Ref[Int]^<>](p)
     """
-    // Should be an error
+    // Should be an error because of deep dependency
     //println(parseAndCheck(p4))
+
+    val p5 = s"""
+    val makePair = ($makePair);
+    val fst = ($fst);
+    val snd = ($snd);
+    topval u = Ref 12;
+    val p = makePair[Ref[Int]^u][Ref[Int]^u](u)(u);
+    snd[Ref[Int]^u][Ref[Int]^u](p)
+    """
+    println(parseAndCheck(p5))
 
   }
 }
