@@ -14,10 +14,166 @@ import Parser._
 import TypeSyntax.given_Conversion_Type_QType
 import ExprSyntax.given_Conversion_Int_ENum
 
+import RunDiamond.prettyQType
+
 def parseAndCheck(s: String): QType = topTypeCheck(parseToCore(s))
 def parseAndEval(s: String): Value = topEval(parseToCore(s))._1
 
 class Playground extends AnyFunSuite {
+
+  test("opaque pairs") {
+    def tyPair(A: String, B: String): String =
+      s"forall p[C^c <: Top] => (f(g(x: $A^<>) => ((y: $B^{x, <>}) => C^{x, y})^x) => C^f)^p"
+
+    val makePair = s"""
+    [A^a <: Top^<>] => { [B^b <: Top^{a, <>}] => {
+      (x: A^a) => { (y: B^b): (${tyPair("A", "B")})^{x, y} => {
+        p[C^c <: Top]: (f(g(x: A^<>) => ((y: B^{x, <>}) => C^{x, y})^x) => C^f)^p => {
+          f(h: (g(x: A^<>) => ((y: B^{x, <>}) => C^{x, y})^x)): C^f => { h(x)(y) }
+        }
+      } }
+    } }
+    """
+
+    println(parseToCore(makePair))
+    assert(parseAndCheck(makePair) ==
+      (TForall("𝐹#0","A","a",TTop^ ◆,
+        TForall("𝐹#1","B","b",TTop^("a", ◆),
+          TFun("𝑓#2","x",TVar("A")^"a",
+            TFun("𝑓#3","y",TVar("B")^"b",
+              TForall("p","C","c",TTop^(),
+                TFun("f","Arg#4",
+                  TFun("g","x",TVar("A")^ ◆,
+                    TFun("𝑓#5","y",TVar("B")^("x", ◆),
+                      TVar("C")^("x","y"))^"x")^(),
+                  TVar("C")^"f")^"p")^("x","y"))^"x")^())^())^()))
+    assert(prettyQType(parseAndCheck(makePair)) ==
+      """(∀𝐹#0(A^a <: Top^◆). (∀𝐹#1(B^b <: Top^{a,◆}). (𝑓#2(x: A^a) => (𝑓#3(y: B^b) => (∀p(C^c <: Top^∅). (f(Arg#4: (g(x: A^◆) => (𝑓#5(y: B^{x,◆}) => C^{x,y})^x)^∅) => C^f)^p)^{x,y})^x)^∅)^∅)^∅""")
+
+
+    val fst = s"""
+    [A^a <: Top^<>] => { [B^b <: Top^{a, <>}] => {
+      (p: (${tyPair("A", "B")})^{a, b}) => {
+        p[A]( (x: A^<>) => { (y: B^{x, <>}): A^{x, y} => { x } } )
+      }
+    } }
+    """
+    assert(prettyQType(parseAndCheck(fst)) ==
+      """(∀𝐹#0(A^a <: Top^◆). (∀𝐹#1(B^b <: Top^{a,◆}). (𝑓#2(p: (∀p(C^c <: Top^∅). (f(Arg#3: (g(x: A^◆) => (𝑓#4(y: B^{x,◆}) => C^{x,y})^x)^∅) => C^f)^p)^{a,b}) => A^p)^∅)^∅)^∅""")
+
+
+    val snd = s"""
+    [A^a <: Top^<>] => { [B^b <: Top^{a, <>}] => {
+      (p: (${tyPair("A", "B")})^{a, b}) => {
+        p[B]( (x: A^<>) => { (y: B^{x, <>}): B^{x, y} => { y } } )
+      }
+    } }
+    """
+    assert(prettyQType(parseAndCheck(snd)) ==
+      """(∀𝐹#0(A^a <: Top^◆). (∀𝐹#1(B^b <: Top^{a,◆}). (𝑓#2(p: (∀p(C^c <: Top^∅). (f(Arg#3: (g(x: A^◆) => (𝑓#4(y: B^{x,◆}) => C^{x,y})^x)^∅) => C^f)^p)^{a,b}) => B^p)^∅)^∅)^∅""")
+
+
+    // A pair of two integers:
+    val p1 = s"""
+    val makePair = ($makePair);
+    val p = makePair[Int][Int](1)(2);
+    val fst = ($fst);
+    val n = fst[Int][Int](p);
+    val snd = ($snd);
+    val m = snd[Int][Int](p);
+    n + m
+    """
+    assert(parseAndCheck(p1) == (TNum^()))
+
+    // A pair of two references and get the first one:
+    val p2 = s"""
+    val makePair = ($makePair);
+    val fst = ($fst);
+    val snd = ($snd);
+    topval u = Ref 12;             // use topval to manifest the returned qualifier
+    topval v = Ref 34;
+    val p = makePair[Ref[Int]^u][Ref[Int]^v](u)(v);
+    fst[Ref[Int]^u][Ref[Int]^v](p) // Ref[Int]^{u, v}
+    """
+    assert(parseAndCheck(p2) == (TRef(TNum^())^("u", "v")))
+
+    // A pair of two references and get the second one:
+    val p3 = s"""
+    val makePair = ($makePair);
+    val fst = ($fst);
+    val snd = ($snd);
+    topval u = Ref 12;             // use topval to manifest the returned qualifier
+    topval v = Ref 34;
+    val p = makePair[Ref[Int]^u][Ref[Int]^v](u)(v);
+    snd[Ref[Int]^u][Ref[Int]^v](p) // Ref[Int]^{u, v}
+    """
+    assert(parseAndCheck(p3) == (TRef(TNum^())^("u", "v")))
+
+    // Construct an escaped pair:
+    val p4 = s"""
+    val makePair = ($makePair);
+    val fst = ($fst);
+    val snd = ($snd);
+    def f(x: Int): (${tyPair("Ref[Int]", "Ref[Int]")})^<> = {
+      val c1 = Ref x;
+      val c2 = Ref (x+1);
+      makePair[Ref[Int]^c1][Ref[Int]^c2](c1)(c2)
+    };
+    f(1)
+    """
+    assert(prettyQType(parseAndCheck(p4)) ==
+      "(∀p(C^c <: Top^∅). (f(Arg#23: (g(x: Ref[TNum^∅]^◆) => (𝑓#24(y: Ref[TNum^∅]^{◆,x}) => C^{x,y})^x)^∅) => C^f)^p)^◆")
+
+    // Construct an escaped pair and get its first component:
+    val p5 = s"""
+    val makePair = ($makePair);
+    val fst = ($fst);
+    val snd = ($snd);
+    def f(x: Int): (${tyPair("Ref[Int]", "Ref[Int]")})^<> = {
+      val c1 = Ref x;
+      val c2 = Ref (x+1);
+      makePair[Ref[Int]^c1][Ref[Int]^c2](c1)(c2)
+    };
+    topval p = f(1);
+    fst[Ref[Int]^p][Ref[Int]^p](p)
+    """
+    assert(prettyQType(parseAndCheck(p5)) == "Ref[TNum^∅]^p")
+
+    // Construct an escaped pair and get its second component:
+    val p6 = s"""
+    val makePair = ($makePair);
+    val fst = ($fst);
+    val snd = ($snd);
+    def f(x: Int): (${tyPair("Ref[Int]", "Ref[Int]")})^<> = {
+      val c1 = Ref x;
+      val c2 = Ref (x+1);
+      makePair[Ref[Int]^c1][Ref[Int]^c2](c1)(c2)
+    };
+    topval p = f(1);
+    snd[Ref[Int]^p][Ref[Int]^p](p)
+    """
+    assert(prettyQType(parseAndCheck(p6)) == "Ref[TNum^∅]^p")
+
+    // Compute something:
+    val p7 = s"""
+    val makePair = ($makePair);
+    val fst = ($fst);
+    val snd = ($snd);
+    def f(x: Int): (${tyPair("Ref[Int]", "Ref[Int]")})^<> = {
+      val c1 = Ref x;
+      val c2 = Ref (x+1);
+      makePair[Ref[Int]^c1][Ref[Int]^c2](c1)(c2)
+    };
+    val p = f(1);
+    val two = (! snd[Ref[Int]^p][Ref[Int]^p](p));
+    val c1 = fst[Ref[Int]^p][Ref[Int]^p](p);
+    val _ = c1 := ((! c1) + 5);
+    two + (! c1)  // 2 + 6
+    """
+    assert(parseAndCheck(p7) == (TNum^()))
+    assert(parseAndEval(p7) == VNum(8))
+
+  }
 
 }
 
@@ -89,7 +245,7 @@ class DiamondPairTest extends AnyFunSuite {
     topval u = Ref 12;             // use topval to manifest the returned qualifier
     topval v = Ref 34;
     val p = makePair[Ref[Int]^u][Ref[Int]^v](u)(v);
-    fst[Ref[Int]^u][Ref[Int]^v](p)
+    fst[Ref[Int]^u][Ref[Int]^v](p) // precise qualifier: Ref[Int]^{u}
     """
     assert(parseAndCheck(p2) == (TRef(TNum^())^"u"))
 
@@ -101,7 +257,7 @@ class DiamondPairTest extends AnyFunSuite {
     topval u = Ref 12;             // use topval to manifest the returned qualifier
     topval v = Ref 34;
     val p = makePair[Ref[Int]^u][Ref[Int]^v](u)(v);
-    snd[Ref[Int]^u][Ref[Int]^v](p)
+    snd[Ref[Int]^u][Ref[Int]^v](p) // precise qualifier: Ref[Int]^{v}
     """
     assert(parseAndCheck(p3) == (TRef(TNum^())^"v"))
 

@@ -17,7 +17,7 @@ object RunDiamond {
       case TFun(f, x, t1, t2) => s"$f($x: ${prettyQType(t1)}) => ${prettyQType(t2)}"
       case TTop => "Top"
       case TVar(x) => x
-      case TForall(f, tvar, qvar, bound, res) => s"∀$f($tvar^$qvar <: ${prettyQType(bound)}).${prettyQType(res)}"
+      case TForall(f, tvar, qvar, bound, res) => s"∀$f($tvar^$qvar <: ${prettyQType(bound)}). ${prettyQType(res)}"
     }
 
   def prettyQType(tq: QType): String = {
