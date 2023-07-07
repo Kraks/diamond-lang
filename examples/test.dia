@@ -6,9 +6,9 @@
 //(! cell2) + (! cell3) // 3 + 5
 //def id(x: Ref[Int]^<>): Ref[Int]^x = Ref 42;
 //id
-def f3(x: Int): (g() => Ref[Int]^g)^<> =
-  val c = Ref x;
-  def g(): Ref[Int]^g = c;
-  g;
-f3(0)
-
+//def f3(x: Int): (g() => Ref[Int]^g)^<> =
+//  val c = Ref x;
+//  def g(): Ref[Int]^g = c;
+//  g;
+//f3(0)
+(x: Int, y: Int) => { x + y }

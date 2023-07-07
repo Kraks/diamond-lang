@@ -124,14 +124,15 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
     val f = if (ctx.ID != null) ctx.ID.getText.toString else freshVar(funPre)
     val args =
       if (ctx.paramList != null) visitParamList(ctx.paramList).params
-      else List()
+      else List(Param(freshVar(varPre), core.QType(core.Type.TUnit, core.Qual.untrack)))
     val ret = visitQty(ctx.qty).toCore
-    // TODO: multi-argument function types
-    if (args.size == 0) {
-      Type(core.Type.TFun(f, freshVar(varPre), core.QType(core.Type.TUnit), ret))
-    } else if (args.size == 1) {
-      Type(core.Type.TFun(f, args(0).name, args(0).qty, ret))
-    } else error
+    val rest = args.drop(1).zipWithIndex.foldRight(ret) {
+      case ((arg, idx), rt) =>
+        val q = core.Qual(args.take(idx).map(_.name).toSet)
+        core.QType(core.Type.TFun(freshVar(funPre), arg.name, arg.qty, rt), q)
+    }
+    val fty = core.Type.TFun(f, args(0).name, args(0).qty, rest)
+    Type(fty)
   }
 
   override def visitTyParam(ctx: TyParamContext): TyParam = {
@@ -150,6 +151,7 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
     val f = if (ctx.ID != null) ctx.ID.getText.toString else freshVar(tyFunPre)
     val args = visitTyParamList(ctx.tyParamList).tyParams
     val ret = visitQty(ctx.qty).toCore
+    // TODO: multiarg
     if (args.size == 1) {
       Type(core.Type.TForall(f, args(0).tvar, args(0).qvar, args(0).bound, ret))
     } else error
@@ -223,15 +225,16 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
     val args =
       if (ctx.namedParamList != null)
         visitNamedParamList(ctx.namedParamList).params
-      else List()
+      else List(Param(freshVar(varPre), core.QType(core.Type.TUnit, core.Qual.untrack)))
     val rt = if (ctx.qty != null) Some(visitQty(ctx.qty).toCore) else None
     val body = visitExpr(ctx.expr).toCore
-    // TODO: multi-argument lambda functions
-    if (args.size == 0) {
-      Expr(core.Expr.ELam(name, freshVar(varPre), core.QType(core.Type.TUnit), body, rt))
-    } else if (args.size == 1) {
-      Expr(core.Expr.ELam(name, args(0).name, args(0).qty, body, rt))
-    } else error
+    val ret = args.zipWithIndex.foldRight(body) {
+      case ((arg, idx), body) =>
+        val realName = if (idx == 0) name else freshVar(funPre)
+        val realRt = if (idx == args.size-1) rt else None
+        core.Expr.ELam(realName, arg.name, arg.qty, body, realRt)
+    }
+    Expr(ret)
   }
 
   override def visitTyLam(ctx: TyLamContext): Expr = {
@@ -242,6 +245,7 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
       else List()
     val rt = if (ctx.qty != null) Some(visitQty(ctx.qty).toCore) else None
     val body = visitExpr(ctx.expr).toCore
+    // TODO: multi arg
     if (tyArgs.size == 1) {
       Expr(core.Expr.ETyLam(name, tyArgs(0).tvar, tyArgs(0).qvar, tyArgs(0).bound, body, rt))
     } else error
