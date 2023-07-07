@@ -29,7 +29,10 @@ object TransparentPair {
       } }
     } }
     """
-  val tyPair = "forall [C^c <: Top^{a, b, <>}] => (((x: A^a) => ((y: B^b) => C^c)^x) => C^c)^{c, a, b}"
+
+  //val tyPair = "forall [C^c <: Top^{a, b, <>}] => (((x: A^a) => ((y: B^b) => C^c)^x) => C^c)^{c, a, b}"
+  val tyPair = "forall [C^c <: Top^{a, b, <>}] => (((x: A^a) => ((y: B^b) => C^c)^x) => C^c)^{a, b}" // TODO: is c necessary?
+
   val fst = s"""
     [A^a <: Top^<>] => { [B^b <: Top^{a, <>}] => {
       (p: (${tyPair})^{a, b, <>}) => {
@@ -37,6 +40,7 @@ object TransparentPair {
       }
     } }
     """
+
   val snd = s"""
     [A^a <: Top^<>] => { [B^b <: Top^{a, <>}] => {
       (p: (${tyPair})^{a, b, <>}) => {
@@ -60,6 +64,7 @@ object OpaquePair {
       } }
     } }
     """
+
   val fst = s"""
     [A^a <: Top^<>] => { [B^b <: Top^{a, <>}] => {
       (p: (${tyOPair("A", "B")})^{a, b}) => {
@@ -67,6 +72,7 @@ object OpaquePair {
       }
     } }
     """
+
   val snd = s"""
     [A^a <: Top^<>] => { [B^b <: Top^{a, <>}] => {
       (p: (${tyOPair("A", "B")})^{a, b}) => {

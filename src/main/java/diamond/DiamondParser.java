@@ -1421,15 +1421,6 @@ public class DiamondParser extends Parser {
 		public ValueContext value() {
 			return getRuleContext(ValueContext.class,0);
 		}
-		public Op1Context op1() {
-			return getRuleContext(Op1Context.class,0);
-		}
-		public List<ExprContext> expr() {
-			return getRuleContexts(ExprContext.class);
-		}
-		public ExprContext expr(int i) {
-			return getRuleContext(ExprContext.class,i);
-		}
 		public AllocContext alloc() {
 			return getRuleContext(AllocContext.class,0);
 		}
@@ -1437,9 +1428,18 @@ public class DiamondParser extends Parser {
 			return getRuleContext(DerefContext.class,0);
 		}
 		public TerminalNode LPAREN() { return getToken(DiamondParser.LPAREN, 0); }
+		public List<ExprContext> expr() {
+			return getRuleContexts(ExprContext.class);
+		}
+		public ExprContext expr(int i) {
+			return getRuleContext(ExprContext.class,i);
+		}
 		public TerminalNode RPAREN() { return getToken(DiamondParser.RPAREN, 0); }
 		public TerminalNode LCURLY() { return getToken(DiamondParser.LCURLY, 0); }
 		public TerminalNode RCURLY() { return getToken(DiamondParser.RCURLY, 0); }
+		public Op1Context op1() {
+			return getRuleContext(Op1Context.class,0);
+		}
 		public LetContext let() {
 			return getRuleContext(LetContext.class,0);
 		}
@@ -1517,41 +1517,41 @@ public class DiamondParser extends Parser {
 			case 3:
 				{
 				setState(203);
-				op1();
-				setState(204);
-				expr(15);
+				alloc();
 				}
 				break;
 			case 4:
 				{
-				setState(206);
-				alloc();
+				setState(204);
+				deref();
 				}
 				break;
 			case 5:
 				{
+				setState(205);
+				match(LPAREN);
+				setState(206);
+				expr(0);
 				setState(207);
-				deref();
+				match(RPAREN);
 				}
 				break;
 			case 6:
 				{
-				setState(208);
-				match(LPAREN);
 				setState(209);
-				expr(0);
+				match(LCURLY);
 				setState(210);
-				match(RPAREN);
+				expr(0);
+				setState(211);
+				match(RCURLY);
 				}
 				break;
 			case 7:
 				{
-				setState(212);
-				match(LCURLY);
 				setState(213);
-				expr(0);
+				op1();
 				setState(214);
-				match(RCURLY);
+				expr(7);
 				}
 				break;
 			case 8:
@@ -1588,7 +1588,7 @@ public class DiamondParser extends Parser {
 						_localctx = new ExprContext(_parentctx, _parentState);
 						pushNewRecursionContext(_localctx, _startState, RULE_expr);
 						setState(223);
-						if (!(precpred(_ctx, 14))) throw new FailedPredicateException(this, "precpred(_ctx, 14)");
+						if (!(precpred(_ctx, 6))) throw new FailedPredicateException(this, "precpred(_ctx, 6)");
 						setState(224);
 						_la = _input.LA(1);
 						if ( !(_la==MULT || _la==DIV) ) {
@@ -1600,7 +1600,7 @@ public class DiamondParser extends Parser {
 							consume();
 						}
 						setState(225);
-						expr(15);
+						expr(7);
 						}
 						break;
 					case 2:
@@ -1608,7 +1608,7 @@ public class DiamondParser extends Parser {
 						_localctx = new ExprContext(_parentctx, _parentState);
 						pushNewRecursionContext(_localctx, _startState, RULE_expr);
 						setState(226);
-						if (!(precpred(_ctx, 13))) throw new FailedPredicateException(this, "precpred(_ctx, 13)");
+						if (!(precpred(_ctx, 5))) throw new FailedPredicateException(this, "precpred(_ctx, 5)");
 						setState(227);
 						_la = _input.LA(1);
 						if ( !(_la==ADD || _la==MINUS) ) {
@@ -1620,7 +1620,7 @@ public class DiamondParser extends Parser {
 							consume();
 						}
 						setState(228);
-						expr(14);
+						expr(6);
 						}
 						break;
 					case 3:
@@ -1628,11 +1628,11 @@ public class DiamondParser extends Parser {
 						_localctx = new ExprContext(_parentctx, _parentState);
 						pushNewRecursionContext(_localctx, _startState, RULE_expr);
 						setState(229);
-						if (!(precpred(_ctx, 12))) throw new FailedPredicateException(this, "precpred(_ctx, 12)");
+						if (!(precpred(_ctx, 4))) throw new FailedPredicateException(this, "precpred(_ctx, 4)");
 						setState(230);
 						boolOp2();
 						setState(231);
-						expr(13);
+						expr(5);
 						}
 						break;
 					case 4:
@@ -1652,7 +1652,7 @@ public class DiamondParser extends Parser {
 						_localctx = new ExprContext(_parentctx, _parentState);
 						pushNewRecursionContext(_localctx, _startState, RULE_expr);
 						setState(236);
-						if (!(precpred(_ctx, 7))) throw new FailedPredicateException(this, "precpred(_ctx, 7)");
+						if (!(precpred(_ctx, 11))) throw new FailedPredicateException(this, "precpred(_ctx, 11)");
 						setState(237);
 						match(LPAREN);
 						setState(239);
@@ -1674,7 +1674,7 @@ public class DiamondParser extends Parser {
 						_localctx = new ExprContext(_parentctx, _parentState);
 						pushNewRecursionContext(_localctx, _startState, RULE_expr);
 						setState(242);
-						if (!(precpred(_ctx, 6))) throw new FailedPredicateException(this, "precpred(_ctx, 6)");
+						if (!(precpred(_ctx, 10))) throw new FailedPredicateException(this, "precpred(_ctx, 10)");
 						setState(243);
 						match(AT);
 						setState(244);
@@ -1698,7 +1698,7 @@ public class DiamondParser extends Parser {
 						_localctx = new ExprContext(_parentctx, _parentState);
 						pushNewRecursionContext(_localctx, _startState, RULE_expr);
 						setState(249);
-						if (!(precpred(_ctx, 5))) throw new FailedPredicateException(this, "precpred(_ctx, 5)");
+						if (!(precpred(_ctx, 9))) throw new FailedPredicateException(this, "precpred(_ctx, 9)");
 						setState(250);
 						match(LBRACKET);
 						setState(251);
@@ -1712,7 +1712,7 @@ public class DiamondParser extends Parser {
 						_localctx = new ExprContext(_parentctx, _parentState);
 						pushNewRecursionContext(_localctx, _startState, RULE_expr);
 						setState(254);
-						if (!(precpred(_ctx, 4))) throw new FailedPredicateException(this, "precpred(_ctx, 4)");
+						if (!(precpred(_ctx, 8))) throw new FailedPredicateException(this, "precpred(_ctx, 8)");
 						setState(255);
 						match(AT);
 						setState(256);
@@ -2509,21 +2509,21 @@ public class DiamondParser extends Parser {
 	private boolean expr_sempred(ExprContext _localctx, int predIndex) {
 		switch (predIndex) {
 		case 0:
-			return precpred(_ctx, 14);
+			return precpred(_ctx, 6);
 		case 1:
-			return precpred(_ctx, 13);
+			return precpred(_ctx, 5);
 		case 2:
-			return precpred(_ctx, 12);
+			return precpred(_ctx, 4);
 		case 3:
 			return precpred(_ctx, 1);
 		case 4:
-			return precpred(_ctx, 7);
+			return precpred(_ctx, 11);
 		case 5:
-			return precpred(_ctx, 6);
+			return precpred(_ctx, 10);
 		case 6:
-			return precpred(_ctx, 5);
+			return precpred(_ctx, 9);
 		case 7:
-			return precpred(_ctx, 4);
+			return precpred(_ctx, 8);
 		}
 		return true;
 	}
@@ -2679,35 +2679,35 @@ public class DiamondParser extends Parser {
 		"\u00c5\u00c6\u0001\u0000\u0000\u0000\u00c6#\u0001\u0000\u0000\u0000\u00c7"+
 		"\u00c5\u0001\u0000\u0000\u0000\u00c8\u00c9\u0006\u0012\uffff\uffff\u0000"+
 		"\u00c9\u00de\u0005\'\u0000\u0000\u00ca\u00de\u0003\u001e\u000f\u0000\u00cb"+
-		"\u00cc\u0003\u001c\u000e\u0000\u00cc\u00cd\u0003$\u0012\u000f\u00cd\u00de"+
-		"\u0001\u0000\u0000\u0000\u00ce\u00de\u0003&\u0013\u0000\u00cf\u00de\u0003"+
-		"(\u0014\u0000\u00d0\u00d1\u0005\t\u0000\u0000\u00d1\u00d2\u0003$\u0012"+
-		"\u0000\u00d2\u00d3\u0005\n\u0000\u0000\u00d3\u00de\u0001\u0000\u0000\u0000"+
-		"\u00d4\u00d5\u0005\u000b\u0000\u0000\u00d5\u00d6\u0003$\u0012\u0000\u00d6"+
-		"\u00d7\u0005\f\u0000\u0000\u00d7\u00de\u0001\u0000\u0000\u0000\u00d8\u00de"+
-		"\u00030\u0018\u0000\u00d9\u00da\u00032\u0019\u0000\u00da\u00db\u0005\b"+
-		"\u0000\u0000\u00db\u00dc\u0003$\u0012\u0002\u00dc\u00de\u0001\u0000\u0000"+
-		"\u0000\u00dd\u00c8\u0001\u0000\u0000\u0000\u00dd\u00ca\u0001\u0000\u0000"+
-		"\u0000\u00dd\u00cb\u0001\u0000\u0000\u0000\u00dd\u00ce\u0001\u0000\u0000"+
-		"\u0000\u00dd\u00cf\u0001\u0000\u0000\u0000\u00dd\u00d0\u0001\u0000\u0000"+
-		"\u0000\u00dd\u00d4\u0001\u0000\u0000\u0000\u00dd\u00d8\u0001\u0000\u0000"+
-		"\u0000\u00dd\u00d9\u0001\u0000\u0000\u0000\u00de\u0106\u0001\u0000\u0000"+
-		"\u0000\u00df\u00e0\n\u000e\u0000\u0000\u00e0\u00e1\u0007\u0002\u0000\u0000"+
-		"\u00e1\u0105\u0003$\u0012\u000f\u00e2\u00e3\n\r\u0000\u0000\u00e3\u00e4"+
-		"\u0007\u0003\u0000\u0000\u00e4\u0105\u0003$\u0012\u000e\u00e5\u00e6\n"+
-		"\f\u0000\u0000\u00e6\u00e7\u0003\u001a\r\u0000\u00e7\u00e8\u0003$\u0012"+
-		"\r\u00e8\u0105\u0001\u0000\u0000\u0000\u00e9\u00ea\n\u0001\u0000\u0000"+
-		"\u00ea\u00eb\u0005\u0004\u0000\u0000\u00eb\u0105\u0003$\u0012\u0002\u00ec"+
-		"\u00ed\n\u0007\u0000\u0000\u00ed\u00ef\u0005\t\u0000\u0000\u00ee\u00f0"+
-		"\u0003 \u0010\u0000\u00ef\u00ee\u0001\u0000\u0000\u0000\u00ef\u00f0\u0001"+
-		"\u0000\u0000\u0000\u00f0\u00f1\u0001\u0000\u0000\u0000\u00f1\u0105\u0005"+
-		"\n\u0000\u0000\u00f2\u00f3\n\u0006\u0000\u0000\u00f3\u00f4\u0005\u0001"+
-		"\u0000\u0000\u00f4\u00f6\u0005\t\u0000\u0000\u00f5\u00f7\u0003 \u0010"+
-		"\u0000\u00f6\u00f5\u0001\u0000\u0000\u0000\u00f6\u00f7\u0001\u0000\u0000"+
-		"\u0000\u00f7\u00f8\u0001\u0000\u0000\u0000\u00f8\u0105\u0005\n\u0000\u0000"+
-		"\u00f9\u00fa\n\u0005\u0000\u0000\u00fa\u00fb\u0005\r\u0000\u0000\u00fb"+
+		"\u00de\u0003&\u0013\u0000\u00cc\u00de\u0003(\u0014\u0000\u00cd\u00ce\u0005"+
+		"\t\u0000\u0000\u00ce\u00cf\u0003$\u0012\u0000\u00cf\u00d0\u0005\n\u0000"+
+		"\u0000\u00d0\u00de\u0001\u0000\u0000\u0000\u00d1\u00d2\u0005\u000b\u0000"+
+		"\u0000\u00d2\u00d3\u0003$\u0012\u0000\u00d3\u00d4\u0005\f\u0000\u0000"+
+		"\u00d4\u00de\u0001\u0000\u0000\u0000\u00d5\u00d6\u0003\u001c\u000e\u0000"+
+		"\u00d6\u00d7\u0003$\u0012\u0007\u00d7\u00de\u0001\u0000\u0000\u0000\u00d8"+
+		"\u00de\u00030\u0018\u0000\u00d9\u00da\u00032\u0019\u0000\u00da\u00db\u0005"+
+		"\b\u0000\u0000\u00db\u00dc\u0003$\u0012\u0002\u00dc\u00de\u0001\u0000"+
+		"\u0000\u0000\u00dd\u00c8\u0001\u0000\u0000\u0000\u00dd\u00ca\u0001\u0000"+
+		"\u0000\u0000\u00dd\u00cb\u0001\u0000\u0000\u0000\u00dd\u00cc\u0001\u0000"+
+		"\u0000\u0000\u00dd\u00cd\u0001\u0000\u0000\u0000\u00dd\u00d1\u0001\u0000"+
+		"\u0000\u0000\u00dd\u00d5\u0001\u0000\u0000\u0000\u00dd\u00d8\u0001\u0000"+
+		"\u0000\u0000\u00dd\u00d9\u0001\u0000\u0000\u0000\u00de\u0106\u0001\u0000"+
+		"\u0000\u0000\u00df\u00e0\n\u0006\u0000\u0000\u00e0\u00e1\u0007\u0002\u0000"+
+		"\u0000\u00e1\u0105\u0003$\u0012\u0007\u00e2\u00e3\n\u0005\u0000\u0000"+
+		"\u00e3\u00e4\u0007\u0003\u0000\u0000\u00e4\u0105\u0003$\u0012\u0006\u00e5"+
+		"\u00e6\n\u0004\u0000\u0000\u00e6\u00e7\u0003\u001a\r\u0000\u00e7\u00e8"+
+		"\u0003$\u0012\u0005\u00e8\u0105\u0001\u0000\u0000\u0000\u00e9\u00ea\n"+
+		"\u0001\u0000\u0000\u00ea\u00eb\u0005\u0004\u0000\u0000\u00eb\u0105\u0003"+
+		"$\u0012\u0002\u00ec\u00ed\n\u000b\u0000\u0000\u00ed\u00ef\u0005\t\u0000"+
+		"\u0000\u00ee\u00f0\u0003 \u0010\u0000\u00ef\u00ee\u0001\u0000\u0000\u0000"+
+		"\u00ef\u00f0\u0001\u0000\u0000\u0000\u00f0\u00f1\u0001\u0000\u0000\u0000"+
+		"\u00f1\u0105\u0005\n\u0000\u0000\u00f2\u00f3\n\n\u0000\u0000\u00f3\u00f4"+
+		"\u0005\u0001\u0000\u0000\u00f4\u00f6\u0005\t\u0000\u0000\u00f5\u00f7\u0003"+
+		" \u0010\u0000\u00f6\u00f5\u0001\u0000\u0000\u0000\u00f6\u00f7\u0001\u0000"+
+		"\u0000\u0000\u00f7\u00f8\u0001\u0000\u0000\u0000\u00f8\u0105\u0005\n\u0000"+
+		"\u0000\u00f9\u00fa\n\t\u0000\u0000\u00fa\u00fb\u0005\r\u0000\u0000\u00fb"+
 		"\u00fc\u0003\"\u0011\u0000\u00fc\u00fd\u0005\u000e\u0000\u0000\u00fd\u0105"+
-		"\u0001\u0000\u0000\u0000\u00fe\u00ff\n\u0004\u0000\u0000\u00ff\u0100\u0005"+
+		"\u0001\u0000\u0000\u0000\u00fe\u00ff\n\b\u0000\u0000\u00ff\u0100\u0005"+
 		"\u0001\u0000\u0000\u0100\u0101\u0005\r\u0000\u0000\u0101\u0102\u0003\""+
 		"\u0011\u0000\u0102\u0103\u0005\u000e\u0000\u0000\u0103\u0105\u0001\u0000"+
 		"\u0000\u0000\u0104\u00df\u0001\u0000\u0000\u0000\u0104\u00e2\u0001\u0000"+

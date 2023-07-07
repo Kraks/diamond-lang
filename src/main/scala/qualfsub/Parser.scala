@@ -64,25 +64,35 @@ package ir {
     def toLet(e: core.Expr): core.Expr.ELet
   }
   case class MonoFunDef(name: String, params: List[Param], rt: Option[QType], body: core.Expr) extends Def {
-    // TODO: multi-arg functions
     def toLet(e: core.Expr): core.Expr.ELet = {
-      val argName =
-        if (params.size == 0) freshVar(varPre)
-        else params(0).name
-      val argTy =
-        if (params.size == 0) core.QType(core.Type.TUnit, core.Qual.untrack)
-        else params(0).qty
-      val rhs = core.Expr.ELam(name, argName, argTy, body, rt.map(_.toCore))
+      val realParams: List[Param] =
+        if (params.size == 0) List(Param(freshVar(varPre), core.QType(core.Type.TUnit, core.Qual.untrack)))
+        else params
+      val rhs = realParams.zipWithIndex.foldRight(body) {
+        case ((param, idx), body) =>
+          val funName = if (idx == 0) name else freshVar(funPre)
+          val realRt = if (idx == realParams.size-1) rt.map(_.toCore) else None
+          core.Expr.ELam(funName, param.name, param.qty, body, realRt)
+      }
       val rhsTy = None
       core.Expr.ELet(name, rhsTy, rhs, e)
     }
   }
   case class PolyFunDef(name: String, tyParams: List[TyParam], params: List[Param], rt: Option[QType], body: core.Expr) extends Def {
-    // TODO: multi-arg functions
     def toLet(e: core.Expr): core.Expr.ELet = {
-      val ty = tyParams(0)
-      val lamBody = core.Expr.ELam(freshVar(funPre), params(0).name, params(0).qty, body, rt.map(_.toCore))
-      val rhs = core.Expr.ETyLam(name, ty.tvar, ty.qvar, ty.bound, lamBody, None)
+      val realParams: List[Param] =
+        if (params.size == 0) List(Param(freshVar(varPre), core.QType(core.Type.TUnit, core.Qual.untrack)))
+        else params
+      val lam = realParams.zipWithIndex.foldRight(body) {
+        case ((param, idx), body) =>
+          val realRt = if (idx == realParams.size-1) rt.map(_.toCore) else None
+          core.Expr.ELam(freshVar(funPre), param.name, param.qty, body, realRt)
+      }
+      val rhs = tyParams.zipWithIndex.foldRight(lam) {
+        case ((ty, idx), body) =>
+          val funName = if (idx == 0) name else freshVar(tyFunPre)
+          core.Expr.ETyLam(funName, ty.tvar, ty.qvar, ty.bound, body, None)
+      }
       val rhsTy = None
       core.Expr.ELet(name, rhsTy, rhs, e)
     }
@@ -304,17 +314,17 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
         val body = visitExpr(ctx.expr(0)).toCore
         super.visit(ctx.funDef).asInstanceOf[Def].toLet(body)
       } else if (ctx.args != null) {
-        // TODO: multi-argument application
-        val e = visitExpr(ctx.expr(0)).toCore
+        // FIXME: this doesn't handle empty argument
+        val f = visitExpr(ctx.expr(0)).toCore
         val args = visitArgs(ctx.args).args
-        if (ctx.AT != null) core.Expr.EApp(e, args(0), Some(true))
-        else core.Expr.EApp(e, args(0), None)
+        val fresh = if (ctx.AT != null) Some(true) else None
+        args.foldLeft(f) { case (f, arg) => core.Expr.EApp(f, arg, fresh) }
       } else if (ctx.tyArgs != null) {
-        // TODO: multi-argument application
-        val e = visitExpr(ctx.expr(0)).toCore
+        // there is at least one type in tyArgs
+        val fresh = if (ctx.AT != null) Some(true) else None
+        val f = visitExpr(ctx.expr(0)).toCore
         val tyArgs = visitTyArgs(ctx.tyArgs).args
-        if (ctx.AT != null) core.Expr.ETyApp(e, tyArgs(0), Some(true))
-        else core.Expr.ETyApp(e, tyArgs(0), None)
+        tyArgs.foldLeft(f) { case (f, tyArg) => core.Expr.ETyApp(f, tyArg, fresh) }
       } else if (ctx.LPAREN != null && ctx.RPAREN != null) {
         visitExpr(ctx.expr(0)).toCore
       } else if (ctx.LCURLY != null && ctx.RCURLY != null) {

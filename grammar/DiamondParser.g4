@@ -101,10 +101,6 @@ tyArgs :
 expr:
   ID
 | value
-| op1 expr
-| expr ('*' | '/') expr
-| expr ('+' | '-') expr
-| expr boolOp2 expr
 | alloc
 | deref
 | '(' expr ')'
@@ -115,6 +111,11 @@ expr:
 // type applications
 | expr     '[' tyArgs ']'
 | expr '@' '[' tyArgs ']'
+// unary/binary operations
+| op1 expr
+| expr ('*' | '/') expr
+| expr ('+' | '-') expr
+| expr boolOp2 expr
 // binding
 | let
 | funDef ';' expr
