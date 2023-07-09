@@ -17,6 +17,7 @@ class QualFSubBasicTests extends AnyFunSuite {
   // These are tests copied from qualstlc tests, not involving any FSub feature.
 
   test("syntax") {
+    Counter.reset
     val t1: QType = TNum ^ ()
     assert(t1 == QType(TNum, Qual.untrack))
 
