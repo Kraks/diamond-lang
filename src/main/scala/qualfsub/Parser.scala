@@ -126,7 +126,7 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
       if (ctx.paramList != null) visitParamList(ctx.paramList).params
       else List(Param(freshVar(varPre), core.QType(core.Type.TUnit, core.Qual.untrack)))
     val ret = visitQty(ctx.qty).toCore
-    val rest = args.drop(1).zipWithIndex.foldRight(ret) {
+    val rest = args.zipWithIndex.drop(1).foldRight(ret) {
       case ((arg, idx), rt) =>
         val q = core.Qual(args.take(idx).map(_.name).toSet)
         core.QType(core.Type.TFun(freshVar(funPre), arg.name, arg.qty, rt), q)

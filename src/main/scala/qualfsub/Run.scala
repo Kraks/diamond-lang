@@ -13,7 +13,7 @@ object RunDiamond {
       case TUnit => "Unit"
       case TNum => "Int"
       case TBool => "Bool"
-      case TRef(t) => s"Ref[$t]"
+      case TRef(t) => s"Ref[${prettyQType(t)}]"
       case TFun(f, x, t1, t2) => s"$f($x: ${prettyQType(t1)}) => ${prettyQType(t2)}"
       case TTop => "Top"
       case TVar(x) => x

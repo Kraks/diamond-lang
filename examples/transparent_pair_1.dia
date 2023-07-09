@@ -1,13 +1,13 @@
 def mkPair[A^a <: Top^<>, B^b <: Top^{a, <>}](x: A^a, y: B^b) = {
   [C^c <: Top^{a, b, <>}] => {
     //(f: ((x: A^a) => ((y: B^b) => C^c)^x)): C^c => { f(x)(y) }
-    (f: ((x: A^a, y: B^b) => C^c)^x): C^c => { f(x, y) }
+    (f: (A^a, B^b) => C^c): C^c => { f(x, y) }
   }
 };
-def fst[A^a <: Top^<>, B^b <: Top^{a, <>}](p: (forall [C^c <: Top^{a, b, <>}] => (((x: A^a) => ((y: B^b) => C^c)^x) => C^c)^{a, b})^{a, b, <>}) = {
+def fst[A^a <: Top^<>, B^b <: Top^{a, <>}](p: (forall [C^c <: Top^{a, b, <>}] => (((A^a, B^b) => C^c) => C^c)^{a, b})^{a, b, <>}) = {
   p[A^a]( (x: A^a, y: B^b) => { x } )
 };
-def snd[A^a <: Top^<>, B^b <: Top^{a, <>}](p: (forall [C^c <: Top^{a, b, <>}] => (((x: A^a) => ((y: B^b) => C^c)^x) => C^c)^{a, b})^{a, b, <>}) = {
+def snd[A^a <: Top^<>, B^b <: Top^{a, <>}](p: (forall [C^c <: Top^{a, b, <>}] => (((A^a, B^b) => C^c) => C^c)^{a, b})^{a, b, <>}) = {
   p[B^b]( (x: A^a, y: B^b) => { y } )
 };
 val p = mkPair[Int, Int](1, 2);

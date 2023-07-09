@@ -265,7 +265,7 @@ class DiamondPairTest extends AnyFunSuite {
     f(1)
     """
     assert(prettyQType(parseAndCheck(p4)) ==
-      "(∀p(C^c <: Top^∅). (f(Arg#21: (g(x: Ref[TNum^∅]^◆) => (𝑓#22(y: Ref[TNum^∅]^{◆,x}) => C^{x,y})^x)^∅) => C^f)^p)^◆")
+      "(∀p(C^c <: Top^∅). (f(Arg#21: (g(x: Ref[Int^∅]^◆) => (𝑓#22(y: Ref[Int^∅]^{◆,x}) => C^{x,y})^x)^∅) => C^f)^p)^◆")
 
     // Construct an escaped pair and get its first component:
     val p5 = s"""
@@ -280,7 +280,7 @@ class DiamondPairTest extends AnyFunSuite {
     topval p = f(1);
     fst[Ref[Int]^p][Ref[Int]^p](p)
     """
-    assert(prettyQType(parseAndCheck(p5)) == "Ref[TNum^∅]^p")
+    assert(prettyQType(parseAndCheck(p5)) == "Ref[Int^∅]^p")
 
     // Construct an escaped pair and get its second component:
     val p6 = s"""
@@ -295,7 +295,7 @@ class DiamondPairTest extends AnyFunSuite {
     topval p = f(1);
     snd[Ref[Int]^p][Ref[Int]^p](p)
     """
-    assert(prettyQType(parseAndCheck(p6)) == "Ref[TNum^∅]^p")
+    assert(prettyQType(parseAndCheck(p6)) == "Ref[Int^∅]^p")
 
     // Compute something:
     val p7 = s"""
@@ -398,7 +398,7 @@ class DiamondPairTest extends AnyFunSuite {
     topval p = f(1);
     opairFst[Ref[Int]^p][Ref[Int]^p](p)
     """
-    assert(prettyQType(parseAndCheck(example)) == "Ref[TNum^∅]^p")
+    assert(prettyQType(parseAndCheck(example)) == "Ref[Int^∅]^p")
   }
 }
 

@@ -11,4 +11,7 @@
 //  def g(): Ref[Int]^g = c;
 //  g;
 //f3(0)
-(x: Int, y: Int) => { x + y }
+def fst[A^a <: Top^<>, B^b <: Top^{a, <>}](p: (forall p[C^c <: Top] => (f((x: A^<>, y: B^{x, <>}) => C^{x, y}) => C^f)^p)^{a, b}) = {
+  p[A]((x: A^<>, y: B^{x, <>}) => { x })
+};
+fst
