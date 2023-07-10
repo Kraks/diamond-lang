@@ -176,13 +176,13 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
   override def visitQual(ctx: QualContext): Qual = {
     if (ctx.FRESH != null) Qual(core.Qual.fresh)
     else if (ctx.ID != null) Qual(core.Qual.singleton(ctx.ID.getText.toString))
-    else {
+    else if (ctx.qualElems != null) {
       val elems: Set[core.QElem] = ctx.qualElems.qualElem.asScala.map( e =>
         if (e.ID != null) e.ID.getText.toString
         else core.Fresh()
       ).toSet
       Qual(core.Qual(elems))
-    }
+    } else Qual(core.Qual.untrack)
   }
 
   override def visitQty(ctx: QtyContext): QType = {

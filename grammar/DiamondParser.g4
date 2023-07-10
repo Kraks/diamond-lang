@@ -9,13 +9,13 @@ qualElem :
 ;
 
 qualElems :
-  '{' qualElem (',' qualElem)* '}'
+  qualElem (',' qualElem)*
 ;
 
 qual :
   FRESH
 | ID
-| qualElems?
+| '{' qualElems? '}'
 ;
 
 /* types */

@@ -275,7 +275,7 @@ class ExamplesInPaper extends AnyFunSuite {
     // Here we use opaque pairs
     val makePair = """
     def makePair[A^a <: Top^<>, B^b <: Top^{a, <>}](x: A^a, y: B^b) = {
-      p[C^c <: Top]: (f((x: A^<>, y: B^{x, <>}) => C^{x, y}) => C^f)^p => {
+      p[C^c <: Top^{}]: (f((x: A^<>, y: B^{x, <>}) => C^{x, y}) => C^f)^p => {
         f(h: (x: A^<>, y: B^{x, <>}) => C^{x, y}): C^f => { h(x, y) }
       }
     };

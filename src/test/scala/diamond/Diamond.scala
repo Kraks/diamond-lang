@@ -58,7 +58,7 @@ object OpaquePair {
     [A^a <: Top^<>] => { [B^b <: Top^{a, <>}] => {
       //(x: A^a) => { (y: B^b): (${tyOPair("A", "B")})^{x, y} => {
       (x: A^a) => { (y: B^b) => {
-        p[C^c <: Top]: (f(g(x: A^<>) => ((y: B^{x, <>}) => C^{x, y})^x) => C^f)^p => {
+        p[C^c <: Top^{}]: (f(g(x: A^<>) => ((y: B^{x, <>}) => C^{x, y})^x) => C^f)^p => {
           f(h: (g(x: A^<>) => ((y: B^{x, <>}) => C^{x, y})^x)): C^f => { h(x)(y) }
         }
       } }
