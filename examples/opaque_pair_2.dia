@@ -3,13 +3,14 @@ def makePair[A^a <: Top^<>, B^b <: Top^{a, <>}](x: A^a, y: B^b) = {
     f(h: (x: A^<>, y: B^{x, <>}) => C^{x, y}): C^f => { h(x, y) }
   }
 };
-def fst[A^a <: Top^<>, B^b <: Top^{a, <>}](p: (forall p[C^c <: Top] => (f((x: A^<>, y: B^{x, <>}) => C^{x, y}) => C^f)^p)^{a, b}) = {
+def fst[A^a <: Top^<>, B^b <: Top^{a, <>}](p: (forall p[C^c <: Top] => (f((x: A^<>, y: B^{x, <>}) => C^{x, y}) => C^f)^p)^{a, b}): A^{a, b} = {
   p[A]((x: A^<>, y: B^{x, <>}) => { x })
 };
-def snd[A^a <: Top^<>, B^b <: Top^{a, <>}](p: (forall p[C^c <: Top] => (f((x: A^<>, y: B^{x, <>}) => C^{x, y}) => C^f)^p)^{a, b}) = {
+def snd[A^a <: Top^<>, B^b <: Top^{a, <>}](p: (forall p[C^c <: Top] => (f((x: A^<>, y: B^{x, <>}) => C^{x, y}) => C^f)^p)^{a, b}): B^{a, b} = {
   p[B]((x: A^<>, y: B^{x, <>}) => { y })
 };
 topval c1 = Ref 42;
 topval c2 = Ref 100;
 topval p = makePair[Ref[Int]^c1, Ref[Int]^c2](c1, c2);
-fst[Ref[Int]^c1, Ref[Int]^c2](p)
+val f: Ref[Int]^{c1, c2} = fst[Ref[Int]^c1, Ref[Int]^c2](p);
+f

@@ -343,7 +343,7 @@ class DiamondPairTest extends AnyFunSuite {
     inc
     """
     assert(prettyQType(parseAndCheck(inc)) == "(𝑓#21(𝑥#22: Unit^∅) => Unit^∅)^p")
-    
+
     val callInc = s"""
     $counterPrelude
     inc(unit)
@@ -645,7 +645,7 @@ class DiamondTest extends AnyFunSuite {
     assert(parseAndCheck(p0) == (TFun("g","𝑥#0",TUnit^(),TRef(TNum)^"g")^ ◆))
 
     val p1 = """
-    def f1(x: Int) =                                                                            
+    def f1(x: Int) =
       val c = Ref x;
       g(): Ref[Int]^g => { c };
     f1(0)
@@ -716,18 +716,18 @@ class DiamondTest extends AnyFunSuite {
 
   test("nested references") {
     val p1 = """
-    val x = 42;                                                                          
+    val x = 42;
     val c1 = Ref x;
-    val c2 = Ref c1; 
+    val c2 = Ref c1;
     val c3 = ! c2; // that is c1
     c3
     """
     assert(parseAndCheck(p1) == (TRef(TNum^())^ ◆))
 
     val p2 = """
-    topval x = 42;                                                                          
+    topval x = 42;
     topval c1 = Ref x;
-    val c2 = Ref c1; 
+    val c2 = Ref c1;
     val c3 = ! c2; // that is c1
     c3
     """

@@ -120,7 +120,7 @@ class ExamplesInPaper extends AnyFunSuite {
     val untrackUpcast = """
     topval x = 42;
     def id[T](x: T^<>): T^x = x;
-    val y: Int = id(x); // use let with type annotation to check subtyping 
+    val y: Int = id(x); // use let with type annotation to check subtyping
     y
     """
     assert(prettyQType(parseAndCheck(untrackUpcast)) == "Int^∅")
@@ -232,24 +232,24 @@ class ExamplesInPaper extends AnyFunSuite {
   object OpaquePair {
     def defMakePairWithName(f: String) = s"""
     def $f[A^a <: Top^<>, B^b <: Top^{a, <>}](x: A^a, y: B^b) = {
-      p[C^c <: Top]: (f((x: A^<>, y: B^{x, <>}) => C^{x, y}) => C^f)^p => {
+      p[C^c <: Top^{}]: (f((x: A^<>, y: B^{x, <>}) => C^{x, y}) => C^f)^p => {
         f(h: (x: A^<>, y: B^{x, <>}) => C^{x, y}): C^f => { h(x, y) }
       }
     };
     """
     val makePair = defMakePairWithName("makePair")
 
-    val tyPair = "forall p[C^c <: Top] => (f((x: A^<>, y: B^{x, <>}) => C^{x, y}) => C^f)^p"
+    val tyPair = "forall p[C^c <: Top^{}] => (f((x: A^<>, y: B^{x, <>}) => C^{x, y}) => C^f)^p"
 
     def defFstWithName(f: String) = s"""
-    def $f[A^a <: Top^<>, B^b <: Top^{a, <>}](p: ($tyPair)^{a, b}) = {
+    def $f[A^a <: Top^<>, B^b <: Top^{a, <>}](p: ($tyPair)^{a, b}): A^{a, b} = {
       p[A]((x: A^<>, y: B^{x, <>}) => { x })
     };
     """
     val fst = defFstWithName("fst")
 
     def defSndWithName(f: String) = s"""
-    def $f[A^a <: Top^<>, B^b <: Top^{a, <>}](p: ($tyPair)^{a, b}) = {
+    def $f[A^a <: Top^<>, B^b <: Top^{a, <>}](p: ($tyPair)^{a, b}): B^{a, b} = {
       p[B]((x: A^<>, y: B^{x, <>}) => { y })
     };
     """
@@ -263,21 +263,21 @@ class ExamplesInPaper extends AnyFunSuite {
     $makePair
     $fst
     $snd
-    val c1 = Ref 42; 
-    val c2 = Ref 100;
-    topval p = makePair[Ref[Int]^c1, Ref[Int]^c2](c1, c2);
+    topval c1 = Ref 42;
+    topval c2 = Ref 100;
+    val p = makePair[Ref[Int]^c1, Ref[Int]^c2](c1, c2);
     fst[Ref[Int]^c1, Ref[Int]^c2](p)
     """
-    assert(prettyQType(parseAndCheck(inScopeUse)) == "Ref[Int^∅]^p")
+    assert(prettyQType(parseAndCheck(inScopeUse)) == "Ref[Int^∅]^{c1,c2}")
 
     val outScopeUse = s"""
     $makePair
     $fst
     $snd
-    def f(x: Int) = {                                                                                                                           
+    def f(x: Int) = {
       val c1 = Ref x;
       val c2 = Ref (x+1);
-      makePair[Ref[Int]^c1, Ref[Int]^c2](c1, c2) 
+      makePair[Ref[Int]^c1, Ref[Int]^c2](c1, c2)
     };
     topval p = f(1);
     snd[Ref[Int]^p, Ref[Int]^p](p)
@@ -330,7 +330,7 @@ class ExamplesInPaper extends AnyFunSuite {
     //val p3 = makeTPair[Ref[Int]^c1, Ref[Int]^c2](ofst[Ref[Int]^c1, Ref[Int]^c2](p2), osnd[Ref[Int]^c1, Ref[Int]^c2](p2))
     ofst[Ref[Int]^c1, Ref[Int]^c2](p2)
     """
-    println(prettyQType(parseAndCheck(example2)))
+    //println(prettyQType(parseAndCheck(example2)))
   }
 
   test("Fig 1 and Sec 2.5 - counter example and neste mutable references") {
