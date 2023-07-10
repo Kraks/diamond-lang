@@ -242,14 +242,14 @@ class ExamplesInPaper extends AnyFunSuite {
     val tyPair = "forall p[C^c <: Top^{}] => (f((x: A^<>, y: B^{x, <>}) => C^{x, y}) => C^f)^p"
 
     def defFstWithName(f: String) = s"""
-    def $f[A^a <: Top^<>, B^b <: Top^{a, <>}](p: ($tyPair)^{a, b}): A^{a, b} = {
+    def $f[A^a <: Top^<>, B^b <: Top^{a, <>}](p: ($tyPair)^{a, b}): A^p = {
       p[A]((x: A^<>, y: B^{x, <>}) => { x })
     };
     """
     val fst = defFstWithName("fst")
 
     def defSndWithName(f: String) = s"""
-    def $f[A^a <: Top^<>, B^b <: Top^{a, <>}](p: ($tyPair)^{a, b}): B^{a, b} = {
+    def $f[A^a <: Top^<>, B^b <: Top^{a, <>}](p: ($tyPair)^{a, b}): B^p = {
       p[B]((x: A^<>, y: B^{x, <>}) => { y })
     };
     """
