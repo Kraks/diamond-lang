@@ -235,10 +235,10 @@ class DiamondPairTest extends AnyFunSuite {
     val snd = ($snd);
     topval u = Ref 12;             // use topval to manifest the returned qualifier
     topval v = Ref 34;
-    val p = makePair[Ref[Int]^u][Ref[Int]^v](u)(v);
-    fst[Ref[Int]^u][Ref[Int]^v](p) // Ref[Int]^{u, v}
+    topval p = makePair[Ref[Int]^u][Ref[Int]^v](u)(v);
+    fst[Ref[Int]^u][Ref[Int]^v](p) // Ref[Int]^{p}
     """
-    assert(parseAndCheck(p2) == (TRef(TNum^())^("u", "v")))
+    assert(parseAndCheck(p2) == (TRef(TNum^())^("p")))
 
     // A pair of two references and get the second one:
     val p3 = s"""
@@ -247,10 +247,10 @@ class DiamondPairTest extends AnyFunSuite {
     val snd = ($snd);
     topval u = Ref 12;             // use topval to manifest the returned qualifier
     topval v = Ref 34;
-    val p = makePair[Ref[Int]^u][Ref[Int]^v](u)(v);
-    snd[Ref[Int]^u][Ref[Int]^v](p) // Ref[Int]^{u, v}
+    topval p = makePair[Ref[Int]^u][Ref[Int]^v](u)(v);
+    snd[Ref[Int]^u][Ref[Int]^v](p) // Ref[Int]^{p}
     """
-    assert(parseAndCheck(p3) == (TRef(TNum^())^("u", "v")))
+    assert(parseAndCheck(p3) == (TRef(TNum^())^("p")))
 
     // Construct an escaped pair:
     val p4 = s"""

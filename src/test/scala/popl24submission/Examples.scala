@@ -176,28 +176,35 @@ class ExamplesInPaper extends AnyFunSuite {
     assert(prettyQType(parseAndCheck(id3)) == "(∀id(T^𝑥#0 <: Top^◆). (𝑓#1(x: T^◆) => T^x)^∅)^∅")
   }
 
-  test("Sec 2.4.1 - Transparent Pairs") {
-    val makePair = """
-    def makePair[A^a <: Top^<>, B^b <: Top^{a, <>}](x: A^a, y: B^b) = {
+  object TransparentPair {
+    def defMakePairWithName(f: String) = s"""
+    def $f[A^a <: Top^<>, B^b <: Top^{a, <>}](x: A^a, y: B^b) = {
       [C^c <: Top^{a, b, <>}] => {
         (f: (A^a, B^b) => C^c): C^c => { f(x, y) }
       }
     };
     """
+    val makePair = defMakePairWithName("makePair")
 
     val tyPair = "forall [C^c <: Top^{a, b, <>}] => (((A^a, B^b) => C^c) => C^c)^{a, b}"
 
-    val fst = s"""
-    def fst[A^a <: Top^<>, B^b <: Top^{a, <>}](p: (${tyPair})^{a, b, <>}) = {
+    def defFstWithName(f: String) = s"""
+    def $f[A^a <: Top^<>, B^b <: Top^{a, <>}](p: (${tyPair})^{a, b, <>}) = {
       p[A^a]( (x: A^a, y: B^b) => { x } )
     };
     """
+    val fst = defFstWithName("fst")
 
-    val snd = s"""
-    def snd[A^a <: Top^<>, B^b <: Top^{a, <>}](p: (${tyPair})^{a, b, <>}) = {
+    def defSndWithName(f: String) = s"""
+    def $f[A^a <: Top^<>, B^b <: Top^{a, <>}](p: (${tyPair})^{a, b, <>}) = {
       p[B^b]( (x: A^a, y: B^b) => { y } )
     };
     """
+    val snd = defSndWithName("snd")
+  }
+
+  test("Sec 2.4.1 - Transparent Pairs") {
+    import TransparentPair._
 
     val pairUse1 = s"""
     $makePair
@@ -222,28 +229,35 @@ class ExamplesInPaper extends AnyFunSuite {
     assert(prettyQType(parseAndCheck(pairUse2)) == "Ref[Int^∅]^v")
   }
 
-  test("Sec 2.4.2 - Opauqe Pairs") {
-    val makePair = """
-    def makePair[A^a <: Top^<>, B^b <: Top^{a, <>}](x: A^a, y: B^b) = {
+  object OpaquePair {
+    def defMakePairWithName(f: String) = s"""
+    def $f[A^a <: Top^<>, B^b <: Top^{a, <>}](x: A^a, y: B^b) = {
       p[C^c <: Top]: (f((x: A^<>, y: B^{x, <>}) => C^{x, y}) => C^f)^p => {
         f(h: (x: A^<>, y: B^{x, <>}) => C^{x, y}): C^f => { h(x, y) }
       }
     };
     """
+    val makePair = defMakePairWithName("makePair")
 
     val tyPair = "forall p[C^c <: Top] => (f((x: A^<>, y: B^{x, <>}) => C^{x, y}) => C^f)^p"
 
-    val fst = s"""
-    def fst[A^a <: Top^<>, B^b <: Top^{a, <>}](p: ($tyPair)^{a, b}) = {
+    def defFstWithName(f: String) = s"""
+    def $f[A^a <: Top^<>, B^b <: Top^{a, <>}](p: ($tyPair)^{a, b}) = {
       p[A]((x: A^<>, y: B^{x, <>}) => { x })
     };
     """
+    val fst = defFstWithName("fst")
 
-    val snd = s"""
-    def snd[A^a <: Top^<>, B^b <: Top^{a, <>}](p: ($tyPair)^{a, b}) = {
+    def defSndWithName(f: String) = s"""
+    def $f[A^a <: Top^<>, B^b <: Top^{a, <>}](p: ($tyPair)^{a, b}) = {
       p[B]((x: A^<>, y: B^{x, <>}) => { y })
     };
     """
+    val snd = defSndWithName("snd")
+  }
+
+  test("Sec 2.4.2 - Opauqe Pairs") {
+    import OpaquePair._
 
     val inScopeUse = s"""
     $makePair
@@ -271,29 +285,57 @@ class ExamplesInPaper extends AnyFunSuite {
     assert(prettyQType(parseAndCheck(outScopeUse)) == "Ref[Int^∅]^p")
   }
 
+  test("Sec 2.4.2 - Transparent to Opaque Pairs") {
+    // Defining the coercion function via eta-expansion
+    val convPrelude = s"""
+    ${OpaquePair.defMakePairWithName("makeOPair")}
+    ${TransparentPair.defFstWithName("tfst")}
+    ${TransparentPair.defSndWithName("tsnd")}
+    def conv[A^a <: Top^<>, B^b <: Top^{a, <>}](p: (${TransparentPair.tyPair})^{a, b, <>}) = {
+      makeOPair[A^a, B^b](tfst[A^a, B^b](p), tsnd[A^a, B^b](p))
+    };
+    """
+
+    // A locally defined transparent pair is converted to opaque pair before returning:
+    val example = s"""
+    $convPrelude
+    ${TransparentPair.defMakePairWithName("makeTPair")}
+    ${OpaquePair.defFstWithName("ofst")}
+    ${OpaquePair.defSndWithName("osnd")}
+    def f(x: Int) = {
+      val c1 = Ref x;
+      val c2 = Ref (x+1);
+      val p = makeTPair[Ref[Int]^c1, Ref[Int]^c2](c1, c2);
+      // conv[Ref[Int]^p, Ref[Int]^p](p)   // works too
+      conv[Ref[Int]^c1, Ref[Int]^c2](p)
+    };
+    topval p = f(1);
+    ofst[Ref[Int]^p, Ref[Int]^p](p)
+    """
+    assert(prettyQType(parseAndCheck(example)) == "Ref[Int^∅]^p")
+
+    // try the other direction?
+    val example2 = s"""
+    $convPrelude
+    ${TransparentPair.defMakePairWithName("makeTPair")}
+    ${OpaquePair.defFstWithName("ofst")}
+    ${OpaquePair.defSndWithName("osnd")}
+    //def conv2[A^a <: Top^<>, B^b <: Top^{a, <>}](p: (${OpaquePair.tyPair})^{a, b}) = {
+    //  makeTPair[A^a, B^b](ofst[A^a, B^b](p), osnd[A^a, B^b](p))
+    //}
+    topval c1 = Ref 1;
+    topval c2 = Ref 2;
+    topval p = makeTPair[Ref[Int]^c1, Ref[Int]^c2](c1, c2);
+    topval p2 = conv[Ref[Int]^c1, Ref[Int]^c2](p);
+    //val p3 = makeTPair[Ref[Int]^c1, Ref[Int]^c2](ofst[Ref[Int]^c1, Ref[Int]^c2](p2), osnd[Ref[Int]^c1, Ref[Int]^c2](p2))
+    ofst[Ref[Int]^c1, Ref[Int]^c2](p2)
+    """
+    println(prettyQType(parseAndCheck(example2)))
+  }
+
   test("Fig 1 and Sec 2.5 - counter example and neste mutable references") {
     // Here we use opaque pairs
-    val makePair = """
-    def makePair[A^a <: Top^<>, B^b <: Top^{a, <>}](x: A^a, y: B^b) = {
-      p[C^c <: Top^{}]: (f((x: A^<>, y: B^{x, <>}) => C^{x, y}) => C^f)^p => {
-        f(h: (x: A^<>, y: B^{x, <>}) => C^{x, y}): C^f => { h(x, y) }
-      }
-    };
-    """
-
-    val tyPair = "forall p[C^c <: Top] => (f((x: A^<>, y: B^{x, <>}) => C^{x, y}) => C^f)^p"
-
-    val fst = s"""
-    def fst[A^a <: Top^<>, B^b <: Top^{a, <>}](p: ($tyPair)^{a, b}) = {
-      p[A]((x: A^<>, y: B^{x, <>}) => { x })
-    };
-    """
-
-    val snd = s"""
-    def snd[A^a <: Top^<>, B^b <: Top^{a, <>}](p: ($tyPair)^{a, b}) = {
-      p[B]((x: A^<>, y: B^{x, <>}) => { y })
-    };
-    """
+    import OpaquePair._
 
     // A pair of thunk types
     val tyThunk = "(() => Unit)"
