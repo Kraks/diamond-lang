@@ -2,7 +2,9 @@
 
 ![Scala CI](https://github.com/Kraks/Diamond-lang/actions/workflows/scala.yml/badge.svg)
 
-<img src="rusty_diamond.png?raw=true" alt="A rusty diamond by Midjourney" width="512px" height="512px"/>
+<p align="center">
+<img src="rusty_diamond.png?raw=true" alt="A rusty diamond by Midjourney" width="300px" height="300px"/>
+</p>
 
 A prototype implementation of the polymorphic reachability type system, dubbed
 the Diamond programming language.  The Diamond language has a Scala-like
