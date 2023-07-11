@@ -186,7 +186,7 @@ class ExamplesInPaper extends AnyFunSuite {
     """
     val makePair = defMakePairWithName("makePair")
 
-    val tyPair = "forall [C^c <: Top^{a, b, <>}] => (((A^a, B^b) => C^c) => C^c)^{a, b}"
+    val tyPair = "forall [C^c <: Top^{a, b, <>}] => (((A^a, B^b) => C^c) => C^c)^{c, a, b}"
 
     def defFstWithName(f: String) = s"""
     def $f[A^a <: Top^<>, B^b <: Top^{a, <>}](p: (${tyPair})^{a, b, <>}) = {

@@ -30,8 +30,7 @@ object TransparentPair {
     } }
     """
 
-  //val tyPair = "forall [C^c <: Top^{a, b, <>}] => (((x: A^a) => ((y: B^b) => C^c)^x) => C^c)^{c, a, b}"
-  val tyPair = "forall [C^c <: Top^{a, b, <>}] => (((x: A^a) => ((y: B^b) => C^c)^x) => C^c)^{a, b}" // TODO: is c necessary?
+  val tyPair = "forall [C^c <: Top^{a, b, <>}] => (((x: A^a) => ((y: B^b) => C^c)^x) => C^c)^{c, a, b}"
 
   val fst = s"""
     [A^a <: Top^<>] => { [B^b <: Top^{a, <>}] => {
