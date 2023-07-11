@@ -12,6 +12,15 @@ reachability qualifiers.
 We also provide checked, executable examples that are demonstrated in
 the submitted paper.
 
+The main part of the artifact is the type checker of the F♦-Sub system.
+The type checker implements a subtype/subqualifier checking algorithm,
+in contrast to the declarative type system presented in the paper.
+The prototype has some ability to infer types, e.g., it is not
+necessary to write down return types of functions, or types for the right-hand
+side of a let-binding.
+However, a full development of algorithmic type inference (e.g. based on
+bidirectional type checking) is a possible avenue for future work.
+
 ## Get Started
 
 Diamond is written in Scala 3, so to get started with the project, you need
