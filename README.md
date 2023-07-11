@@ -6,14 +6,17 @@ Programs__.
 
 In this artifact, we provide an implementation of the polymorphic reachability
 type system, dubbed the Diamond language (since our freshness marker is the
-diamond shape). We also provide checked, executable examples demonstrated in
+diamond shape).
+The Diamond language has a Scala-like syntax, and enhances types with
+reachability qualifiers.
+We also provide checked, executable examples demonstrated in
 the paper.
 
 ## Get Started
 
-To get started with the project, you need `sbt`, the build tool for Scala
-projects.  You can install `sbt` and JVM environment using
-[Coursier](https://get-coursier.io/docs/cli-installation).
+Diamond is written in Scala 3, so to get started with the project, you need
+`sbt`, the build tool for Scala projects.  You can install `sbt` and JVM
+environment using [Coursier](https://get-coursier.io/docs/cli-installation).
 
 ## Examples in the Paper
 
@@ -65,11 +68,34 @@ val c = id(Ref 42);         // : Ref[Int]^◆
 x + (! c)                   // : Int^∅
 ```
 
+Running `run polyId.dia` shows the parsed AST, the type of the final result, as
+well as the evaluation result.
+
 Additionally, you may run `test` in `sbt` to check all mechanized test cases.
 
 ```
 sbt:Diamond> test
 ```
+
+### Experiment with Qualifiers
+
+Compared to examples used in the paper, the implemented front-end language adds
+a `topval` form to define top-level bindings.
+It is useful to assist experimenting with the language, but is not intended to
+be used as a real feature of the language.
+In contrast to ordinary let-binding using the `val` keyword, bindings declared
+with `topval` will be persistent, i.e. we would not leave its scope at the end
+of the program.  In this way, we can examine the qualifiers more clearly.
+For example, if we define `x` using `topval`:
+
+```
+def polyId[T <: Top](x: T^<>): T^x = x
+topval x = id(Ref 42);
+x
+```
+
+We will see the final type is `Ref[Int^∅]^x` where the reachability `x` is residualized
+(instead of `Ref[Int^∅]^◆`).
 
 ## Structure
 
