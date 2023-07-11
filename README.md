@@ -11,12 +11,13 @@ reachability and sharing of resources.
 
 ## Examples
 
-- Polymorphic identity function (`examples/polyId.dia`):
+- Polymorphic identity function:
 
 ```scala
 def polyId[T <: Top](x: T^<>): T^x = x
 val x = id[Int](3);              // : Int^∅
-val c = id[Ref[Int]^<>](Ref 42); // : Ref[Int]^◆
+// type argument to id is optional
+val c = id(Ref 42);              // : Ref[Int]^◆
 x + (! c)                        // : Int^∅
 ```
 
@@ -55,8 +56,8 @@ sbt:Diamond> test
 
 ### Experiment with Qualifiers
 
-Compared to examples used in the paper, the implemented front-end language adds
-a `topval` form to define top-level bindings.
+The implemented front-end language adds a `topval` form to define top-level
+bindings.
 It is useful to assist experimenting with the language, but is not intended to
 be used as a real feature of the language.
 In contrast to ordinary let-binding using the `val` keyword, bindings declared
