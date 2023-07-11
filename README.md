@@ -13,7 +13,7 @@ reachability and sharing of resources.
 
 ## Examples
 
-- Polymorphic identity function:
+- Polymorphic identity function
 
 ```scala
 def polyId[T <: Top](x: T^<>): T^x = x
@@ -22,6 +22,65 @@ val x = id[Int](3);              // : Int^∅
 val c = id(Ref 42);              // : Ref[Int]^◆
 x + (! c)                        // : Int^∅
 ```
+
+The identity function is not only polymorphic with respect to types, but also
+to reachability.
+The result of `id(x)` is untracked, since its argument is untracked (indicated
+by the empty set notation).
+In contrast, the result of `id(Ref 42)` remains tracked, since `Ref 42` is
+a freshly allocated resource (indicated by the diamond) that we want to track.
+The type system guarantees tracked resources remain tracked all the time.
+
+- Separation
+
+``` scala
+val c1 = Ref 42;
+val c2 = c1;       // c2 and c1 are aliased
+def f(x: Ref[Int]^<>): Int = { (!x) + (!c1) };
+f(c2)              // type error
+```
+
+Function applications in Diamond check separation between the applied function and argument.
+For example, `f` captures `c1` from its defining scope, and also takes an argument `x`.
+The argument of `x` is annotated with the diamond, indicating that the function cannot
+take argument that has overlap with what can be observed by the function from the environment.
+Therefore, the above example issues a type error.
+
+Programmers can indicate permissible overlap at the function's argument position.
+For example, we can add `c1` into the `f`'s argument qualifier, then the following
+program type checks.
+
+``` scala
+val c1 = Ref 42;
+val c2 = c1;       // c2 and c1 are aliased
+def f(x: Ref[Int]^{c1, <>}): Int = { (!x) + (!c1) };
+f(c2)              // ok
+```
+
+- Escaped resource
+
+Diamond smoothly supports tracking escaped resources via self-reference.
+The following snippet shows an example that we allocate
+a mutable cell with function `counter`, which then returns
+two functions to increase and decrease the mutable cell.
+These two functions they capture the same resource and are
+returned as a pair.
+
+```scala
+def counter(n: Int) = {
+  val x = Ref n;
+  val inc = () => { x := (! x) + 1 };
+  val dec = () => { x := (! x) - 1 };
+  makePair[(() => Unit)^x][(() => Unit)^x](inc)(dec)
+};
+val p = counter(0);
+val inc = fst[(() => Unit)^p][(() => Unit)^p](p); // (() => Unit)^p
+val dec = snd[(() => Unit)^p][(() => Unit)^p](p); // (() => Unit)^p
+```
+
+In the outer scope, once we leave the scope of `x`, we can still track
+the fact that the `inc` and `dec` function they access and mutate the same
+hidden resource (see `examples/counter.dia` for full example).
 
 ## Get Started
 

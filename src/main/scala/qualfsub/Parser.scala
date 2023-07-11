@@ -151,7 +151,7 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
     val f = if (ctx.ID != null) ctx.ID.getText.toString else freshVar(tyFunPre)
     val args = visitTyParamList(ctx.tyParamList).tyParams
     val ret = visitQty(ctx.qty).toCore
-    // TODO: multiarg
+    //Note: we have not supported multi-argument forall types, they can only be curried
     if (args.size == 1) {
       Type(core.Type.TForall(f, args(0).tvar, args(0).qvar, args(0).bound, ret))
     } else error
@@ -245,7 +245,7 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
       else List()
     val rt = if (ctx.qty != null) Some(visitQty(ctx.qty).toCore) else None
     val body = visitExpr(ctx.expr).toCore
-    // TODO: multi arg
+    //Note: we have not supported multi-argument type lambdas, they can only be curried
     if (tyArgs.size == 1) {
       Expr(core.Expr.ETyLam(name, tyArgs(0).tvar, tyArgs(0).qvar, tyArgs(0).bound, body, rt))
     } else error
@@ -328,8 +328,13 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
         val f = visitExpr(ctx.expr(0)).toCore
         val tyArgs = visitTyArgs(ctx.tyArgs).args
         tyArgs.foldLeft(f) { case (f, tyArg) => core.Expr.ETyApp(f, tyArg, fresh) }
+      } else if (ctx.LPAREN != null && ctx.RPAREN != null) {
+        // term application without argument
+        val f = visitExpr(ctx.expr(0)).toCore
+        val arg = core.Expr.EUnit
+        core.Expr.EApp(f, arg, None)
       } else {
-        super.visitExpr(ctx).asInstanceOf[Expr].toCore // value, alloc, deref, let, wrapper expr
+        super.visitExpr(ctx).asInstanceOf[Expr].toCore // value, alloc, deref, let, wrapped expr
       }
     Expr(e)
   }
