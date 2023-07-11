@@ -1,12 +1,13 @@
 # The Diamond Language
 
-This is the accompanying artifact for submission #73 ``Polymorphic Reachability
+This is the accompanying artifact for submission #73 __Polymorphic Reachability
 Types: Tracking Freshness, Aliasing, and Separation in Higher-Order Polymorphic
-Programs''.
+Programs__.
 
 In this artifact, we provide an implementation of the polymorphic reachability
 type system, dubbed the Diamond language (since our freshness marker is the
-diamond shape).
+diamond shape). We also provide checked, executable examples demonstrated in
+the paper.
 
 ## Get Started
 
@@ -14,7 +15,7 @@ To get started with the project, you need `sbt`, the build tool for Scala
 projects.  You can install `sbt` and JVM environment using
 [Coursier](https://get-coursier.io/docs/cli-installation).
 
-## Examine Examples in the Paper
+## Examples in the Paper
 
 The examples shown in the paper can be found at `src/test/scala/popl24submission/Examples.scala`.
 You can also run the following test in `sbt` to check that these test cases have expected types
