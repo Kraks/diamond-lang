@@ -59,10 +59,7 @@ case class TEnv(m: AssocList[String, QType], tm: AssocList[TVar, Type], qm: Asso
     case (x, t: QType) => TEnv(m + (x -> t), tm, qm, observable + x)
   }
   def +(tb: TypeBound) = TEnv(m, tm + (TVar(tb.tvar) -> tb.bound.ty), qm + (tb.qvar -> tb.bound.q), observable)
-  def filter(q: Set[String]): TEnv = {
-    //println(s"shrink from ${observable} to ${observable.intersect(q)}")
-    TEnv(m, tm, qm, observable.intersect(q))
-  }
+  def filter(q: Set[String]): TEnv = TEnv(m, tm, qm, observable.intersect(q))
   def filter(q: Qual): TEnv = filter(q.varSet)
   def dom: Set[String] = m.dom ++ qm.dom
 
@@ -349,13 +346,11 @@ def checkSubtype(T: Type, S: Type)(using Γ: TEnv): Unit =
   else throw NotSubtype(T, S)(Some(Γ))
 
 def isSubQType(T: QType, S: QType)(using Γ: TEnv): Boolean =
-  //println(s"$Γ ⊢ $T <: $S")
   val QType(t1, q1) = T
   val QType(t2, q2) = S
   isSubtype(t1, t2) && isSubqual(q1.sat, q2.sat)
 
 def checkSubQType(T: QType, S: QType)(using Γ: TEnv): Unit =
-  //println(s"$Γ ⊢ $T <: $S")
   if (isSubQType(T, S)) ()
   else throw NotSubQType(T, S)(Some(Γ))
 
@@ -482,7 +477,7 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
         val tq2 = typeCheck(e2)
         typeCheck(EApp(ETyApp(e1, tq2, None), e2, None))
       case t1@QType(TFun(f, x, atq@QType(at, aq), rtq@QType(rt, rq)), qf) =>
-        // Not specified which application rule to use, try heuristically
+        // Not specified which application rule to use, check if argument is fresh
         if (aq.isFresh) typeCheck(EApp(e1, e2, Some(true)))
         else typeCheck(EApp(e1, e2, Some(false)))
     }
@@ -555,7 +550,6 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     qtypeWFCheck(arg)
     val t1 = typeCheck(e)
     val QType(TForall(f, tvar, qvar, ub, rt), qf) = qtypeExposure(t1)
-    // qf may contain abstract qualifier variables (which seems fine?)
     val codomBound: Qual = Qual(Γ.dom) ++ Set(f, qvar, ◆)
     if (!(rt.q ⊆ codomBound)) throw IllFormedQual(rt.q)
     if (!(qArg ⊆ Γ)) throw IllFormedQual(qArg)
@@ -568,7 +562,6 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     qtypeWFCheck(arg)
     val t1 = typeCheck(e)
     val QType(TForall(f, tvar, qvar, ub, rt), qf) = qtypeExposure(t1)
-    // qf may contain abstract qualifier variables (which seems fine?)
     val codomBound: Qual = Qual(Γ.dom) ++ Set(f, qvar, ◆)
     if (!(rt.q ⊆ codomBound)) throw IllFormedQual(rt.q)
     if (!(qArg ⊆ Γ)) throw IllFormedQual(qArg)
@@ -576,11 +569,10 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     checkSubQType(arg, ub)
     qtypeSubst(qtypeSubstQual(rt, f, qf), tvar, qvar, arg)
   case ETyApp(e, arg@QType(tyArg, qArg), _) =>
-    // Not specified which application rule to use, try heuristically
+    // Not specified which application rule to use, check if argument is fresh
     qtypeWFCheck(arg)
     val t1 = typeCheck(e)
     val QType(TForall(f, tvar, qvar, ub, rt), qf) = qtypeExposure(t1)
-    // qf may contain abstract qualifier variables (which seems fine?)
     if (ub.q.isFresh) typeCheck(ETyApp(e, arg, Some(true)))
     else typeCheck(ETyApp(e, arg, Some(false)))
 }
