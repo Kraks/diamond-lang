@@ -29,18 +29,18 @@ environment using [Coursier](https://get-coursier.io/docs/cli-installation).
 
 ## Examples in the Paper
 
-The examples shown in the paper can be found at `src/test/scala/popl24submission/Examples.scala`.
+The examples shown in the paper can be found at `src/test/scala/suppl/Examples.scala`.
 You can also run the following test in `sbt` to check that these test cases have expected types
 or expected error:
 
 ```
-sbt:Diamond> testOnly diamond.popl24.ExamplesInPaper
+sbt:Diamond> testOnly diamond.suppl.ExamplesInPaper
 ```
 
 The expected output is
 
 ```
-sbt:Diamond> testOnly diamond.popl24.ExamplesInPaper
+sbt:Diamond> testOnly diamond.suppl.ExamplesInPaper
 [info] ExamplesInPaper:
 [info] - Sec 2.2.2 - Freshness Marker
 [info] - Sec 2.2.3 - Precise Reachability Polymorphism
@@ -115,6 +115,6 @@ We will see the final type is `Ref[Int^∅]^x` where the reachability `x` is res
     * `Run.scala` top-level driver and pretty-printers
     * `Parser.scala` the parser that translates the Diamond front-end language to the core language.
 - `src/test/scala` test cases
-    * `src/test/scala/popl24submission/Examples.scala` examples corresponding to the submitted paper.
+    * `src/test/scala/suppl/Examples.scala` examples corresponding to the submitted paper.
 - `examples` some examples written in the Diamond front-end language.
 
