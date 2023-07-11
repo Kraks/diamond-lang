@@ -233,6 +233,18 @@ public class DiamondParserBaseListener implements DiamondParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterWrapExpr(DiamondParser.WrapExprContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitWrapExpr(DiamondParser.WrapExprContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterExpr(DiamondParser.ExprContext ctx) { }
 	/**
 	 * {@inheritDoc}

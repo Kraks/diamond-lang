@@ -98,13 +98,17 @@ tyArgs :
   qty (','  qty)*
 ;
 
+wrapExpr :
+  '(' expr ')'
+| '{' expr '}'
+;
+
 expr:
   ID
 | value
 | alloc
 | deref
-| '(' expr ')'
-| '{' expr '}'
+| wrapExpr
 // applications
 | expr     '(' args? ')'
 | expr '@' '(' args? ')'

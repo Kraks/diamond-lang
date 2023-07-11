@@ -318,7 +318,6 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
         val body = visitExpr(ctx.expr(0)).toCore
         super.visit(ctx.funDef).asInstanceOf[Def].toLet(body)
       } else if (ctx.args != null) {
-        // FIXME: this doesn't handle empty argument
         val f = visitExpr(ctx.expr(0)).toCore
         val args = visitArgs(ctx.args).args
         val fresh = if (ctx.AT != null) Some(true) else None
@@ -329,14 +328,14 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
         val f = visitExpr(ctx.expr(0)).toCore
         val tyArgs = visitTyArgs(ctx.tyArgs).args
         tyArgs.foldLeft(f) { case (f, tyArg) => core.Expr.ETyApp(f, tyArg, fresh) }
-      } else if (ctx.LPAREN != null && ctx.RPAREN != null) {
-        visitExpr(ctx.expr(0)).toCore
-      } else if (ctx.LCURLY != null && ctx.RCURLY != null) {
-        visitExpr(ctx.expr(0)).toCore
       } else {
-        super.visitExpr(ctx).asInstanceOf[Expr].toCore // value, alloc, deref, let
+        super.visitExpr(ctx).asInstanceOf[Expr].toCore // value, alloc, deref, let, wrapper expr
       }
     Expr(e)
+  }
+
+  override def visitWrapExpr(ctx: WrapExprContext): Expr = {
+    Expr(visitExpr(ctx.expr).toCore)
   }
 
   override def visitProgram(ctx: ProgramContext): IR = {
