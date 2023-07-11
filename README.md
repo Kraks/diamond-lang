@@ -1,35 +1,70 @@
 # The Diamond Language
 
-![Scala CI](https://github.com/Kraks/Diamond-lang/actions/workflows/scala.yml/badge.svg)
+This is the accompanying artifact for submission #73 ``Polymorphic Reachability
+Types: Tracking Freshness, Aliasing, and Separation in Higher-Order Polymorphic
+Programs''.
 
-<img src="rusty_diamond.png?raw=true" alt="A rusty diamond by Midjourney" width="512px" height="512px"/>
-
-A prototype programming language with polymorphic reachability types.
-
-## Examples
-
-- Polymorphic identity function (`examples/polyId.dia`):
-
-```scala
-def polyId[T <: Top](x: T^<>): T^x = x
-val x = id[Int](3);              // : Int^∅
-val c = id[Ref[Int]^<>](Ref 42); // : Ref[Int]^◆
-x + (! c)                        // : Int^∅
-```
+In this artifact, we provide an implementation of the polymorphic reachability
+type system, dubbed the Diamond language (since our freshness marker is the
+diamond shape).
 
 ## Get Started
 
-To get started with the project, you need `sbt`, the build tool for Scala projects.
-You can install `sbt` and JVM environment using [Coursier](https://get-coursier.io/docs/cli-installation).
+To get started with the project, you need `sbt`, the build tool for Scala
+projects.  You can install `sbt` and JVM environment using
+[Coursier](https://get-coursier.io/docs/cli-installation).
+
+## Examine Examples in the Paper
+
+The examples shown in the paper can be found at `src/test/scala/popl24submission/Examples.scala`.
+You can also run the following test in `sbt` to check that these test cases have expected types
+or expected error:
+
+```
+sbt:Diamond> testOnly diamond.popl24.ExamplesInPaper
+```
+
+The expected output is
+
+```
+sbt:Diamond> testOnly diamond.popl24.ExamplesInPaper
+[info] ExamplesInPaper:
+[info] - Sec 2.2.2 - Freshness Marker
+[info] - Sec 2.2.3 - Precise Reachability Polymorphism
+[info] - Sec 2.2.4 - Maybe-Tracked and Subtyping
+[info] - Sec 2.2.5 - On-Demand Transitivity
+[info] - Sec 2.2.6 - Qualifier-Dependent Application
+[info] - Sec 2.3 - Type-and-Qualifier Abstractions in F◆-Sub
+[info] - Sec 2.4.1 - Transparent Pairs
+[info] - Sec 2.4.2 - Opauqe Pairs
+[info] - Sec 2.4.2 - Transparent to Opaque Pairs
+[info] - Fig 1 and Sec 2.5 - counter example and neste mutable references
+[info] Run completed in 257 milliseconds.
+[info] Total number of tests run: 10
+[info] Suites: completed 1, aborted 0
+[info] Tests: succeeded 10, failed 0, canceled 0, ignored 0, pending 0
+[info] All tests passed.
+```
+
+## Play with other Examples
 
 You can play with the type checker and interpreter by writing programs under `examples` and run
-the following command to see its type and evaluation result (e.g. `run polyId.dia`).
+the following command to see its type and evaluation result.
 
 ```
 sbt:Diamond> run <filename.dia>
 ```
 
-You can also run `test` to check all mechanized test cases.
+For example, `examples/polyId.dia` contains a snippet of the polymorphic identity function:
+
+```scala
+def polyId[T <: Top](x: T^<>): T^x = x
+val x = id(3);              // : Int^∅
+val c = id(Ref 42);         // : Ref[Int]^◆
+x + (! c)                   // : Int^∅
+```
+
+Additionally, you may run `test` in `sbt` to check all mechanized test cases.
 
 ```
 sbt:Diamond> test
@@ -41,16 +76,9 @@ sbt:Diamond> test
     * `CoreLang.scala` the core language definitions.
     * `TypeCheck.scala` the type checker.
     * `Eval.scala` the interpreter.
+    * `Run.scala` top-level driver and pretty-printers
     * `Parser.scala` the parser that translates the Diamond front-end language to the core language.
-- `src/test/scala` test cases.
-- `examples` examples written in the Diamond front-end language.
-- `coq`: Coq proof for the metatheory of algorithmic subtyping used in the implementation.
+- `src/test/scala` test cases
+    * `src/test/scala/popl24submission/Examples.scala` examples corresponding to the submitted paper.
+- `examples` some examples written in the Diamond front-end language.
 
-## References
-
-[1] **Reachability Types: Tracking Aliasing and Separation in Higher-order Functional Programs** (OOPSLA 2021)</br>
-by Yuyan Bao, Guannan Wei, Oliver Bračevac, Luke Jiang, Qiyang He, and Tiark Rompf
-([pdf](https://dl.acm.org/doi/10.1145/3485516)).
-
-[2] **Polymorphic Reachability Types: Tracking Freshness, Aliasing, and Separation in Higher-Order Polymorphic Programs** (2023)</br>
-by Guannan Wei, Oliver Bračevac, Siyuan He, Yuyan Bao, and Tiark Rompf
