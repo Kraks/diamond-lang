@@ -9,8 +9,8 @@ type system, dubbed the Diamond language (since our freshness marker is the
 diamond shape).
 The Diamond language has a Scala-like syntax, and enhances types with
 reachability qualifiers.
-We also provide checked, executable examples demonstrated in
-the paper.
+We also provide checked, executable examples that are demonstrated in
+the submitted paper.
 
 ## Get Started
 
