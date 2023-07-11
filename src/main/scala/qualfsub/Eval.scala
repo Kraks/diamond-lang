@@ -94,9 +94,6 @@ def eval(e: Expr, ρ: Env, σ: Store): (Value, Store) = e match {
   case EDeref(e: Expr) =>
     val (ℓ@VLoc(_), σ1) = eval(e, ρ, σ)
     (σ1(ℓ), σ1)
-  case ECond(cnd, thn, els) =>
-    val (VBool(b), σ1) = eval(cnd, ρ, σ)
-    if (b) eval(thn, ρ, σ1) else eval(els, ρ, σ1)
 }
 
 def topEval(e: Expr): (Value, Store) =

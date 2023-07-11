@@ -1,0 +1,4 @@
+val x = Ref 0;
+def f(g: ((Int) => Ref[Int]^x)^x): Ref[Int]^x = g(0);
+val a = (x: Int) => { x + 1 };
+f((y: Int) => { x })

@@ -188,6 +188,16 @@ public interface DiamondParserListener extends ParseTreeListener {
 	 */
 	void exitTyArgs(DiamondParser.TyArgsContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link DiamondParser#wrapExpr}.
+	 * @param ctx the parse tree
+	 */
+	void enterWrapExpr(DiamondParser.WrapExprContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link DiamondParser#wrapExpr}.
+	 * @param ctx the parse tree
+	 */
+	void exitWrapExpr(DiamondParser.WrapExprContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link DiamondParser#expr}.
 	 * @param ctx the parse tree
 	 */

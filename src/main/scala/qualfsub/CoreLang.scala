@@ -46,7 +46,6 @@ enum Expr:
   case EUntrackedAlloc(init: Expr)
   case EAssign(lhs: Expr, rhs: Expr)
   case EDeref(e: Expr)
-  case ECond(cnd: Expr, thn: Expr, els: Expr)
   // F◆ new expressions
   case ETyLam(f: String, tvar: String, qvar: String, bound: QType, body: Expr, rt: Option[QType])
   case ETyApp(t: Expr, q: QType, fresh: Option[Boolean] = None)
@@ -107,7 +106,6 @@ object ExprSyntax:
   def λ(f: String, x: String)(ft: TFun)(e: => Expr): ELam = ELam(f, x, ft.t1, e, Some(ft.t2))
   def λ(f: String, xt: BindTy, rt: QType)(e: => Expr): ELam = ELam(f, xt.id, xt.ty, e, Some(rt))
   def λ(xt: BindTy)(e: => Expr): ELam = ELam(freshVar("AnnoFun"), xt.id, xt.ty, e, None)
-  def ite(c: Expr)(thn: Expr)(els: Expr): Expr = ECond(c, thn, els)
   def let(xv: Bind)(e: Expr): Expr = ELet(xv.id, xv.ty, xv.rhs, e)
   def alloc(e: Expr): Expr = EAlloc(e)
   // F◆ new syntax

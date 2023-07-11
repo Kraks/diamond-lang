@@ -167,8 +167,6 @@ def boundedBy(e: QElem, b: Set[QElem])(using Γ: TEnv): Boolean =
   }
 
 def isSubqual(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean =
-  //println(s"$Γ ⊢ $q1 <: $q2")
-  // TODO: some well-formedness condition seems missing
   val q2ext = fix(expandSelf)(q2.set)
   q1.set.forall(boundedBy(_, q2ext))
 
@@ -394,57 +392,29 @@ def typeFreeVars(t: Type): Set[String] = t match
 def freeVars(e: Expr): Set[String] = e match {
   case EUnit | ENum(_) | EBool(_) => Set()
   case EVar(x) => Set(x)
-  case EUnaryOp(op, e) => freeVars(e) 
+  case EUnaryOp(op, e) => freeVars(e)
   case EBinOp(op, e1, e2) => freeVars(e1) ++ freeVars(e2)
   case ELam(f, x, at, e, rt) => freeVars(e) -- Set(f, x)
-    /*
-  case ELam(f, x, at, e, rt) =>
-    val atFv = qtypeFreeVars(at)
-    val rtFv = rt match {
-      case Some(rt) => qtypeFreeVars(rt)
-      case none => Set()
-    }
-     atFv ++ (rtFv ++ freeVars(e) -- Set(f, x))
-     */
   case EApp(e1, e2, _) => freeVars(e1) ++ freeVars(e2)
   case ELet(x, _, rhs, body, _) => freeVars(rhs) ++ (freeVars(body) - x)
   case EAlloc(e) => freeVars(e)
   case EUntrackedAlloc(e) => freeVars(e)
   case EAssign(e1, e2) => freeVars(e1) ++ freeVars(e2)
   case EDeref(e) => freeVars(e)
-  case ECond(cnd, thn, els) => freeVars(cnd) ++ freeVars(thn) ++ freeVars(els)
   case ETyLam(f, tvar, qvar, ub, e, rt) =>
     freeVars(e) -- Set(f, qvar)
-    /*
-  case ETyLam(f, tvar, qvar, ub, e, rt) =>
-    val atFv = qtypeFreeVars(ub)
-    val rtFv = rt match {
-      case Some(rt) => qtypeFreeVars(rt)
-      case None => Set()
-    }
-     atFv ++ (rtFv ++ freeVars(e) -- Set(f, qvar))
-     */
   case ETyApp(e, qt, _) =>
     freeVars(e) ++ qtypeFreeVars(qt)
 }
+
+def qtypeExposure(t: QType)(using Γ: TEnv): QType =
+  val QType(ty, q) = t
+  QType(typeExposure(ty), q)
 
 def typeExposure(t: Type)(using Γ: TEnv): Type = t match {
   case x@TVar(_) => typeExposure(Γ(x))
   case _ => t
 }
-
-// XXX: exposure across fresh??
-// XXX: this is not used currently
-def qualExposure(qual: Qual)(using Γ: TEnv): Qual =
-  val vars = qual.varSet
-  val (abs, conc) = vars.partition(Γ.containsQualVar(_))
-  if (abs.isEmpty) qual
-  else qualExposure(Qual(abs.flatMap(Γ.getQualVarBound(_).set))) ++ conc
-
-def qtypeExposure(t: QType)(using Γ: TEnv): QType =
-  val QType(ty, q) = t
-  //QType(typeExposure(ty), qualExposure(q))
-  QType(typeExposure(ty), q)
 
 def qtypeWFCheck(t: QType)(using Γ: TEnv): Unit =
   if (qtypeFreeVars(t).subsetOf(Γ.dom)) ()
@@ -463,10 +433,8 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
   case EBinOp(op, e1, e2) =>
     typeCheckBinOp(e1, e2, op, typeCheck(e1), typeCheck(e2))
   case ELam(f, x, at, body, Some(rt)) =>
-    // XXX allow annotating observable filter?
     val ft = TFun(f, x, at, rt)
     qtypeWFCheck(ft)
-    //val fv = Qual((qtypeFreeVars(rt) ++ freeVars(body)) -- Set(f, x))
     val fv = Qual(freeVars(body) -- Set(f, x))
     val Γ1 = (Γ + (x -> at) + (f -> (ft ^ fv))).filter(fv ++ Set(x, f))
     val t = typeCheck(body)(using Γ1)
@@ -569,25 +537,15 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     val QType(TRef(tq@QType(t, p)), q) = typeCheck(e)
     if (p.isFresh) throw RequireNonFresh(e, tq)
     t ^ p
-  case ECond(cnd, thn, els) =>
-    // XXX: instead of requiring the same type, could compute their join
-    val t1 = typeCheck(cnd)
-    checkQTypeEq(cnd, t1, TBool)
-    val t2 = typeCheck(thn)
-    val t3 = typeCheck(els)
-    checkQTypeEq(thn, t2, t3)
   // New F◆ terms
   case ETyLam(f, tvar, qvar, ub, e, Some(rt)) =>
     val ft = TForall(f, tvar, qvar, ub, rt)
-    //val fv = qtypeFreeVars(ub) ++ qtypeFreeVars(rt) ++ freeVars(e) -- Set(f, qvar)
-    //val fv = qtypeFreeVars(rt) ++ freeVars(e) -- Set(f, qvar)
     val fv = freeVars(e) -- Set(f, qvar)
     val Γ1 = (Γ + ((tvar, qvar) <⦂ ub) + (f -> (ft ^ Qual(fv)))).filter(fv ++ Set(qvar, f))
     val t = typeCheck(e)(using Γ1)
     checkSubQType(t, rt)(using Γ1)
     ft ^ Qual(fv)
   case ETyLam(f, tvar, qvar, ub, e, None) =>
-    //val fv = qtypeFreeVars(ub) ++ freeVars(e) -- Set(qvar)
     val fv = freeVars(e) -- Set(qvar)
     val Γ1 = (Γ + ((tvar, qvar) <⦂ ub)).filter(fv + qvar)
     val t = typeCheck(e)(using Γ1)

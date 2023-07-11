@@ -213,7 +213,7 @@ class QualFSubBasicTests extends AnyFunSuite {
   }
 
   test("escaping closures") {
-    val e1 = 
+    val e1 =
       let("x" ⇐ alloc(3)) {
         λ("f", "z")("f"♯(TNum ~> TNum)) { x.deref }
       }
@@ -254,7 +254,7 @@ class QualFSubBasicTests extends AnyFunSuite {
       (λ("x" ⦂ (TRef(TNum) ^ ◆)) { λ("f", "z")("f"♯(TNum ~> (TRef(TNum) ^ "f"))) { x } })(alloc(3))
     assert(topTypeCheck(e4) == (TFun("f", "z", TNum^(), TRef(TNum)^"f") ^ ◆))
 
-    val e4_let = 
+    val e4_let =
       let("x" ⇐ alloc(0)) {
         λ("f", "z")("f"♯(TNum ~> (TRef(TNum) ^ "f"))) { x }
       }
@@ -369,7 +369,6 @@ class QualFSubBasicTests extends AnyFunSuite {
     intercept[NonOverlap] { topTypeCheck(make_e7("x", "x")) }
     intercept[NonOverlap] { topTypeCheck(make_e7("x", "y")) }
     intercept[NonOverlap] { topTypeCheck(make_e7("y", "x")) }
-    // TODO: what's the right error message here?
     intercept[NonOverlap] { topTypeCheck(make_e7("y", "y")) }
   }
 

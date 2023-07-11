@@ -119,6 +119,12 @@ public interface DiamondParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitTyArgs(DiamondParser.TyArgsContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link DiamondParser#wrapExpr}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitWrapExpr(DiamondParser.WrapExprContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link DiamondParser#expr}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
