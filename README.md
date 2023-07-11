@@ -6,7 +6,7 @@
 
 A prototype implementation of the polymorphic reachability type system, dubbed
 the Diamond programming language.  The Diamond language has a Scala-like
-syntax, and enhances types with reachability qualifiers that tracks
+syntax, and enhances types with reachability qualifiers that track
 reachability and sharing of resources.
 
 ## Examples
