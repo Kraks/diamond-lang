@@ -48,7 +48,8 @@ Therefore, the above example issues a type error.
 
 Programmers can indicate permissible overlap at the function's argument position.
 For example, we can add `c1` into the `f`'s argument qualifier, then the following
-program type checks.
+program type checks (even though we provide `c2` as argument but the typechecker knows
+that `c1` can be reached from `c2`).
 
 ``` scala
 val c1 = Ref 42;
