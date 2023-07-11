@@ -57,7 +57,7 @@ def f(x: Ref[Int]^{c1, <>}): Int = { (!x) + (!c1) };
 f(c2)              // ok
 ```
 
-- Escaped resource
+- Escaped resources
 
 Diamond smoothly supports tracking escaped resources via self-reference.
 The following snippet shows an example that we allocate
