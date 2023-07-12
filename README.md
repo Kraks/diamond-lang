@@ -171,6 +171,3 @@ We will see the final type is `Ref[Int^∅]^x` where the reachability `x` is res
 [1] **Reachability Types: Tracking Aliasing and Separation in Higher-order Functional Programs** (OOPSLA 2021)</br>
 by Yuyan Bao, Guannan Wei, Oliver Bračevac, Luke Jiang, Qiyang He, and Tiark Rompf
 ([pdf](https://dl.acm.org/doi/10.1145/3485516)).
-
-[2] **Polymorphic Reachability Types: Tracking Freshness, Aliasing, and Separation in Higher-Order Polymorphic Programs** (2023)</br>
-by Guannan Wei, Oliver Bračevac, Siyuan He, Yuyan Bao, and Tiark Rompf
