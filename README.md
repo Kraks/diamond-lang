@@ -13,22 +13,40 @@ reachability and sharing of resources.
 
 ## Examples
 
+- Tracking aliases in types
+
+A freshly allocated resource (e.g. memory allocation) is _tracked_ but has not
+aliased to any variable:
+```scala
+Ref 42  // : Ref[Int]^◆
+```
+The diamond qualifier notation indicates that this term yields a fresh resource.
+
+Assignment propagates aliases (or reachability):
+
+```scala
+val x = Ref 42;
+val y = x;       // : Ref[Int]^y under the context of y: Ref[Int]^x, x: Ref[Int]^◆
+...
+```
+
 - Polymorphic identity function
 
 ```scala
 def polyId[T <: Top](x: T^<>): T^x = x
 val x = id[Int](3);              // : Int^∅
 // type argument to id is optional
-val c = id(Ref 42);              // : Ref[Int]^◆
+val c = id(Ref 42);              // : Ref[Int]^c
 x + (! c)                        // : Int^∅
 ```
 
-The identity function is not only polymorphic with respect to types, but also
-to reachability.
-The result of `id(x)` is untracked, since its argument is untracked (indicated
+The identity function is not only polymorphic with respect to argument types, but also
+to its reachability.
+The result of `id(3)` is untracked, since its argument is untracked (indicated
 by the empty set notation).
-In contrast, the result of `id(Ref 42)` remains tracked, since `Ref 42` is
-a freshly allocated resource (indicated by the diamond) that we want to track.
+In contrast, the result of `id(Ref 42)` remains tracked (indicated by the `c`
+in the type), since `Ref 42` is a freshly allocated resource that we want to
+track.
 The type system guarantees tracked resources remain tracked all the time.
 
 - Separation
