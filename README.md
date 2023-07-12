@@ -27,6 +27,8 @@ Diamond is written in Scala 3, so to get started with the project, you need
 `sbt`, the build tool for Scala projects.  You can install `sbt` and JVM
 environment using [Coursier](https://get-coursier.io/docs/cli-installation).
 
+We have tested it under Ubuntu 23.04 with Java 11.
+
 ## Examples in the Paper
 
 The examples shown in the paper can be found at `src/test/scala/suppl/Examples.scala`.
