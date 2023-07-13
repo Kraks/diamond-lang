@@ -168,6 +168,9 @@ We will see the final type is `Ref[Int^∅]^x` where the reachability `x` is res
 
 ## References
 
-[1] **Reachability Types: Tracking Aliasing and Separation in Higher-order Functional Programs** (OOPSLA 2021)</br>
+- **Reachability Types: Tracking Aliasing and Separation in Higher-order Functional Programs** (OOPSLA 2021)</br>
 by Yuyan Bao, Guannan Wei, Oliver Bračevac, Luke Jiang, Qiyang He, and Tiark Rompf
 ([pdf](https://dl.acm.org/doi/10.1145/3485516)).
+
+- Mechanizations and Coq proofs of the core calculus can be found [here](https://github.com/TiarkRompf/reachability).
+
