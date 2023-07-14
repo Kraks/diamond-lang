@@ -31,6 +31,8 @@ SUBTYPE : '<:';
 UNIT : 'unit';
 LAM : 'lam' ;
 TYLAM : 'Lam';
+IF : 'if';
+ELSE : 'else';
 
 AND : '&&' ;
 OR : '||' ;

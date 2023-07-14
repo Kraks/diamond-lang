@@ -95,6 +95,7 @@ extension (q: Qual)
     if (!q.isFresh) Qual(satVars) else Qual(satVars) + Fresh()
   def ⋒(q2: Qual)(using Γ: TEnv): Qual =
     Qual(q.satVars.intersect(q2.satVars)) + Fresh()
+  def ⊔(q2: Qual): Qual = Qual(q.set ++ q2.set)
 
 def reach(worklist: Set[String], acc: Set[String])(using Γ: TEnv): Set[String] =
   if (worklist.isEmpty) acc
@@ -106,6 +107,19 @@ def reach(worklist: Set[String], acc: Set[String])(using Γ: TEnv): Set[String] 
     }
     val newQual = q.varSet.filter(z => !acc.contains(z))
     reach((worklist ++ newQual) -- Set(x), acc ++ newQual ++ Set(x))
+  }
+
+extension (t1: Type)
+  def ⊔(t2: Type)(using Γ: TEnv): Type =
+    if (isSubtype(t1, t2)) t2
+    else if (isSubtype(t2, t1)) t1
+    else TTop
+
+extension (tq1: QType)
+  def ⊔(tq2: QType)(using Γ: TEnv): QType = {
+    val QType(t1, q1) = tq1
+    val QType(t2, q2) = tq1
+    QType(t1 ⊔ t2, q1 ⊔ q2)
   }
 
 def typeCheckUnaryOp(e: Expr, op: String, t: QType)(using Γ: TEnv): Type =
@@ -394,7 +408,7 @@ def typeFreeVars(t: Type): Set[String] = t match
 def freeVars(e: Expr): Set[String] = e match {
   case EUnit | ENum(_) | EBool(_) => Set()
   case EVar(x) => Set(x)
-  case EUnaryOp(op, e) => freeVars(e) 
+  case EUnaryOp(op, e) => freeVars(e)
   case EBinOp(op, e1, e2) => freeVars(e1) ++ freeVars(e2)
   case ELam(f, x, at, e, rt) => freeVars(e) -- Set(f, x)
     /*
@@ -570,12 +584,11 @@ def typeCheck(e: Expr)(using Γ: TEnv): QType = e match {
     if (p.isFresh) throw RequireNonFresh(e, tq)
     t ^ p
   case ECond(cnd, thn, els) =>
-    // XXX: instead of requiring the same type, could compute their join
     val t1 = typeCheck(cnd)
     checkQTypeEq(cnd, t1, TBool)
     val t2 = typeCheck(thn)
     val t3 = typeCheck(els)
-    checkQTypeEq(thn, t2, t3)
+    t2 ⊔ t3
   // New F◆ terms
   case ETyLam(f, tvar, qvar, ub, e, Some(rt)) =>
     val ft = TForall(f, tvar, qvar, ub, rt)

@@ -1,0 +1,3 @@
+val x = if (1 == 3) Ref 2 else Ref 3;
+val n = !x;
+n + 5

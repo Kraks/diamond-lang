@@ -328,6 +328,11 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
         val f = visitExpr(ctx.expr(0)).toCore
         val tyArgs = visitTyArgs(ctx.tyArgs).args
         tyArgs.foldLeft(f) { case (f, tyArg) => core.Expr.ETyApp(f, tyArg, fresh) }
+      } else if (ctx.IF != null && ctx.ELSE != null) {
+        val cnd = visitExpr(ctx.expr(0)).toCore
+        val thn = visitExpr(ctx.expr(1)).toCore
+        val els = visitExpr(ctx.expr(2)).toCore
+        core.Expr.ECond(cnd, thn, els)
       } else if (ctx.LPAREN != null && ctx.RPAREN != null) {
         // term application without argument
         val f = visitExpr(ctx.expr(0)).toCore

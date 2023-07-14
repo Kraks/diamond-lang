@@ -125,6 +125,8 @@ expr:
 | funDef ';' expr
 // assign
 | expr ':=' expr
+// conditional
+| 'if' '(' expr ')' expr 'else' expr
 ;
 
 alloc :
