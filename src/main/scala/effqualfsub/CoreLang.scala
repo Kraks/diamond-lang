@@ -88,9 +88,13 @@ given EffStoreQuantaleInstance[K, E: EffQuantale]: EffQuantale[GenEffStore[K, E]
   def I: GenEffStore[K, E] = GenEffStore(Map())
   private def merge(xs: Map[Set[K], E], ys: Map[Set[K], E])(using merger: (E, E) => E): Map[Set[K], E] =
     xs.foldRight(ys) { case ((k1, e1), ys) =>
-      ys.find((k2, e2) => k1.intersect(k2).nonEmpty) match
-        case None => ys + (k1 -> e1)
-        case Some((k2, e2)) => (ys - k2) + (k1 ++ k2 -> merger(e1, e2))
+      val overlaps = ys.filter((k2, _) => k1.intersect(k2).nonEmpty).toList
+      if (overlaps.isEmpty) ys + (k1 -> e1)
+      else {
+        val keys = overlaps.map(_._1)
+        val effs = overlaps.map(_._2)
+        ys.removedAll(keys) + (k1 ++ keys.reduce(_ ++ _) -> merger(e1, effs.reduce(merger)))
+      }
     }
   extension (s1: GenEffStore[K, E])
     def ⊔(s2: GenEffStore[K, E]) = GenEffStore(merge(s1.m, s2.m)(using _ ⊔ _))
@@ -118,6 +122,7 @@ enum Expr:
   case ETyApp(t: Expr, q: QType, fresh: Option[Boolean] = None)
   // Move semantics
   case Move(e: Expr)
+  case Swap(e1: Expr, e2: Expr)
 
 /* Auxiliary embedded syntax */
 

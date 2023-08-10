@@ -16,28 +16,34 @@ import TypeSyntax.given_Conversion_Type_QType
 import ExprSyntax.given_Conversion_Int_ENum
 
 class QuantaleTests extends AnyFunSuite {
+  val e1 = Eff(Map(Set("a", "b") -> Read, Set("c", "d") -> Write, Set("f") -> Bot))
+  val e2 = Eff(Map(Set("a", "e") -> Write, Set("d") -> Kill, Set("x") -> Kill))
+  val e3 = Eff(Map(Set("e") -> Read, Set("x", "f") -> Bot))
+  val mt = Eff(Map())
+
   test("join") {
-    val e1 = Eff(Map(Set("a", "b") -> Read, Set("c", "d") -> Write, Set("f") -> Bot))
-    val e2 = Eff(Map(Set("a", "e") -> Write, Set("d") -> Kill, Set("x") -> Kill))
     assert(e1 ⊔ e2 ==
       Eff(Map(Set("x") -> Kill, Set("f") -> Bot, Set("c", "d") -> Kill, Set("a", "b", "e") -> Write)))
     assert(e1 ⊔ e2 == e2 ⊔ e1)
 
-    val mt = Eff(Map())
     assert(e1 ⊔ mt == e1)
     assert(mt ⊔ e1 == e1)
   }
 
   test("seq") {
-    val e1 = Eff(Map(Set("a", "b") -> Read, Set("c", "d") -> Write, Set("f") -> Bot))
-    val e2 = Eff(Map(Set("a", "e") -> Write, Set("d") -> Kill, Set("x") -> Kill))
     assert(e1 ▷ e2 ==
       Eff(Map(Set("x") -> Kill, Set("f") -> Bot, Set("c", "d") -> Kill, Set("a", "b", "e") -> Write)))
+    intercept[KillException] { e2 ▷ e1 } match { case KillException(Write) => }
 
-    val mt = Eff(Map())
     assert(e1 ▷ mt == e1)
     assert(mt ▷ e1 == e1)
+  }
 
-    intercept[KillException] { e2 ▷ e1 } match { case KillException(Write) => }
+  test("dist") {
+    assert(e1 ▷ (e2 ⊔ e3) == (e1 ▷ e2) ⊔ (e1 ▷ e3))
+    assert((e1 ⊔ e3) ▷ e2 == (e1 ▷ e2) ⊔ (e1 ▷ e3))
+
+    intercept[KillException] { (e1 ⊔ e2) ▷ e3 }
+    intercept[KillException] { (e1 ▷ e3) ⊔ (e2 ▷ e3) }
   }
 }
