@@ -1,0 +1,43 @@
+package diamond.effqualfsub
+
+import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.matchers.should.Matchers
+
+import diamond.effqualfsub.core._
+import diamond.effqualfsub.core.given
+import diamond._
+import Type._
+import Expr._
+import MemEff._
+import TypeSyntax._
+import ExprSyntax._
+
+import TypeSyntax.given_Conversion_Type_QType
+import ExprSyntax.given_Conversion_Int_ENum
+
+class QuantaleTests extends AnyFunSuite {
+  test("join") {
+    val e1 = Eff(Map(Set("a", "b") -> Read, Set("c", "d") -> Write, Set("f") -> Bot))
+    val e2 = Eff(Map(Set("a", "e") -> Write, Set("d") -> Kill, Set("x") -> Kill))
+    assert(e1 ⊔ e2 ==
+      Eff(Map(Set("x") -> Kill, Set("f") -> Bot, Set("c", "d") -> Kill, Set("a", "b", "e") -> Write)))
+    assert(e1 ⊔ e2 == e2 ⊔ e1)
+
+    val mt = Eff(Map())
+    assert(e1 ⊔ mt == e1)
+    assert(mt ⊔ e1 == e1)
+  }
+
+  test("seq") {
+    val e1 = Eff(Map(Set("a", "b") -> Read, Set("c", "d") -> Write, Set("f") -> Bot))
+    val e2 = Eff(Map(Set("a", "e") -> Write, Set("d") -> Kill, Set("x") -> Kill))
+    assert(e1 ▷ e2 ==
+      Eff(Map(Set("x") -> Kill, Set("f") -> Bot, Set("c", "d") -> Kill, Set("a", "b", "e") -> Write)))
+
+    val mt = Eff(Map())
+    assert(e1 ▷ mt == e1)
+    assert(mt ▷ e1 == e1)
+
+    intercept[KillException] { e2 ▷ e1 } match { case KillException(Write) => }
+  }
+}

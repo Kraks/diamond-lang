@@ -19,6 +19,23 @@ enum Type:
 
 import Type._
 
+/* Qualifiers */
+
+case class Fresh():
+  override def toString = "◆"
+type QElem = String | Fresh
+object Qual:
+  def untrack: Qual = Qual(Set())
+  def fresh: Qual = Qual(Set(Fresh()))
+  def singleton(x: String): Qual = Qual(Set(x))
+case class Qual(set: Set[QElem]):
+  override def toString =
+    if (set.isEmpty) "∅"
+    else if (set.size == 1) set.head.toString
+    else s"""{${set.mkString(",")}}"""
+case class QType(ty: Type, q: Qual = Qual.untrack):
+  override def toString = s"$ty^$q"
+
 /* Effects */
 
 trait SemiLattice[T]:
@@ -62,30 +79,22 @@ given MemEffQuntanleInstance: EffQuantale[MemEff] with
       case (Kill, _) => throw KillException(f)
     }
 
-case class GenEffStore[K, E: EffQuantale](s: Map[Set[K], E])
+case class GenEffStore[K, E: EffQuantale](m: Map[Set[K], E])
+
+type Eff = GenEffStore[String, MemEff]
+val Eff = GenEffStore[String, MemEff]
 
 given EffStoreQuantaleInstance[K, E: EffQuantale]: EffQuantale[GenEffStore[K, E]] with
   def I: GenEffStore[K, E] = GenEffStore(Map())
+  private def merge(xs: Map[Set[K], E], ys: Map[Set[K], E])(using merger: (E, E) => E): Map[Set[K], E] =
+    xs.foldRight(ys) { case ((k1, e1), ys) =>
+      ys.find((k2, e2) => k1.intersect(k2).nonEmpty) match
+        case None => ys + (k1 -> e1)
+        case Some((k2, e2)) => (ys - k2) + (k1 ++ k2 -> merger(e1, e2))
+    }
   extension (s1: GenEffStore[K, E])
-    def ⊔(s2: GenEffStore[K, E]) = ???
-    def ▷(s2: GenEffStore[K, E]) = ???
-
-/* Qualifiers */
-
-case class Fresh():
-  override def toString = "◆"
-type QElem = String | Fresh
-object Qual:
-  def untrack: Qual = Qual(Set())
-  def fresh: Qual = Qual(Set(Fresh()))
-  def singleton(x: String): Qual = Qual(Set(x))
-case class Qual(set: Set[QElem]):
-  override def toString =
-    if (set.isEmpty) "∅"
-    else if (set.size == 1) set.head.toString
-    else s"""{${set.mkString(",")}}"""
-case class QType(ty: Type, q: Qual = Qual.untrack):
-  override def toString = s"$ty^$q"
+    def ⊔(s2: GenEffStore[K, E]) = GenEffStore(merge(s1.m, s2.m)(using _ ⊔ _))
+    def ▷(s2: GenEffStore[K, E]) = GenEffStore(merge(s1.m, s2.m)(using _ ▷ _))
 
 /* Expressions */
 
