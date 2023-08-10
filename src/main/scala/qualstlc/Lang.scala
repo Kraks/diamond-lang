@@ -4,6 +4,8 @@ import diamond._
 
 /* STLC + Subtyping + Reference + Diamond-flavored reachability types */
 
+/* Types */
+
 enum Type:
   case TUnit
   case TNum
@@ -12,6 +14,8 @@ enum Type:
   case TRef(t: QType)
 
 import Type._
+
+/* Qualifiers */
 
 case class Fresh():
   override def toString = "◆"
@@ -28,6 +32,8 @@ case class Qual(set: Set[QElem]):
 case class QType(ty: Type, q: Qual = Qual.untrack):
   override def toString = s"$ty^$q"
 
+/* Expressions */
+
 enum Expr:
   case EUnit
   case ENum(n: Int)
@@ -43,6 +49,8 @@ enum Expr:
   case EAssign(lhs: Expr, rhs: Expr)
   case EDeref(e: Expr)
   case ECond(cnd: Expr, thn: Expr, els: Expr)
+
+/* Auxiliary embedded syntax */
 
 import Expr._
 import Type._

@@ -4,6 +4,8 @@ import diamond._
 
 /* F◆ = System F-Sub + Reference + Diamond-flavored reachability types */
 
+/* Types */
+
 enum Type:
   case TUnit
   case TNum
@@ -16,6 +18,8 @@ enum Type:
   case TForall(f: String, tvar: String, qvar: String, bound: QType, res: QType)
 
 import Type._
+
+/* Qualifiers */
 
 case class Fresh():
   override def toString = "◆"
@@ -31,6 +35,8 @@ case class Qual(set: Set[QElem]):
     else s"""{${set.mkString(",")}}"""
 case class QType(ty: Type, q: Qual = Qual.untrack):
   override def toString = s"$ty^$q"
+
+/* Expressions */
 
 enum Expr:
   case EUnit
@@ -50,6 +56,8 @@ enum Expr:
   // F◆ new expressions
   case ETyLam(f: String, tvar: String, qvar: String, bound: QType, body: Expr, rt: Option[QType])
   case ETyApp(t: Expr, q: QType, fresh: Option[Boolean] = None)
+
+/* Auxiliary embedded syntax */
 
 import Expr._
 import Type._

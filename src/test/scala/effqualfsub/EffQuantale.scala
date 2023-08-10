@@ -19,15 +19,15 @@ class QuantaleTests extends AnyFunSuite {
   val e1 = Eff(Map(Set("a", "b") -> Read, Set("c", "d") -> Write, Set("f") -> Bot))
   val e2 = Eff(Map(Set("a", "e") -> Write, Set("d") -> Kill, Set("x") -> Kill))
   val e3 = Eff(Map(Set("e") -> Read, Set("x", "f") -> Bot))
-  val mt = Eff(Map())
+  val id = summon[EffQuantale[Eff]].id
 
   test("join") {
     assert(e1 ⊔ e2 ==
       Eff(Map(Set("x") -> Kill, Set("f") -> Bot, Set("c", "d") -> Kill, Set("a", "b", "e") -> Write)))
     assert(e1 ⊔ e2 == e2 ⊔ e1)
 
-    assert(e1 ⊔ mt == e1)
-    assert(mt ⊔ e1 == e1)
+    assert(e1 ⊔ id == e1)
+    assert(id ⊔ e1 == e1)
   }
 
   test("seq") {
@@ -35,8 +35,8 @@ class QuantaleTests extends AnyFunSuite {
       Eff(Map(Set("x") -> Kill, Set("f") -> Bot, Set("c", "d") -> Kill, Set("a", "b", "e") -> Write)))
     intercept[KillException] { e2 ▷ e1 } match { case KillException(Write) => }
 
-    assert(e1 ▷ mt == e1)
-    assert(mt ▷ e1 == e1)
+    assert(e1 ▷ id == e1)
+    assert(id ▷ e1 == e1)
   }
 
   test("dist") {

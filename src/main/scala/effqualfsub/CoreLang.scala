@@ -43,7 +43,7 @@ trait SemiLattice[T]:
     def ⊔(y: T): T
 
 trait Monoid[T]:
-  def I: T
+  def id: T
   extension (x: T)
     def ▷(y: T): T
 
@@ -57,7 +57,7 @@ import MemEff._
 case class KillException(rhs: MemEff) extends RuntimeException(s"Kill ▷ ${rhs} is undefined")
 
 given MemEffQuntanleInstance: EffQuantale[MemEff] with
-  def I: MemEff = Bot
+  def id: MemEff = Bot
   extension (e: MemEff)
     def ⊔(f: MemEff): MemEff = (e, f) match {
       case (Bot, f) => f
@@ -85,7 +85,7 @@ type Eff = GenEffStore[String, MemEff]
 val Eff = GenEffStore[String, MemEff]
 
 given EffStoreQuantaleInstance[K, E: EffQuantale]: EffQuantale[GenEffStore[K, E]] with
-  def I: GenEffStore[K, E] = GenEffStore(Map())
+  def id: GenEffStore[K, E] = GenEffStore(Map())
   private def merge(xs: Map[Set[K], E], ys: Map[Set[K], E])(using merger: (E, E) => E): Map[Set[K], E] =
     xs.foldRight(ys) { case ((k1, e1), ys) =>
       val overlaps = ys.filter((k2, _) => k1.intersect(k2).nonEmpty).toList
