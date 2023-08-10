@@ -76,10 +76,7 @@ extension (q: Qual)
   def \(q2: Qual): Qual = Qual(q.set -- q2.set)
   def ∪(q2: Qual): Qual = Qual(q.set ++ q2.set)
   def ⊆(q2: Qual): Boolean = q.set.subsetOf(q2.set)
-  def ⊆(Γ: TEnv): Boolean = {
-    val Qual(s) = q
-    s.subsetOf(Γ.dom + ◆)
-  }
+  def ⊆(Γ: TEnv): Boolean = q.set.subsetOf(Γ.dom + ◆)
   def satVars(using Γ: TEnv): Set[String] = reach(q.varSet, Set())
   def satVarsQual(using Γ: TEnv): Qual = Qual(satVars)
   def sat(using Γ: TEnv): Qual =

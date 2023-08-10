@@ -72,7 +72,7 @@ package ir {
         case ((param, idx), body) =>
           val funName = if (idx == 0) name else freshVar(funPre)
           val realRt = if (idx == realParams.size-1) rt.map(_.toCore) else None
-          core.Expr.ELam(funName, param.name, param.qty, body, realRt)
+          core.Expr.ELam(funName, param.name, param.qty, body, realRt, ???)
       }
       val rhsTy = None
       core.Expr.ELet(name, rhsTy, rhs, e)
@@ -86,12 +86,12 @@ package ir {
       val lam = realParams.zipWithIndex.foldRight(body) {
         case ((param, idx), body) =>
           val realRt = if (idx == realParams.size-1) rt.map(_.toCore) else None
-          core.Expr.ELam(freshVar(funPre), param.name, param.qty, body, realRt)
+          core.Expr.ELam(freshVar(funPre), param.name, param.qty, body, realRt, ???)
       }
       val rhs = tyParams.zipWithIndex.foldRight(lam) {
         case ((ty, idx), body) =>
           val funName = if (idx == 0) name else freshVar(tyFunPre)
-          core.Expr.ETyLam(funName, ty.tvar, ty.qvar, ty.bound, body, None)
+          core.Expr.ETyLam(funName, ty.tvar, ty.qvar, ty.bound, body, None, ???)
       }
       val rhsTy = None
       core.Expr.ELet(name, rhsTy, rhs, e)
@@ -129,9 +129,9 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
     val rest = args.zipWithIndex.drop(1).foldRight(ret) {
       case ((arg, idx), rt) =>
         val q = core.Qual(args.take(idx).map(_.name).toSet)
-        core.QType(core.Type.TFun(freshVar(funPre), arg.name, arg.qty, rt), q)
+        core.QType(core.Type.TFun(freshVar(funPre), arg.name, arg.qty, rt, ???), q)
     }
-    val fty = core.Type.TFun(f, args(0).name, args(0).qty, rest)
+    val fty = core.Type.TFun(f, args(0).name, args(0).qty, rest, ???)
     Type(fty)
   }
 
@@ -153,7 +153,7 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
     val ret = visitQty(ctx.qty).toCore
     //Note: we have not supported multi-argument forall types, they can only be curried
     if (args.size == 1) {
-      Type(core.Type.TForall(f, args(0).tvar, args(0).qvar, args(0).bound, ret))
+      Type(core.Type.TForall(f, args(0).tvar, args(0).qvar, args(0).bound, ret, ???))
     } else error
   }
 
@@ -232,7 +232,7 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
       case ((arg, idx), body) =>
         val realName = if (idx == 0) name else freshVar(funPre)
         val realRt = if (idx == args.size-1) rt else None
-        core.Expr.ELam(realName, arg.name, arg.qty, body, realRt)
+        core.Expr.ELam(realName, arg.name, arg.qty, body, realRt, ???)
     }
     Expr(ret)
   }
@@ -247,7 +247,7 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
     val body = visitExpr(ctx.expr).toCore
     //Note: we have not supported multi-argument type lambdas, they can only be curried
     if (tyArgs.size == 1) {
-      Expr(core.Expr.ETyLam(name, tyArgs(0).tvar, tyArgs(0).qvar, tyArgs(0).bound, body, rt))
+      Expr(core.Expr.ETyLam(name, tyArgs(0).tvar, tyArgs(0).qvar, tyArgs(0).bound, body, rt, ???))
     } else error
   }
 
