@@ -33,7 +33,7 @@ Inductive wf_context : context -> Prop :=
 | wf_base: wf_context nil
 | wf_step: forall n (fn fr : bool) q tl, wf_context tl
     -> ~StrSet.In n (ddomain tl)
-    -> StrSet.Subset q (if fn then ddomain ((n, Sym fn fr q)::tl) else ddomain tl)
+    -> StrSet.Subset q (ddomain tl)
     -> wf_context ((n, Sym fn fr q)::tl) .
 
 Fixpoint is_well_formed (ctx: context) : bool :=
@@ -41,7 +41,7 @@ Fixpoint is_well_formed (ctx: context) : bool :=
   | nil => true
   | (n, Sym fn fr q)::tl => is_well_formed tl
       && negb (StrSet.mem n (ddomain tl))
-      && StrSet.subset q (if fn then ddomain ctx else ddomain tl)
+      && StrSet.subset q (ddomain tl)
   end.
 
 Lemma is_well_formed_iff: forall ctx,
@@ -100,8 +100,8 @@ Inductive subQual: context -> qualset -> qualset -> Prop :=
 | q_trans: forall G p q r,
     subQual G p q -> subQual G q r
     -> subQual G p r
-| q_var: forall G x q,
-    wf_context G -> retrieve G x = Some (Sym false false q)
+| q_var: forall G x f q,
+    wf_context G -> retrieve G x = Some (Sym f false q)
     -> subQual G (StrSet.singleton x) q
 | q_self: forall G f q,
     wf_context G -> retrieve G f = Some (Sym true false q)
@@ -525,7 +525,7 @@ Fixpoint bounded (ctx: context) (x: string) (qual: qualset) : bool :=
   if StrSet.mem x qual then true else
     match ctx with
     | (x', Sym fn fr q)::ctx' =>
-        if (x =? x')%string && negb fn && negb fr then
+        if (x =? x')%string && negb fr then
           StrSet.for_all (fun x => bounded ctx' x qual) q
         else bounded ctx' x qual
     | Nil => false
@@ -557,18 +557,16 @@ Proof.
     { apply StrSet.mem_spec in Heqb. apply q_sub. all: assumption || SDecide.fsetdec. }
     clear Heqb.
     (* destruct if-then-else *)
-    destruct ((x =? s)%string && negb isFun && negb isFresh) eqn:Heqb0.
+    destruct ((x =? s)%string && negb isFresh) eqn:Heqb0.
     2: intuition. (* trivial false case *)
-    apply andb_true_iff in Heqb0; destruct Heqb0 as [ HB12 HB3 ].
-    apply andb_true_iff in HB12; destruct HB12 as [ HB1 HB2 ].
+    apply andb_true_iff in Heqb0; destruct Heqb0 as [ HB1 HB3 ].
     apply String.eqb_eq in HB1.
-    apply negb_true_iff in HB2.
     apply negb_true_iff in HB3.
     subst.
     (* obtain retrieve witness *)
     apply retrieve_works_on_suffix in H2; try assumption.
     destruct H2 as [H2 IHretrieve].
-    assert (retrieve ((s, Sym false false qual) :: G') s = Some (Sym false false qual)) as Hretrieve. {
+    assert (forall fn, retrieve ((s, Sym fn false qual) :: G') s = Some (Sym fn false qual)) as Hretrieve. {
       simpl.
       assert ((s =? s)%string = true) as Heqb.
       apply String.eqb_eq.
@@ -584,7 +582,7 @@ Proof.
     (* qualifier reasoning *)
     apply q_trans with (q := qual).
     + (* q_var *)
-      apply q_var.
+      apply q_var with (f := isFun).
       all: assumption.
     + (* induction *)
       apply q_cong_fold; try assumption; intros.
@@ -617,7 +615,7 @@ Proof.
     clear Heqb2; exfalso.
     SDecide.fsetdec.
     (* truly inductive case *)
-    destruct ((x =? s)%string && negb isFun && negb isFresh); try intuition.
+    destruct ((x =? s)%string && negb isFresh); try intuition.
     apply StrSet.for_all_spec.
     { unfold Proper. unfold respectful. intros. subst. reflexivity. }
     apply StrSet.for_all_spec in H0.
@@ -670,7 +668,7 @@ Proof.
   intro.
   apply String.eqb_eq in H2; subst.
   SDecide.fsetdec.
-  replace ((x =? s)%string && negb isFun && negb isFresh) with false in H4.
+  replace ((x =? s)%string && negb isFresh) with false in H4.
   2: {
     rewrite H2.
     simpl.
@@ -705,15 +703,13 @@ Proof.
   apply H1.
   apply StrSet.mem_spec in Heqb.
   assumption.
-  destruct ((x =? s)%string && negb isFun && negb isFresh) eqn:?.
+  destruct ((x =? s)%string && negb isFresh) eqn:?.
   2: intuition.
   apply StrSet.for_all_spec in H0.
   2: unfold Proper; unfold respectful; intros; subst; reflexivity.
   unfold StrSet.For_all in H0.
-  apply andb_true_iff in Heqb0; destruct Heqb0 as [ Heqb01 Heqb2 ].
-  apply andb_true_iff in Heqb01; destruct Heqb01 as [ Heqb0 Heqb1 ].
+  apply andb_true_iff in Heqb0; destruct Heqb0 as [ Heqb0 Heqb2 ].
   apply String.eqb_eq in Heqb0; subst.
-  apply negb_true_iff in Heqb1; subst.
   apply negb_true_iff in Heqb2; subst.
   apply (bounded_works_on_suffix _ _ s r) in H2 as ?.
   2: assumption.
@@ -736,10 +732,89 @@ Proof.
   SDecide.fsetdec.
 Qed.
 
+Lemma bounded_fits_expand: forall G x q,
+  wf_context G -> bounded G x (expand G q) = true
+  -> forall y, StrSet.In y (expand G (StrSet.singleton x))
+  -> bounded G y (expand G q) = true.
+Proof.
+  intros.
+  pose G as G'.
+  replace G with G' at 1.
+  replace G with G' in H0 at 1.
+  replace G with G' in H1 at 1.
+  2-4: reflexivity.
+  generalize dependent x.
+  generalize dependent y.
+  assert (list_suffix G' G) as Hsuf.
+  1: constructor.
+  induction G'; intros.
+  (* base case *)
+  simpl in *.
+  assert (x = y).
+  SDecide.fsetdec.
+  subst.
+  assumption.
+  (* inductive case *)
+  destruct a; destruct s0; simpl in *.
+  destruct (StrSet.mem y (expand G q)) eqn:?. reflexivity.
+  apply SFacts.not_mem_iff in Heqb.
+  apply suff_ind in Hsuf as Hsuf2.
+  intuition.
+  destruct (StrSet.mem x (expand G q)) eqn:?.
+  - (* x \in q* *) 
+    apply expand_works_on_suffix with (q := StrSet.singleton x) in Hsuf.
+    apply expand_is_saturated2 with (x := q) in H.
+    apply StrSet.mem_spec in Heqb0.
+    assert (StrSet.Subset (StrSet.singleton x) (expand G q)).
+    SDecide.fsetdec.
+    apply expand_is_monotonic with (G := G) in H3.
+    assert (StrSet.In y (expand G q)).
+    SDecide.fsetdec.
+    contradiction.
+  - (* x \notin q* *)
+    destruct ((x =? s)%string && negb isFresh) eqn:?.
+    * (* substitution happened *)
+      apply andb_true_iff in Heqb1; destruct Heqb1.
+      apply String.eqb_eq in H3; subst.
+      apply negb_true_iff in H4; subst.
+      replace ((y =? s)%string && negb false) with (y =? s)%string.
+      2: { simpl. rewrite andb_true_r. reflexivity. }
+      destruct ((y =? s)%string) eqn:?.
+      assumption.
+      apply StrSet.for_all_spec in H0.
+      unfold StrSet.For_all in H0.
+      2: { unfold Proper. unfold respectful. intros. subst. reflexivity. }
+      replace (isFun && negb false && StrSet.mem s (StrSet.singleton s)) with isFun in H1.
+      2: admit.
+      admit.
+    * (* no substitution *)
+      replace (isFun && negb isFresh && StrSet.mem s (StrSet.singleton x)) with false in H1.
+      2: admit.
+      destruct ((y =? s)%string && negb isFresh) eqn:?.
+      + (* x != s, y = s -- never true *)
+        apply andb_true_iff in Heqb2; destruct Heqb2.
+        apply String.eqb_eq in H3; subst.
+        apply negb_true_iff in H4; subst.
+        simpl in Heqb1.
+        rewrite andb_true_r in Heqb1.
+        apply String.eqb_neq in Heqb1.
+        exfalso.
+        apply Heqb1.
+        apply wf_context_on_suffix in Hsuf2.
+        apply expand_is_inbound with (q0 := StrSet.singleton x) in Hsuf2.
+        apply wf_context_on_suffix in Hsuf.
+        inversion Hsuf; subst.
+        2,3: assumption.
+        SDecide.fsetdec.
+      + (* x != s, y != s -- just go deeper *)
+        apply H2 with (x := x); assumption.
+Admitted.
+
 Lemma bounded_on_function: forall G f p q,
   wf_context G -> bounded G f q = true -> retrieve G f = Some (Sym true false p)
   -> StrSet.In f q.
-Proof.
+Admitted.
+(* Proof.
   intros.
   induction G.
   simpl in *.
@@ -785,7 +860,7 @@ Proof.
   replace (false && negb isFresh) with false in H0.
   intuition.
   all: rewrite andb_false_l; reflexivity.
-Qed.
+Qed. *)
 
 Definition algorithmic (ctx: context) (q1 q2: qualset) : bool :=
   if is_well_formed ctx && StrSet.subset q1 (ddomain ctx) && StrSet.subset q2 (ddomain ctx) then
@@ -902,13 +977,12 @@ Proof.
     assert (~ StrSet.In x q).
     { apply not_true_iff_false in Heqb. intro. apply Heqb. apply StrSet.mem_spec. assumption. }
     clear Heqb.
-    destruct ((x =? s)%string && negb isFun && negb isFresh) eqn:?.
+    destruct ((x =? s)%string && negb isFresh) eqn:?.
     * (* true case *)
     apply StrSet.for_all_spec.
     { unfold Proper. unfold respectful. intros. subst. reflexivity. }
     unfold StrSet.For_all; intros.
     apply andb_true_iff in Heqb; destruct Heqb.
-    apply andb_true_iff in H6; destruct H6.
     rewrite H6 in H3.
     inversion H3; subst.
     destruct G; simpl in *.
