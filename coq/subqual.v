@@ -522,8 +522,23 @@ Proof.
 Qed.
 
 Lemma expand_is_bound_safe: forall G x,
-  wf_context G -> retrieve G x = None -> expand G (StrSet.singleton x) = StrSet.singleton x.
-Admitted.
+  wf_context G -> ~ StrSet.In x (ddomain G) -> expand G (StrSet.singleton x) = StrSet.singleton x.
+Proof.
+  intros.
+  induction G.
+  - simpl in *.
+    reflexivity.
+  - destruct a; destruct s0; simpl in *.
+    assert (~ StrSet.In s (StrSet.singleton x) /\ ~ StrSet.In x (ddomain G)).
+    SDecide.fsetdec.
+    destruct H1.
+    inversion H; subst.
+    apply SFacts.not_mem_iff in H1.
+    rewrite H1.
+    replace (isFun && negb isFresh && false) with false.
+    2: { rewrite andb_false_r. reflexivity. }
+    intuition.
+Qed.
 
 Lemma expand_witness: forall G x q,
   StrSet.In x (expand G q) -> exists y, StrSet.In y q /\ StrSet.In x (expand G (StrSet.singleton y)).
@@ -540,15 +555,36 @@ Proof.
       SDecide.fsetdec.
       destruct H0.
       + exists s.
-        admit.
+        apply andb_true_iff in Heqb; destruct Heqb.
+        split.
+        apply StrSet.mem_spec in H2; assumption.
+        rewrite H1.
+        replace (StrSet.mem s (StrSet.singleton s)) with true.
+        2: { symmetry. apply StrSet.mem_spec. SDecide.fsetdec. }
+        simpl.
+        apply expand_respects_union.
+        SDecide.fsetdec.
       + apply IHG in H0.
         destruct H0.
         exists x0.
-        admit.
+        destruct H0.
+        split.
+        assumption.
+        assert (StrSet.Subset (StrSet.singleton x0) (if isFun && negb isFresh && StrSet.mem s (StrSet.singleton x0) then StrSet.union qual (StrSet.singleton x0) else StrSet.singleton x0)).
+        destruct (isFun && negb isFresh && StrSet.mem s (StrSet.singleton x0)); SDecide.fsetdec.
+        apply expand_is_monotonic with (G := G) in H2.
+        SDecide.fsetdec.
     * apply IHG in H.
       destruct H.
       exists x0.
-Admitted.
+      destruct H.
+      split.
+      assumption.
+      assert (StrSet.Subset (StrSet.singleton x0) (if isFun && negb isFresh && StrSet.mem s (StrSet.singleton x0) then StrSet.union qual (StrSet.singleton x0) else StrSet.singleton x0)).
+      destruct (isFun && negb isFresh && StrSet.mem s (StrSet.singleton x0)); SDecide.fsetdec.
+      apply expand_is_monotonic with (G := G) in H1.
+      SDecide.fsetdec.
+Qed.
 
 Fixpoint bounded (ctx: context) (x: string) (qual: qualset) : bool :=
   if StrSet.mem x qual then true else
@@ -814,13 +850,14 @@ Proof.
       unfold StrSet.For_all in H0.
       2: { unfold Proper. unfold respectful. intros. subst. reflexivity. }
       replace (isFun && negb false && StrSet.mem s (StrSet.singleton s)) with isFun in H1.
-      2: admit.
+      2: { replace (StrSet.mem s (StrSet.singleton s)) with true. simpl. repeat rewrite andb_true_r. reflexivity. symmetry. apply StrSet.mem_spec. SDecide.fsetdec. }
       assert (StrSet.Subset (if isFun then StrSet.union qual (StrSet.singleton s) else StrSet.singleton s) (StrSet.union qual (StrSet.singleton s))).
       destruct isFun; SDecide.fsetdec.
       apply expand_is_monotonic with (G := G') in H3.
       specialize (expand_respects_union G' qual (StrSet.singleton s)); intro.
-      rewrite expand_is_bound_safe in H4.
-      2,3: admit.
+      apply wf_context_on_suffix in Hsuf; try assumption.
+      inversion Hsuf; subst.
+      rewrite expand_is_bound_safe in H4; try assumption.
       assert (StrSet.In y (expand G' qual) \/ StrSet.In y (StrSet.singleton s)).
       SDecide.fsetdec.
       destruct H5.
@@ -833,7 +870,7 @@ Proof.
       apply H2 in H1; assumption.
     * (* no substitution *)
       replace (isFun && negb isFresh && StrSet.mem s (StrSet.singleton x)) with false in H1.
-      2: admit.
+      2: { destruct (negb isFresh) eqn:?. rewrite andb_true_r in Heqb1. apply String.eqb_neq in Heqb1. replace (StrSet.mem s (StrSet.singleton x)) with false. rewrite andb_false_r. reflexivity. symmetry. apply SFacts.not_mem_iff. SDecide.fsetdec. rewrite andb_false_r. rewrite andb_false_l. reflexivity. }
       destruct ((y =? s)%string && negb isFresh) eqn:?.
       + (* x != s, y = s -- never true *)
         apply andb_true_iff in Heqb2; destruct Heqb2.
@@ -852,59 +889,7 @@ Proof.
         SDecide.fsetdec.
       + (* x != s, y != s -- just go deeper *)
         apply H2 with (x := x); assumption.
-Admitted.
-
-Lemma bounded_on_function: forall G f p q,
-  wf_context G -> bounded G f q = true -> retrieve G f = Some (Sym true false p)
-  -> StrSet.In f q.
-Admitted.
-(* Proof.
-  intros.
-  induction G.
-  simpl in *.
-  discriminate.
-  destruct a; destruct s0.
-  inversion H; subst.
-  simpl in *.
-  destruct (StrSet.mem f q) eqn:?.
-  apply StrSet.mem_spec in Heqb.
-  assumption.
-  destruct (f =? s)%string eqn:?.
-  2: {
-    replace (false && negb isFun) with false in H0.
-    replace (false && negb isFresh) with false in H0.
-    intuition.
-    all: rewrite andb_false_l; reflexivity.
-  }
-  apply String.eqb_eq in Heqb0; subst.
-  inversion H1; subst.
-  simpl in *.
-  clear IHG H1 H H9 p.
-  exfalso.
-  apply not_true_iff_false in Heqb.
-  apply Heqb; clear Heqb.
-  apply StrSet.mem_spec.
-  induction G.
-  simpl in *.
-  destruct (StrSet.mem s q) eqn:?.
-  apply StrSet.mem_spec in Heqb.
-  assumption.
-  discriminate.
-  destruct a; destruct s1.
-  inversion H5; subst.
-  simpl in *.
-  destruct (StrSet.mem s q) eqn:?.
-  apply StrSet.mem_spec in Heqb.
-  assumption.
-  destruct (s =? s0)%string eqn:?.
-  apply String.eqb_eq in Heqb0; subst.
-  exfalso.
-  SDecide.fsetdec.
-  replace (false && negb isFun) with false in H0.
-  replace (false && negb isFresh) with false in H0.
-  intuition.
-  all: rewrite andb_false_l; reflexivity.
-Qed. *)
+Qed.
 
 Definition algorithmic (ctx: context) (q1 q2: qualset) : bool :=
   if is_well_formed ctx && StrSet.subset q1 (ddomain ctx) && StrSet.subset q2 (ddomain ctx) then
@@ -967,46 +952,11 @@ Proof.
     apply bounded_is_transitive with (q := expand G q); try assumption.
     { apply H1. assumption. }
     unfold StrSet.For_all; intros; clear H H4 H5 H1 x p.
-    pose G as G'.
-    assert (list_suffix G' G).
-    constructor.
-    replace G with G' in H8.
-    2: reflexivity.
-    generalize dependent x0.
-    induction G'; intros.
-    * simpl in *. intuition.
-    * destruct a; destruct s0.
-      simpl in *.
-      apply suff_ind in H as ?.
-      destruct (isFun && negb isFresh && StrSet.mem s q) eqn:?.
-      + (* true inductive case *)
-      apply expand_respects_union in H8.
-      apply StrSet.union_spec in H8.
-      destruct H8.
-      2: apply IHG'; assumption.
-      apply andb_true_iff in Heqb; destruct Heqb as [ Heqb01 Heqb2 ].
-      apply andb_true_iff in Heqb01; destruct Heqb01 as [ Heqb0 Heqb1 ].
-      apply negb_true_iff in Heqb1; subst.
-      apply StrSet.mem_spec in Heqb2.
-      apply H7 in Heqb2.
-      apply bounded_can_be_simple.
-      apply expand_works_on_suffix with (G := G) in H4; try assumption.
-      apply retrieve_works_on_suffix in H; try assumption; destruct H.
-      specialize H5 with (x := s) (a := Sym true false qual).
-      assert (retrieve ((s, Sym true false qual) :: G') s = Some (Sym true false qual)).
-      { simpl. replace (s =? s)%string with true. reflexivity. symmetry. apply String.eqb_eq. reflexivity. }
-      apply H5 in H8.
-      generalize dependent x0.
-      apply expand_on_function in H8 as ?; try assumption.
-      apply bounded_on_function with (p := qual) in Heqb2; try assumption.
-      assert (StrSet.Subset (expand G (StrSet.singleton s)) (expand G (expand G r))).
-      apply expand_is_monotonic.
-      SDecide.fsetdec.
-      assert (StrSet.Equal (expand G (expand G r)) (expand G r)).
-      apply expand_is_saturated2; try assumption.
-      SDecide.fsetdec.
-      + (* trivial case *)
-      intuition.
+    apply expand_witness in H8.
+    destruct H8.
+    destruct H.
+    apply H7 in H. 
+    apply bounded_fits_expand with (x := x); assumption.
   - (* q_var *)
     apply bounded_respects_subset with (q1 := q).
     apply expand_is_increasing.
@@ -1066,3 +1016,6 @@ Proof.
       apply bounded_can_be_simple.
       SDecide.fsetdec.
 Qed.
+
+Print Assumptions algorithmic_is_sound.
+Print Assumptions algorithmic_is_complete.
