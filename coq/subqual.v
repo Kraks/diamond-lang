@@ -521,6 +521,35 @@ Proof.
   destruct (StrSet.mem s q); SDecide.fsetdec.
 Qed.
 
+Lemma expand_is_bound_safe: forall G x,
+  wf_context G -> retrieve G x = None -> expand G (StrSet.singleton x) = StrSet.singleton x.
+Admitted.
+
+Lemma expand_witness: forall G x q,
+  StrSet.In x (expand G q) -> exists y, StrSet.In y q /\ StrSet.In x (expand G (StrSet.singleton y)).
+Proof.
+  intros.
+  induction G.
+  - simpl in *.
+    exists x.
+    intuition.
+  - destruct a; destruct s0; simpl in *.
+    destruct (isFun && negb isFresh && StrSet.mem s q) eqn:?.
+    * apply expand_respects_union in H.
+      assert (StrSet.In x (expand G qual) \/ StrSet.In x (expand G q)).
+      SDecide.fsetdec.
+      destruct H0.
+      + exists s.
+        admit.
+      + apply IHG in H0.
+        destruct H0.
+        exists x0.
+        admit.
+    * apply IHG in H.
+      destruct H.
+      exists x0.
+Admitted.
+
 Fixpoint bounded (ctx: context) (x: string) (qual: qualset) : bool :=
   if StrSet.mem x qual then true else
     match ctx with
@@ -786,7 +815,22 @@ Proof.
       2: { unfold Proper. unfold respectful. intros. subst. reflexivity. }
       replace (isFun && negb false && StrSet.mem s (StrSet.singleton s)) with isFun in H1.
       2: admit.
-      admit.
+      assert (StrSet.Subset (if isFun then StrSet.union qual (StrSet.singleton s) else StrSet.singleton s) (StrSet.union qual (StrSet.singleton s))).
+      destruct isFun; SDecide.fsetdec.
+      apply expand_is_monotonic with (G := G') in H3.
+      specialize (expand_respects_union G' qual (StrSet.singleton s)); intro.
+      rewrite expand_is_bound_safe in H4.
+      2,3: admit.
+      assert (StrSet.In y (expand G' qual) \/ StrSet.In y (StrSet.singleton s)).
+      SDecide.fsetdec.
+      destruct H5.
+      2: { apply String.eqb_neq in Heqb1. exfalso. apply Heqb1. SDecide.fsetdec. }
+      clear - H5 H2 H0.
+      apply expand_witness in H5.
+      destruct H5.
+      destruct H.
+      apply H0 in H.
+      apply H2 in H1; assumption.
     * (* no substitution *)
       replace (isFun && negb isFresh && StrSet.mem s (StrSet.singleton x)) with false in H1.
       2: admit.
