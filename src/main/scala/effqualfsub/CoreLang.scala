@@ -109,6 +109,7 @@ enum Expr:
   case EVar(x: String)
   case EUnaryOp(op: String, e: Expr)
   case EBinOp(op: String, e1: Expr, e2: Expr)
+  // XXX allow annotating observable filter for ELam?
   case ELam(f: String, x: String, at: QType, body: Expr, rt: Option[QType], eff: Option[Eff])
   case EApp(e1: Expr, e2: Expr, fresh: Option[Boolean] = None)
   case ELet(x: String, t: Option[QType], rhs: Expr, body: Expr, global: Boolean = false)
