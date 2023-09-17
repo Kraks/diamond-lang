@@ -138,6 +138,26 @@ public interface DiamondParserListener extends ParseTreeListener {
 	 */
 	void exitQty(DiamondParser.QtyContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link DiamondParser#eff}.
+	 * @param ctx the parse tree
+	 */
+	void enterEff(DiamondParser.EffContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link DiamondParser#eff}.
+	 * @param ctx the parse tree
+	 */
+	void exitEff(DiamondParser.EffContext ctx);
+	/**
+	 * Enter a parse tree produced by {@link DiamondParser#effs}.
+	 * @param ctx the parse tree
+	 */
+	void enterEffs(DiamondParser.EffsContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link DiamondParser#effs}.
+	 * @param ctx the parse tree
+	 */
+	void exitEffs(DiamondParser.EffsContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link DiamondParser#boolOp2}.
 	 * @param ctx the parse tree
 	 */

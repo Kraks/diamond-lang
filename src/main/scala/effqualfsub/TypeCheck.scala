@@ -455,6 +455,8 @@ def typeCheckBinOp(e1: Expr, e2: Expr, op: String, t1: QType, t2: QType)(using �
 
 val ⊥ = summon[EffQuantale[Eff]].id
 
+// TODO: check user-annotated effects are well-formed (variables are defined)
+
 def typeCheck(e: Expr)(using Γ: TEnv): (QType, Eff) = e match {
   case EUnit => (TUnit, ⊥)
   case ENum(_) => (TNum, ⊥) 

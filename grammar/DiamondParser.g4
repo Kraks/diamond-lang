@@ -36,8 +36,8 @@ namedParamList :
 ;
 
 funTy :
-  ID '(' paramList? ')' '=>' qty
-| '(' paramList? ')' '=>' qty
+  ID '(' paramList? ')' '=>' qty effs?
+| '(' paramList? ')' '=>' qty effs?
 ;
 
 tyParam :
@@ -67,6 +67,15 @@ qty :
   ty
 | ty '^' qual
 ;
+
+/* effects */
+
+eff :
+  '@' ID '(' ID (',' ID)* ')' ;
+
+effs :
+  ID
+| eff+ ;
 
 /* expressions */
 
@@ -111,10 +120,10 @@ expr:
 | wrapExpr
 // applications
 | expr     '(' args? ')'
-| expr '@' '(' args? ')'
+| expr '@' '(' args? ')'    // use at-sign to enforce fresh application
 // type applications
 | expr     '[' tyArgs ']'
-| expr '@' '[' tyArgs ']'
+| expr '@' '[' tyArgs ']'   // use at-sign to enforce fresh type application
 // unary/binary operations
 | op1 expr
 | expr ('*' | '/') expr
@@ -138,8 +147,8 @@ deref :
 ;
 
 lam :
-  ID '(' namedParamList? ')' (':' qty)? RIGHTARROW '{' expr '}'
-| '(' namedParamList? ')' (':' qty)? RIGHTARROW '{' expr '}'
+  ID '(' namedParamList? ')' (':' qty effs?)? RIGHTARROW '{' expr '}'
+| '(' namedParamList? ')' (':' qty effs?)? RIGHTARROW '{' expr '}'
 ;
 
 tyLam :
@@ -157,8 +166,8 @@ let :
 /* definition */
 
 funDef :
-  DEF ID '(' namedParamList? ')' (':' qty)? EQ expr                     #MonoFunDef
-| DEF ID '[' tyParamList ']' '(' namedParamList? ')' (':' qty)? EQ expr #PolyFunDef
+  DEF ID '(' namedParamList? ')' (':' qty effs?)? EQ expr                  #MonoFunDef
+| DEF ID '[' tyParamList ']' '(' namedParamList? ')' (':' qty)? EQ expr    #PolyFunDef
 ;
 
 /* top-level */

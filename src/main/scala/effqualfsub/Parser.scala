@@ -2,6 +2,10 @@ package diamond.effqualfsub
 
 import diamond._
 import diamond.parser._
+
+import core.MemEff._
+import core.given
+
 import org.antlr.v4.runtime._
 import scala.collection.JavaConverters._
 
@@ -47,6 +51,13 @@ package ir {
     def toCore: core.QType = core.QType(t, q)
   }
 
+  case class EffList(effs: List[Eff]) extends IR {
+    def toCore: core.Eff = effs.map(_.toCore).reduce(_ ⊔ _)
+  }
+  case class Eff(eff: core.Eff) extends IR {
+    def toCore: core.Eff = eff
+  }
+
   case class ParamList(params: List[Param]) extends IR
   case class Param(name: String, qty: core.QType) extends IR
 
@@ -63,7 +74,7 @@ package ir {
   abstract class Def extends IR {
     def toLet(e: core.Expr): core.Expr.ELet
   }
-  case class MonoFunDef(name: String, params: List[Param], rt: Option[QType], body: core.Expr) extends Def {
+  case class MonoFunDef(name: String, params: List[Param], rt: Option[QType], eff: Option[core.Eff], body: core.Expr) extends Def {
     def toLet(e: core.Expr): core.Expr.ELet = {
       val realParams: List[Param] =
         if (params.size == 0) List(Param(freshVar(varPre), core.QType(core.Type.TUnit, core.Qual.untrack)))
@@ -72,7 +83,7 @@ package ir {
         case ((param, idx), body) =>
           val funName = if (idx == 0) name else freshVar(funPre)
           val realRt = if (idx == realParams.size-1) rt.map(_.toCore) else None
-          core.Expr.ELam(funName, param.name, param.qty, body, realRt, ???)
+          core.Expr.ELam(funName, param.name, param.qty, body, realRt, eff)
       }
       val rhsTy = None
       core.Expr.ELet(name, rhsTy, rhs, e)
@@ -126,12 +137,14 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
       if (ctx.paramList != null) visitParamList(ctx.paramList).params
       else List(Param(freshVar(varPre), core.QType(core.Type.TUnit, core.Qual.untrack)))
     val ret = visitQty(ctx.qty).toCore
+    val eff = visitEffs(ctx.effs).toCore
     val rest = args.zipWithIndex.drop(1).foldRight(ret) {
       case ((arg, idx), rt) =>
         val q = core.Qual(args.take(idx).map(_.name).toSet)
-        core.QType(core.Type.TFun(freshVar(funPre), arg.name, arg.qty, rt, ???), q)
+        // XXX: here we use `eff` for every curried function's effect, is that right?
+        core.QType(core.Type.TFun(freshVar(funPre), arg.name, arg.qty, rt, eff), q)
     }
-    val fty = core.Type.TFun(f, args(0).name, args(0).qty, rest, ???)
+    val fty = core.Type.TFun(f, args(0).name, args(0).qty, rest, eff)
     Type(fty)
   }
 
@@ -194,6 +207,28 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
   override def visitNamedParamList(ctx: NamedParamListContext): ParamList =
     ParamList(ctx.idQty.asScala.map(visitIdQty(_)).toList)
 
+  override def visitEff(ctx: EffContext): Eff = {
+    val ids = ctx.ID.asScala
+    val lab = ids(0).getText.toString match {
+      case "pure" => Bot
+      case "rd" | "read" => Read
+      case "wr" | "write" => Write
+      case "kl" | "kill" => Kill
+      case e => throw new RuntimeException(s"Unknown effect $e")
+    }
+    val vars = ids.tail.map(_.getText.toString).toSet
+    Eff(core.Eff(Map(vars -> lab)))
+  }
+
+  override def visitEffs(ctx: EffsContext): EffList = {
+    if (ctx.ID != null) {
+      ctx.ID.getText.toString match {
+        case "pure" => EffList(List(Eff(core.Eff(Map()))))
+        case e => throw new RuntimeException(s"Unknown effect $e")
+      }
+    } else EffList(ctx.eff.asScala.toList.map(visitEff(_)))
+  }
+
   override def visitMonoFunDef(ctx: MonoFunDefContext): MonoFunDef = {
     val name = ctx.ID.getText.toString
     val args =
@@ -201,8 +236,9 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
         visitNamedParamList(ctx.namedParamList).params
       else List()
     val rt = if (ctx.qty != null) Some(visitQty(ctx.qty)) else None
+    val eff = if (ctx.effs != null) Some(visitEffs(ctx.effs).toCore) else None
     val body = visitExpr(ctx.expr).toCore
-    MonoFunDef(name, args, rt, body)
+    MonoFunDef(name, args, rt, eff, body)
   }
 
   override def visitPolyFunDef(ctx: PolyFunDefContext): PolyFunDef = {
@@ -227,12 +263,14 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
         visitNamedParamList(ctx.namedParamList).params
       else List(Param(freshVar(varPre), core.QType(core.Type.TUnit, core.Qual.untrack)))
     val rt = if (ctx.qty != null) Some(visitQty(ctx.qty).toCore) else None
+    val eff = if (ctx.effs != null) Some(visitEffs(ctx.effs).toCore) else None
     val body = visitExpr(ctx.expr).toCore
     val ret = args.zipWithIndex.foldRight(body) {
       case ((arg, idx), body) =>
         val realName = if (idx == 0) name else freshVar(funPre)
         val realRt = if (idx == args.size-1) rt else None
-        core.Expr.ELam(realName, arg.name, arg.qty, body, realRt, ???)
+        val realEff = if (idx == args.size-1) eff else None
+        core.Expr.ELam(realName, arg.name, arg.qty, body, realRt, realEff)
     }
     Expr(ret)
   }
