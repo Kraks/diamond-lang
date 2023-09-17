@@ -30,8 +30,10 @@ object RunDiamond {
     }
   }
 
-  def prettyPrint(tq: QType): Unit =
-    println(s"Type: ${prettyQType(tq)}")
+  def prettyEff(e: Eff): String = e.m.mkString("↦")
+
+  def prettyPrint(tq: QType, eff: Eff): Unit =
+    println(s"Type: ${prettyQType(tq)} | ${prettyEff(eff)}")
 
   def prettyPrint(v: Value): Unit =
     val str = v match {
@@ -48,7 +50,7 @@ object RunDiamond {
     val res = Parser.parseFileToCore("examples/" + args(0)) //example.dia
     println(s"Parsed core AST: $res")
     val (t, eff) = topTypeCheck(res)
-    prettyPrint(t)
+    prettyPrint(t, eff)
     val (v, σ) = topEval(res)
     prettyPrint(v)
   }

@@ -41,6 +41,7 @@ case class QType(ty: Type, q: Qual = Qual.untrack):
 trait SemiLattice[T]:
   extension (x: T)
     def ⊔(y: T): T
+    def ⊑(y: T): Boolean = (x ⊔ y) == y
 
 trait Monoid[T]:
   def id: T
