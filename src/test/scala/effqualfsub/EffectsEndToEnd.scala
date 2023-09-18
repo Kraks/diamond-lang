@@ -124,5 +124,56 @@ class FunEffectTests extends AnyFunSuite {
   """
   // id is a pure function, so cannot perform effectful operations
   intercept[NotSubEffect] { parseAndCheck(p5_err) }
-  
+}
+
+class MoveEffectTests extends AnyFunSuite {
+  val p1 = """
+  topval x = Ref 42;
+  topval y = move x;
+  y
+  """
+  assert(parseAndCheck(p1) == (TRef(TNum^())^"y", GenEffStore(Map(Set("x") -> Kill))))
+
+  val p2 = """
+  topval x = Ref 42;
+  topval y = x;
+  topval z = move x;
+  !y
+  """
+  intercept[KillException] { parseAndCheck(p2) }
+
+  val p3 = """
+  topval x = Ref 42;
+  topval y = x;
+  topval z = move x;
+  y
+  """
+  // Note: because our treatment of variables (no effect at all), it is allowed to return/mention `y`
+  // as long as `y` is not used in any effectful way.
+  assert(parseAndCheck(p3) == (TRef(TNum^())^"y", GenEffStore(Map(Set("x") -> Kill))))
+
+  val p4 = """
+  def free(x: Ref[Int]^<>) = {
+    val _ = move(x);
+    unit
+  };
+  topval x = Ref 42;
+  topval y = x;
+  val _ = free(x);
+  !y
+  """
+  intercept[KillException] { parseAndCheck(p4) }
+
+  val p4_1 = """
+  def free(x: Ref[Int]^<>) = {
+    val _ = move(x);
+    unit
+  };
+  topval x = Ref 42;
+  topval y = x;
+  val _ = free(x);
+  val _ = (y := 0);
+  !x
+  """
+  intercept[KillException] { parseAndCheck(p4_1) }
 }

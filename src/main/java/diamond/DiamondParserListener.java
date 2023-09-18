@@ -248,6 +248,16 @@ public interface DiamondParserListener extends ParseTreeListener {
 	 */
 	void exitDeref(DiamondParser.DerefContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link DiamondParser#move}.
+	 * @param ctx the parse tree
+	 */
+	void enterMove(DiamondParser.MoveContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link DiamondParser#move}.
+	 * @param ctx the parse tree
+	 */
+	void exitMove(DiamondParser.MoveContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link DiamondParser#lam}.
 	 * @param ctx the parse tree
 	 */

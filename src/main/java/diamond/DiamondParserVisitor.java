@@ -155,6 +155,12 @@ public interface DiamondParserVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitDeref(DiamondParser.DerefContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link DiamondParser#move}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitMove(DiamondParser.MoveContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link DiamondParser#lam}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

@@ -117,6 +117,7 @@ expr:
 | value
 | alloc
 | deref
+| move
 | wrapExpr
 // applications
 | expr     '(' args? ')'
@@ -144,6 +145,10 @@ alloc :
 
 deref :
   '!' expr
+;
+
+move :
+  'move' expr
 ;
 
 lam :

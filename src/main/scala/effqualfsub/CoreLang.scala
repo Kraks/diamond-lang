@@ -123,8 +123,8 @@ enum Expr:
   case ETyLam(f: String, tvar: String, qvar: String, bound: QType, body: Expr, rt: Option[QType], eff: Option[Eff])
   case ETyApp(t: Expr, q: QType, fresh: Option[Boolean] = None)
   // Move semantics
-  case Move(e: Expr)
-  case Swap(e1: Expr, e2: Expr)
+  case EMove(e: Expr)
+  case ESwap(e1: Expr, e2: Expr)
 
 /* Auxiliary embedded syntax */
 

@@ -305,6 +305,18 @@ public class DiamondParserBaseListener implements DiamondParserListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterMove(DiamondParser.MoveContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitMove(DiamondParser.MoveContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterLam(DiamondParser.LamContext ctx) { }
 	/**
 	 * {@inheritDoc}

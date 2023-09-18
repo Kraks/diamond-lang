@@ -33,6 +33,7 @@ LAM : 'lam' ;
 TYLAM : 'Lam';
 IF : 'if';
 ELSE : 'else';
+MOVE : 'move';
 
 AND : '&&' ;
 OR : '||' ;

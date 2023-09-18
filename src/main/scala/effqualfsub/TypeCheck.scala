@@ -341,6 +341,7 @@ extension (e: Expr)
       atFv ++ (rtFv ++ freeVars(e) -- Set(f, qvar))
     */
     case ETyApp(e, qt, _) => e.freeVars ++ qt.freeVars
+    case EMove(e) => e.freeVars
 
 def qualEq(q1: Qual, q2: Qual)(using Γ: TEnv): Boolean = q1.isSubqual(q2) && q2.isSubqual(q1)
 def typeEq(t1: Type, t2: Type)(using Γ: TEnv): Boolean = t1.isSubtype(t2) && t2.isSubtype(t1)
@@ -464,6 +465,8 @@ def typeCheck(e: Expr)(using Γ: TEnv): (QType, Eff) = e match {
   case EVar(x) =>
     val QType(t, _) = Γ(x)
     assert(Γ.observable.contains(x), s"$x is not observable")
+    // XXX: here we treat EVar pure, thus not even a "mention" effect of x.
+    // An alternative is to have effect x -> Bot, which would prevent mentioning "killed" variables.
     (t ^ x, ⊥)
   case EUnaryOp(op, e) =>
     val (eTy, eEff) = typeCheck(e)
@@ -648,6 +651,11 @@ def typeCheck(e: Expr)(using Γ: TEnv): (QType, Eff) = e match {
     // qf may contain abstract qualifier variables (which seems fine?)
     if (ub.q.isFresh) typeCheck(ETyApp(e, arg, Some(true)))
     else typeCheck(ETyApp(e, arg, Some(false)))
+  case EMove(e) =>
+    val (QType(TRef(QType(t, q)), p), eff) = typeCheck(e)
+    // XXX: in the result type, we include the inner qualifier q as well (as for alloc)
+    // XXX: check if e is fresh???
+    (TRef(QType(t, q)) ^ (q ++ Set(◆)), eff ▷ Eff(Map(p.satVars -> Kill)))
 }
 
 def topTypeCheck(e: Expr): (QType, Eff) = {

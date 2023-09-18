@@ -303,6 +303,8 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
 
   override def visitDeref(ctx: DerefContext): Expr = Expr(core.Expr.EDeref(visitExpr(ctx.expr).toCore))
 
+  override def visitMove(ctx: MoveContext): Expr = Expr(core.Expr.EMove(visitExpr(ctx.expr).toCore))
+
   override def visitLet(ctx: LetContext): Expr = {
     val rhs = visitExpr(ctx.expr(0)).toCore
     val body = visitExpr(ctx.expr(1)).toCore
