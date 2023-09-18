@@ -657,6 +657,7 @@ def typeCheck(e: Expr)(using Γ: TEnv): (QType, Eff) = e match {
     val (QType(TRef(QType(t, q)), p), eff) = typeCheck(e)
     // XXX: in the result type, we include the inner qualifier q as well (as for alloc)
     // XXX: check if e is fresh???
+    // XXX: p.satVars reaches the inner qualifiers too, is that too much?
     (TRef(QType(t, q)) ^ (q ++ Set(◆)), eff ▷ Eff(Map(p.satVars -> Kill)))
 }
 

@@ -27,7 +27,7 @@ class MemEffectTests extends AnyFunSuite {
   val x = Ref 42;
   !x
   """
-  // XXX: x is not observable, so no effect manifest
+  // Note: x is not observable, so no effect manifest
   assert(parseAndCheck(p1) == (TNum^(), ⊥))
 
   val p1_1 = """
@@ -36,7 +36,7 @@ class MemEffectTests extends AnyFunSuite {
   val _ = (y := (!x) + 1);
   !y
   """
-  // XXX: read(x) and write(y) are indistinguishable, since both are not observable
+  // Note: read(x) and write(y) are indistinguishable, since both are not observable
   assert(parseAndCheck(p1_1) == (TNum^(), ⊥))
 
   val p2 = """
@@ -227,4 +227,24 @@ class MoveEffectTests extends AnyFunSuite {
   mapOne
   """
   intercept[KillException] { parseAndCheck(p6_err3) }
+
+  val p7 = """
+  topval r = Ref 42;
+  def mapOne(f: ((Int) => Int @kill(f) @read(r))^r ) = {
+    f(0)
+  };
+  topval g = (x: Int) => { (! r) + x };
+  mapOne(g)
+  """
+  // Note: both `r` and `g` are killed, since `r` and `g` are aliased (which seems unavoidable?)
+  assert(parseAndCheck(p7) == (TNum^(), GenEffStore(Map(Set("r", "g") -> Kill))))
+
+  val p8 = """
+  topval x = Ref 0;     // x: Ref[Int]^<>
+  topval y = Ref x;     // y: Ref[Ref[Int]^x]^{x, <>}
+  topval z = move(y);   // z: ???
+  z
+  """
+  // XXX: when Ref(x), should we kill x* too? i.e. transfer the ownership into y
+  println(parseAndCheck(p8))
 }
