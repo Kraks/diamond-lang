@@ -658,7 +658,12 @@ def typeCheck(e: Expr)(using Γ: TEnv): (QType, Eff) = e match {
     // XXX: in the result type, we include the inner qualifier q as well (as for alloc)
     // XXX: check if e is fresh???
     // XXX: p.satVars reaches the inner qualifiers too, is that too much?
+    // An alternative is to return a fresh reference Ref[T^∅]^◆, and kills all `q` and `p`:
+    //   (TRef(t^()) ^ Set(◆), eff ▷ Eff(Map(p.satVars -> Kill)))
+    //   What if `t` is a function type? does it affect anything?
     (TRef(QType(t, q)) ^ (q ++ Set(◆)), eff ▷ Eff(Map(p.satVars -> Kill)))
+
+
 }
 
 def topTypeCheck(e: Expr): (QType, Eff) = {
