@@ -165,7 +165,7 @@ class MoveEffectTests extends AnyFunSuite {
   intercept[KillException] { parseAndCheck(p4) }
 
   val p4_1 = """
-  def free(x: Ref[Int]^<>) = {
+  def free(x: Ref[Int]^<>) = { // Note that the effects of `free` are inferred
     val _ = move(x);
     unit
   };
@@ -176,4 +176,46 @@ class MoveEffectTests extends AnyFunSuite {
   !x
   """
   intercept[KillException] { parseAndCheck(p4_1) }
+
+  val p5 = """
+  topval x = move (Ref 0);
+  x
+  """
+  // Note: the kill of the inner allocation is not observable (thus Set() -> kill)
+  assert(parseAndCheck(p5) == (TRef(TNum^())^"x", GenEffStore(Map(Set() -> Kill))))
+
+  // TODO: parser improvement: allow f: Int => Int @kill(f)
+  // TODO: allow only annotate return type or latent effect
+  // TODO: omitting "val _ =" has error, toplevel elabration/parser has some error
+  // TODO: provide topdef?
+  val p6 = """
+  def mapOne(f: (Int) => Int @kill(f)): Int @kill(f) = {
+    f(0)
+  };
+  topval g = (x: Int) => { x + 1 };
+  mapOne(g)
+  """
+  assert(parseAndCheck(p6) == (TNum^(),GenEffStore(Map(Set("g") -> Kill, Set() -> Bot))))
+
+  val p6_err1 = """
+  def mapOne(f: (Int) => Int @kill(f)): Int @kill(f) = {
+    f(0)
+  };
+  topval g = (x: Int) => { x + 1 };
+  val _ = mapOne(g);
+  g(1) // error
+  """
+  intercept[KillException] { parseAndCheck(p6_err1) }
+
+  val p6_err2 = """
+  def mapOne(f: (Int) => Int @kill(f)) = {
+    f(0)
+  };
+  topval g = (x: Int) => { x + 1 };
+  val _ = mapOne(g);
+  topval f = g;
+  f(1) // error
+  """
+  intercept[KillException] { parseAndCheck(p6_err2) }
+
 }

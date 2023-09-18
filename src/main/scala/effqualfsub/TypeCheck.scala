@@ -513,7 +513,9 @@ def typeCheck(e: Expr)(using Γ: TEnv): (QType, Eff) = e match {
         // ◆ ∈ qf ⇒ f ∉ fv(rt)
         if (qf.isFresh) checkDeepDep(rt, f)
         checkSubtypeOverlap(t2 ^ (q2 ⋒ qf), atq)
-        (rtq.substQual(x, q2).substQual(f, qf), e1Eff ▷ e2Eff ▷ latEff.subst(x, q2.satVars).subst(f, qf.satVars))
+        // Note: since the EVar case does not have an effect, we cannot check "use-at-most-once" function call.
+        // To mitigate that, application has a "mention" effect over function qualifier.
+        (rtq.substQual(x, q2).substQual(f, qf), e1Eff ▷ e2Eff ▷ Eff(Map(qf.satVars -> Bot)) ▷ latEff.subst(x, q2.satVars).subst(f, qf.satVars))
     }
   case EApp(e1, e2, Some(false)) => // T-App
     typeCheck(e1) match {
@@ -526,7 +528,7 @@ def typeCheck(e: Expr)(using Γ: TEnv): (QType, Eff) = e match {
         val (tq2@QType(t2, q2), e2Eff) = typeCheck(e2)
         checkSubQType(tq2, atq)
         if (q2.isFresh) throw RequireNonFresh(e2, tq2)
-        (rtq.substQual(x, q2).substQual(f, qf), e1Eff ▷ e2Eff ▷ latEff.subst(x, q2.satVars).subst(f, qf.satVars))
+        (rtq.substQual(x, q2).substQual(f, qf), e1Eff ▷ e2Eff ▷ Eff(Map(qf.satVars -> Bot)) ▷ latEff.subst(x, q2.satVars).subst(f, qf.satVars))
     }
   case EApp(e1, e2, None) =>
     typeCheck(e1) match {
