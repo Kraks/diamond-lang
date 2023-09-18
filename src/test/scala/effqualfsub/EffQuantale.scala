@@ -47,3 +47,4 @@ class QuantaleTests extends AnyFunSuite {
     intercept[KillException] { (e1 ▷ e3) ⊔ (e2 ▷ e3) }
   }
 }
+
