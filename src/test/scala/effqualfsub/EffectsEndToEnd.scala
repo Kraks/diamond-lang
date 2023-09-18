@@ -21,12 +21,14 @@ def parseAndCheck(s: String): (QType, Eff) = topTypeCheck(parseToCore(s))
 def parseAndEval(s: String): Value = topEval(parseToCore(s))._1
 
 class MemEffectTests extends AnyFunSuite {
+  val ⊥ = summon[EffQuantale[Eff]].id
+
   val p1 = """
   val x = Ref 42;
   !x
   """
-  // XXX: x is not observable, so there is Set()
-  assert(parseAndCheck(p1) == (TNum^(), GenEffStore(Map(Set() -> Read))))
+  // XXX: x is not observable, so no effect manifest
+  assert(parseAndCheck(p1) == (TNum^(), ⊥))
 
   val p1_1 = """
   val x = Ref 42;
@@ -35,7 +37,7 @@ class MemEffectTests extends AnyFunSuite {
   !y
   """
   // XXX: read(x) and write(y) are indistinguishable, since both are not observable
-  assert(parseAndCheck(p1_1) == (TNum^(), GenEffStore(Map(Set() -> Write))))
+  assert(parseAndCheck(p1_1) == (TNum^(), ⊥))
 
   val p2 = """
   topval x = Ref 42; // note the topval
@@ -181,8 +183,8 @@ class MoveEffectTests extends AnyFunSuite {
   topval x = move (Ref 0);
   x
   """
-  // Note: the kill of the inner allocation is not observable (thus Set() -> kill)
-  assert(parseAndCheck(p5) == (TRef(TNum^())^"x", GenEffStore(Map(Set() -> Kill))))
+  // Note: the kill of the inner allocation is not observable
+  assert(parseAndCheck(p5) == (TRef(TNum^())^"x", ⊥))
 
   // TODO: parser improvement: allow f: Int => Int @kill(f)
   // TODO: allow only annotate return type or latent effect
@@ -195,7 +197,7 @@ class MoveEffectTests extends AnyFunSuite {
   topval g = (x: Int) => { x + 1 };
   mapOne(g)
   """
-  assert(parseAndCheck(p6) == (TNum^(),GenEffStore(Map(Set("g") -> Kill, Set() -> Bot))))
+  assert(parseAndCheck(p6) == (TNum^(),GenEffStore(Map(Set("g") -> Kill))))
 
   val p6_err1 = """
   def mapOne(f: (Int) => Int @kill(f)): Int @kill(f) = {
@@ -218,4 +220,11 @@ class MoveEffectTests extends AnyFunSuite {
   """
   intercept[KillException] { parseAndCheck(p6_err2) }
 
+  val p6_err3 = """
+  def mapOne(f: (Int) => Int @kill(f)) = {
+    f(0) + f(1)
+  };
+  mapOne
+  """
+  intercept[KillException] { parseAndCheck(p6_err3) }
 }

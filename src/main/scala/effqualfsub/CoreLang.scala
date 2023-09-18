@@ -80,7 +80,11 @@ given MemEffQuntanleInstance: EffQuantale[MemEff] with
       case (Kill, _) => throw KillException(f)
     }
 
-case class GenEffStore[K, E: EffQuantale](m: Map[Set[K], E])
+case class GenEffStore[K, E: EffQuantale] private (m: Map[Set[K], E])
+object GenEffStore {
+  // Note: by construction we remove empty domains since they are not visible by names
+  def apply[K, E: EffQuantale](m: Map[Set[K], E]) = new GenEffStore(m.filter { case (k, e) => !k.isEmpty })
+}
 
 type Eff = GenEffStore[String, MemEff]
 val Eff = GenEffStore[String, MemEff]
