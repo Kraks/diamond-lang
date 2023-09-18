@@ -25,7 +25,17 @@ class MemEffectTests extends AnyFunSuite {
   val x = Ref 42;
   !x
   """
-  assert(parseAndCheck(p1) == (TNum^(), GenEffStore(Map(Set() -> Read)))) // XXX: x is not observable, so there is Set()
+  // XXX: x is not observable, so there is Set()
+  assert(parseAndCheck(p1) == (TNum^(), GenEffStore(Map(Set() -> Read))))
+
+  val p1_1 = """
+  val x = Ref 42;
+  val y = Ref 0;
+  val _ = (y := (!x) + 1);
+  !y
+  """
+  // XXX: read(x) and write(y) are indistinguishable, since both are not observable
+  assert(parseAndCheck(p1_1) == (TNum^(), GenEffStore(Map(Set() -> Write))))
 
   val p2 = """
   topval x = Ref 42; // note the topval
@@ -96,5 +106,23 @@ class FunEffectTests extends AnyFunSuite {
   topval y = Ref 42;
   f(y)
   """
+  // Error expected, since the effect signature does not allow write
   intercept[NotSubEffect] { parseAndCheck(p4) }
+
+  val p5 = """
+  def id(x: Ref[Int]^<>): Ref[Int]^x @pure = { x };
+  topval y = Ref 42;
+  id(y)
+  """
+  // id is a pure function
+  assert(parseAndCheck(p5) == (TRef(TNum^())^"y", GenEffStore(Map())))
+
+  val p5_err = """
+  def id(x: Ref[Int]^<>): Ref[Int]^x @pure = { val n = !x; x };
+  topval y = Ref 42;
+  id(y)
+  """
+  // id is a pure function, so cannot perform effectful operations
+  intercept[NotSubEffect] { parseAndCheck(p5_err) }
+  
 }

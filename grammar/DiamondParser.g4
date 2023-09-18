@@ -74,7 +74,7 @@ eff :
   '@' ID '(' ID (',' ID)* ')' ;
 
 effs :
-  ID
+  '@' ID
 | eff+ ;
 
 /* expressions */
