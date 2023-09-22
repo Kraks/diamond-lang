@@ -168,6 +168,10 @@ We will see the final type is `Ref[Int^∅]^x` where the reachability `x` is res
 
 ## References
 
+- **Polymorphic Reachability Types: Tracking Freshness, Aliasing, and Separation in Higher-Order Generic Programs** </br>
+by Guannan Wei, Oliver Bračevac, Songlin Jia, Yuayn Bao, and Tiark Rompf
+([preprint](https://arxiv.org/abs/2307.13844)).
+
 - **Reachability Types: Tracking Aliasing and Separation in Higher-order Functional Programs** (OOPSLA 2021)</br>
 by Yuyan Bao, Guannan Wei, Oliver Bračevac, Luke Jiang, Qiyang He, and Tiark Rompf
 ([pdf](https://dl.acm.org/doi/10.1145/3485516)).
