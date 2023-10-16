@@ -126,6 +126,10 @@ class QualSTLCTests extends AnyFunSuite {
     assert(Qual(Set("x1", "x3")).isSubqual(Qual(Set("g")))(using Γ10))
     assert(Qual(Set("x1", "x2")).isSubqual(Qual(Set("f")))(using Γ10))
     assert(Qual(Set("x1", "x2", "x3")).isSubqual(Qual(Set("f", "g")))(using Γ10))
+
+    val Γ11 = TEnv.empty + ("x" -> (TNum ^ ◆)) + ("y" -> (TNum ^ "x"))
+    assert(!Qual(Set("x")).isSubqual(Qual(Set("y")))(using Γ11))
+    assert(Qual(Set("y")).isSubqual(Qual(Set("x")))(using Γ11))
   }
 
   test("alloc") {
@@ -214,7 +218,7 @@ class QualSTLCTests extends AnyFunSuite {
   }
 
   test("escaping closures") {
-    val e1 = 
+    val e1 =
       let("x" ⇐ alloc(3)) {
         λ("f", "z")("f"♯(TNum ~> TNum)) { x.deref }
       }
@@ -255,7 +259,7 @@ class QualSTLCTests extends AnyFunSuite {
       (λ("x" ⦂ (TRef(TNum) ^ ◆)) { λ("f", "z")("f"♯(TNum ~> (TRef(TNum) ^ "f"))) { x } })(alloc(3))
     assert(topTypeCheck(e4) == (TFun("f", "z", TNum^(), TRef(TNum)^"f") ^ ◆))
 
-    val e4_let = 
+    val e4_let =
       let("x" ⇐ alloc(0)) {
         λ("f", "z")("f"♯(TNum ~> (TRef(TNum) ^ "f"))) { x }
       }
