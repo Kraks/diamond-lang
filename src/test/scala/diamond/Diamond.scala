@@ -406,4 +406,28 @@ class DiamondTest extends AnyFunSuite {
       (TForall("𝐹#2","A","a",TTop^ ◆,
         TFun("𝑓#3","x",TVar("A")^"a",TVar("A")^"x")^"a")^()))
   }
+
+  test("borrowing") {
+    val p1 = """
+      def borrow[A^a <: Top^<>, B^b <: Top^<>](x: A^a, block: ((A^a) => B^b)^<>) = { block(x) };
+      val x = Ref 42;
+      borrow[Ref[Int]^x, Int](x, (y: Ref[Int]^x) => { !y }) // allowed
+    """
+    assert(parseAndCheck(p1) == (TNum^()))
+
+    val p2 = """
+      def borrow[A^a <: Top^<>, B^b <: Top^<>](x: A^a, block: ((A^a) => B^b)^<>) = { block(x) };
+      val x = Ref 42;
+      borrow[Ref[Int]^x, Int](x, (y: Ref[Int]^x) => { !x }) // not allowed
+    """
+    intercept[NonOverlap] { parseAndCheck(p2) }
+
+    val p3 = """
+      def borrow[A^a <: Top^<>, B^b <: Top^<>](x: A^a, block: ((A^a) => B^b)^<>) = { block(x) };
+      val x = Ref 42;
+      val z = x;
+      borrow[Ref[Int]^x, Int](x, (y: Ref[Int]^x) => { !z }) // not allowed
+    """
+    intercept[NonOverlap] { parseAndCheck(p3) }
+  }
 }
