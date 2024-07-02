@@ -96,7 +96,7 @@ extension (t: Type)
   def ⊔(t2: Type)(using Γ: TEnv): Type =
     if (t.isSubtype(t2)) t2
     else if (t2.isSubtype(t)) t
-    else throw RuntimeException(s"No least upper bound between $t and $t2") 
+    else throw RuntimeException(s"No least upper bound between $t and $t2")
   def substQual(from: String, to: Qual): Type = t match
     case TUnit | TNum | TBool => t
     case TFun(f, x, t1, t2) =>

@@ -20,4 +20,5 @@ case class AssocList[K, T](m: List[(K, T)]):
   def filter(q: Set[K]): AssocList[K, T] = AssocList(m.filter((k, v) => q.contains(k)))
   def dom: Set[K] = m.map(_._1).toSet
   def contains(k: K): Boolean = dom.contains(k)
+  def isEmpty(): Boolean = m.isEmpty
   override def toString = s"""[${m.mkString("; ")}]"""
