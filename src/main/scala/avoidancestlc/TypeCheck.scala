@@ -33,13 +33,17 @@ extension (q: Qual)
   def isUntrack: Boolean = q.set.isEmpty
   def isFresh: Boolean = q.set.contains(Fresh())
   def nonFresh: Boolean = !q.set.contains(Fresh())
+  def isEmpty: Boolean = q.set.isEmpty
   def nonEmpty: Boolean = q.set.nonEmpty
   def -(x: QElem): Qual = Qual(q.set - x)
   def --(q2: Qual): Qual = Qual(q.set -- q2.set)
+  def \(x: QElem): Qual = Qual(q.set - x)
+  def \(q2: Qual): Qual = Qual(q.set -- q2.set)
   def +(x: QElem): Qual = Qual(q.set + x)
   def ++(q2: Set[QElem]): Qual = Qual(q.set ++ q2)
   def ++(q2: Qual): Qual = Qual(q.set ++ q2.set)
-  def \(q2: Qual): Qual = Qual(q.set -- q2.set)
+  def ∩(x: QElem): Qual = Qual(q.set.intersect(Set(x)))
+  def ∩(q2: Qual): Qual = Qual(q.set.intersect(q2.set))
   def ∪(q2: Qual): Qual = Qual(q.set ++ q2.set)
   def ⊆(q2: Qual): Boolean = q.set.subsetOf(q2.set)
   def subsetAt(m: Qual, q2: Qual): Boolean = q.set.intersect(m.set).subsetOf(q2.set.intersect(m.set))
@@ -117,7 +121,7 @@ extension (tq: QType)
 
 /* Qualifier upcasting */
 
-def qualUpcast(g: TEnv, p: Qual, r: Qual): (Qual, Qual) = {
+def qualUpcast(g: TEnv, p: Qual, r: Qual): (Qual /*filter*/, Qual /*ub*/) = {
   g match {
     case TEnv((x, QType(t, q)), tail) =>
       if (p.contains(x) && !r.contains(x) && q.nonFresh) {
@@ -138,7 +142,7 @@ def subQualCheck(g: TEnv, p: Qual, r: Qual): Option[Qual] =
 
 /* Subtype checking */
 
-def subtypeCheck(tenv: TEnv, t1: Type, t2: Type): (Qual, Qual) = {
+def subtypeCheck(tenv: TEnv, t1: Type, t2: Type): (Qual /*filter*/, Qual /*growth*/) = {
   (t1, t2) match {
     case (TUnit, TUnit) => (Qual.untrack, Qual.untrack)
     case (TBool, TBool) => (Qual.untrack, Qual.untrack)
@@ -197,3 +201,125 @@ def subtypeCheck(tenv: TEnv, t1: Type, t2: Type): (Qual, Qual) = {
 }
 
 /* Avoidance */
+
+// Different from the Coq implementation, here we implement the variants
+// of the avoidance judgment separately for clarity, at the cost of some
+// code duplication.
+
+val mt = Qual.untrack
+
+// φ ⊢ T1 ≤_a^δ T2
+def avoidancePos(t: Type, a: String): (Qual /*filter*/, Qual /*growth*/, Type) = {
+  t match {
+    case TBool => (mt, mt, t)
+    case TNum => (mt, mt, t)
+    case TUnit => (mt, mt, t)
+    case TRef(QType(t, q)) =>
+      assert(q.isUntrack, "must be untrack in this system")
+      val (fl, gr, t1) = avoidancePos(t, a)
+      // XXX: check equivalence betweeen t and t1?
+      (mt, mt, TRef(QType(t, mt)))
+    case F@TFun(f, x, QType(t, p), QType(u, r)) => // AV-POSF
+      // S-NEGF
+      val (fl1, gr1, t1) =
+        if (p.contains(f) && p.isFresh) avoidanceNeg(t, a)
+        else {
+          val (fl1, t1) = avoidanceNegNG(t, a)
+          (fl1, mt, t1)
+        }
+      val (fl2, gr2, u1) = avoidancePos(u, a)
+      // S-DEPGR
+      val gr =
+        if (gr1.nonEmpty && r.contains(x))
+          gr2 ++ (r ∩ a) ++ (p \ (Qual(Set(f, Fresh())))) ++ gr1
+        else
+          gr2 ++ (r ∩ a)
+      // S-GROW
+      val p1 =
+        if (gr.nonEmpty && p.nonFresh) p \ (Qual(Set(f, a)))
+        else p \ Qual(Set(a))
+      // S-GROW
+      val r1 = if (gr.nonEmpty) (r \ a) + f else r
+      val fl = fl1 ++ fl2 ++ gr
+      (fl, gr, TFun(f, x, QType(t1, p1), QType(u1, r1)))
+  }
+}
+
+// φ ⊢ T1 ≥_a^δ T2
+def avoidanceNeg(t: Type, a: String): (Qual /*filter*/, Qual /*growth*/, Type) = {
+  t match {
+    case TBool => (mt, mt, t)
+    case TNum => (mt, mt, t)
+    case TUnit => (mt, mt, t)
+    case TRef(QType(t, q)) =>
+      assert(q.isUntrack, "must be untrack in this system")
+      val (fl, gr, t1) = avoidancePos(t, a)
+      // XXX: check equivalence betweeen t and t1?
+      (mt, mt, TRef(QType(t, mt)))
+    case F@TFun(f, x, QType(t, p), QType(u, r0)) if r0.contains(f) => // AV-NEGF-GR
+      val r = r0 - f
+      // S-GROW
+      assert(!p.contains(f) || p.isFresh, "S-GROW")
+      val (fl1, gr1, t1) = avoidancePos(t, a)
+      val (fl2, gr2, u1) = avoidanceNeg(u, a)
+      // S-DEPGR
+      val gr1_* =
+        if (gr1.nonFresh || p.contains(a))
+          (p -- Qual(Set(f, Fresh()))) ++ gr1
+        else mt
+      // S-NEGF
+      val p1 =
+        if (gr1_*.nonEmpty) (p - a) ++ Qual(Set(f, Fresh()))
+        else p
+      // S-DEPGR/S-POSX
+      val r1 =
+        if (gr1_*.nonEmpty && p.nonFresh) (r - a) + x
+        else r - a
+      // S-DEPGR/S-GROW
+      val gr =
+        if (r1.contains(x)) gr1_* ++ gr2
+        else gr2
+      val fl = fl1 ++ fl2 ++ gr
+      (fl, gr, TFun(f, x, QType(t1, p1), QType(u1, r1)))
+    case F@TFun(f, x, QType(t, p), QType(u, r)) => // AV-NEGF-NG
+      // AV-NEGF-NG
+      assert(!r.contains(f), "must not contain f")
+      val (fl1, gr1, t1) = avoidancePos(t, a)
+      val (fl2, u1) = avoidanceNegNG(u, a)
+      // S-NEGF
+      val p1 =
+        if (gr1.nonEmpty || p.contains(a))
+          (p - a) ++ Set(f, Fresh())
+        else p
+      // !S-DEPGR
+      val r1 =
+        if (gr1.nonEmpty || p.contains(a)) r -- Qual(Set(x, a))
+        else r - a
+      // !S-GROW
+      val gr =
+        if (!r.contains(f) || (p.contains(f) && p.nonFresh))
+          mt
+        else throw new RuntimeException("!S-GROW")
+      val fl = fl1 ++ fl2
+      (fl, gr, TFun(f, x, QType(t1, p1), QType(u1, r1)))
+  }
+}
+
+// φ ⊢ T1 ≥_a^⊥ T2
+def avoidanceNegNG(t: Type, a: String): (Qual /*filter*/, Type) = {
+  t match {
+    case TBool => (mt, t)
+    case TNum => (mt, t)
+    case TUnit => (mt, t)
+    case TRef(QType(t, q)) =>
+      assert(q.isUntrack, "must be untrack in this system")
+      val (fl, gr, t1) = avoidancePos(t, a)
+      // XXX: check equivalence betweeen t and t1?
+      (mt, TRef(QType(t, mt)))
+    case F@TFun(f, x, QType(t, p), QType(u, r)) =>
+      assert(!r.contains(f), "must not contain f")
+      val (fl, gr, t1) = avoidanceNeg(t, x)
+      assert(gr.isEmpty, "must output no growth")
+      (fl, t1)
+  }
+}
