@@ -23,6 +23,15 @@ object TEnv:
 
 /* Auxiliary functions for Qualifiers */
 
+def reach(worklist: Set[String], acc: Set[String])(using Γ: TEnv): Set[String] =
+  if (worklist.isEmpty) acc
+  else {
+    val x = worklist.head
+    val QType(_, q) = Γ(x)
+    val newQual = q.varSet.filter(z => !acc.contains(z))
+    reach((worklist ++ newQual) -- Set(x), acc ++ newQual ++ Set(x))
+  }
+
 extension (q: Qual)
   def contains(x: QElem): Boolean = q.set.contains(x)
   def varSet: Set[String] = (q.set - Fresh()).asInstanceOf[Set[String]]
@@ -45,6 +54,9 @@ extension (q: Qual)
   def ∩(x: QElem): Qual = Qual(q.set.intersect(Set(x)))
   def ∩(q2: Qual): Qual = Qual(q.set.intersect(q2.set))
   def ∪(q2: Qual): Qual = Qual(q.set ++ q2.set)
+  def satVars(using Γ: TEnv): Set[String] = reach(q.varSet, Set())
+  def ⋒(q2: Qual)(using Γ: TEnv): Qual =
+    Qual(q.satVars.intersect(q2.satVars).asInstanceOf[Set[QElem]]) + Fresh()
   def ⊆(q2: Qual): Boolean = q.set.subsetOf(q2.set)
   def subsetAt(m: Qual, q2: Qual): Boolean = q.set.intersect(m.set).subsetOf(q2.set.intersect(m.set))
   def ⊆(Γ: TEnv): Boolean = q.set.subsetOf(Γ.dom.asInstanceOf[Set[QElem]] + Fresh())
@@ -256,15 +268,15 @@ def avoidanceNeg(t: Type, a: String): (Qual /*filter*/, Qual /*growth*/, Type) =
       val (fl, gr, t1) = avoidancePos(t, a)
       // XXX: check equivalence betweeen t and t1?
       (mt, mt, TRef(QType(t, mt)))
-    case F@TFun(f, x, QType(t, p), QType(u, r0)) if r0.contains(f) => // AV-NEGF-GR
+    case F@TFun(f, x, QType(t, p), QType(u, r0))
+      if r0.contains(f) && (!p.contains(f) || p.isFresh) => // AV-NEGF-GR
       val r = r0 - f
       // S-GROW
-      assert(!p.contains(f) || p.isFresh, "S-GROW")
       val (fl1, gr1, t1) = avoidancePos(t, a)
       val (fl2, gr2, u1) = avoidanceNeg(u, a)
       // S-DEPGR
       val gr1_* =
-        if (gr1.nonFresh || p.contains(a))
+        if (gr1.nonEmpty || p.contains(a))
           (p -- Qual(Set(f, Fresh()))) ++ gr1
         else mt
       // S-NEGF
@@ -283,7 +295,6 @@ def avoidanceNeg(t: Type, a: String): (Qual /*filter*/, Qual /*growth*/, Type) =
       (fl, gr, TFun(f, x, QType(t1, p1), QType(u1, r1)))
     case F@TFun(f, x, QType(t, p), QType(u, r)) => // AV-NEGF-NG
       // AV-NEGF-NG
-      assert(!r.contains(f), "must not contain f")
       val (fl1, gr1, t1) = avoidancePos(t, a)
       val (fl2, u1) = avoidanceNegNG(u, a)
       // S-NEGF
@@ -299,7 +310,7 @@ def avoidanceNeg(t: Type, a: String): (Qual /*filter*/, Qual /*growth*/, Type) =
       val gr =
         if (!r.contains(f) || (p.contains(f) && p.nonFresh))
           mt
-        else throw new RuntimeException("!S-GROW")
+        else mt // XXX: should be the bot in Fig 8
       val fl = fl1 ++ fl2
       (fl, gr, TFun(f, x, QType(t1, p1), QType(u1, r1)))
   }
@@ -322,4 +333,93 @@ def avoidanceNegNG(t: Type, a: String): (Qual /*filter*/, Type) = {
       assert(gr.isEmpty, "must output no growth")
       (fl, t1)
   }
+}
+
+/* Bidirectional Typing */
+
+def basicType(t: Type): Boolean = t match
+  case TUnit | TNum | TBool => true
+  case _ => false
+
+def isVar(e: Expr): Boolean = e match
+  case EVar(_) => true
+  case _ => false
+
+def check(tenv: TEnv, e: Expr, tq: QType): Qual = e match {
+  case ELam(f, x, at@QType(t, p), body, rt@Some(QType(u, r))) =>
+    // Note: assume that at/rt is consistent with the provided ft
+    val QType(ft, q) = tq
+    val r1 = if (p.contains(f)) r else r.subst(f, q)
+    val x1 = if (p.isFresh && p ⊆ r1) Qual.singleton(x) else Qual.untrack
+    val fl = check(tenv + (x -> QType(t, p.subst(f, q))), body,
+              QType(u, x1 ++ r.subst(f, q)))
+    assert(fl ⊆ (q + x), "must be a subset of the provided qualifier")
+    p ++ q
+  case _ =>
+    val QType(t, q) = tq
+    val (fl1, q1) = checkInfer(tenv, e, t)
+    val Some(fl2) = subQualCheck(tenv, q1, q)
+    fl1 ++ fl2
+}
+
+def infer(tenv: TEnv, e: Expr): (Qual, QType) = {
+  e match {
+    case EUnit => (Qual.untrack, QType(TUnit, Qual.untrack))
+    case ENum(_) => (Qual.untrack, QType(TUnit, Qual.untrack))
+    case EBool(_) => (Qual.untrack, QType(TUnit, Qual.untrack))
+    case EVar(x) =>
+      val QType(t, q) = tenv(x)
+      (Qual.singleton(x), QType(t, Qual.singleton(x)))
+    case EAlloc(e0) =>
+      val (fl, QType(b, q)) = infer(tenv, e0)
+      assert(basicType(b), "must be a basic type")
+      (fl, QType(TRef(QType(b, mt)), q + Fresh()))
+    case EDeref(e0) =>
+      val (fl, QType(TRef(QType(b, _)), q)) = infer(tenv, e0)
+      assert(basicType(b), "must be a basic type")
+      (fl, QType(b, Qual.untrack))
+    case EAssign(lhs, rhs) =>
+      val (fl1, QType(TRef(QType(b1, _)), q)) = infer(tenv, lhs)
+      assert(basicType(b1), "must be a basic type")
+      val (fl2, QType(b2, p)) = infer(tenv, rhs)
+      assert(b1 == b2, "must have the same type")
+      (fl1 ++ fl2, QType(b1, Qual.untrack))
+    case EAscribe(e, qt) =>
+      // TODO: qt is well-formed
+      val fl = check(tenv, e, qt)
+      (fl, qt)
+    case ELet(x, _, rhs, body, _) =>
+      val (fl2, QType(t, p)) = infer(tenv, rhs)
+      val (fl1, QType(u, r)) = infer(tenv + (x -> QType(t, p)), body)
+      val (fl3, gr, v) = avoidancePos(u, x)
+      val fl = (fl2 ++ fl1 ++ fl3 ++ p ++ r ++ gr) -- Qual(Set(x, Fresh()))
+      val rq = (r ++ gr).subst(x, p)
+      (fl, QType(v, rq))
+    case EApp(e1, e2, _) =>
+      val (fl1, QType(TFun(f, x, QType(t, p), QType(u, r)), q)) = infer(tenv, e1)
+      val (fl2, p1) = checkInfer(tenv, e2, t)
+      val fl3 =
+        if (p.nonFresh && !isVar(e1)) {
+          val Some(fl) = subQualCheck(tenv, p1, p)
+          fl
+        }
+        else if (p.nonFresh && isVar(e1)) {
+          val Some(fl) = subQualCheck(tenv, p1, p.subst(f, Qual.singleton(e1.asInstanceOf[EVar].x)))
+          fl
+        }
+        else if (p.isFresh && !p.contains(f)) {
+          val (fl, p2) = qualUpcast(tenv, p1, p)
+          given TEnv = tenv
+          assert((p2 \ p) ⋒ q ⊆ Qual.untrack, "qualifiers not separate")
+          fl
+        } else Qual.untrack
+      val fl = fl1 ++ fl2 ++ fl3 ++ (r \ Qual(Set(f, x, Fresh())))
+      (fl, QType(u, r.subst(x, p1).subst(f, q)))
+  }
+}
+
+def checkInfer(tenv: TEnv, e: Expr, t: Type): (Qual/*filter*/, Qual/*qual*/) = {
+  val (fl1, QType(t1, q)) = infer(tenv, e)
+  val (fl2, gr) = subtypeCheck(tenv, t1, t)
+  (fl1 ++ fl2, q ++ gr)
 }
