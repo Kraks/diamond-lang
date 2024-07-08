@@ -107,7 +107,7 @@ extension (t: Type)
   def freeVars: Set[String] = t match
     case TUnit | TNum | TBool => Set()
     case TFun(f, x, t1, t2) =>
-      t1.freeVars ++ (t2.freeVars -- Set(x, f))
+      (t1.freeVars ++ t2.freeVars) -- Set(x, f)
     case TRef(t) => t.freeVars
 
 /* Auxiliary functions for qualified types */
@@ -338,6 +338,9 @@ def isVar(e: Expr): Boolean = e match
   case EVar(_) => true
   case _ => false
 
+def wellFormed(tenv: TEnv, t: QType): Boolean =
+  t.freeVars.subsetOf(tenv.dom)
+
 def check(tenv: TEnv, e: Expr, tq: QType): Qual = e match {
   case ELam(f, x, at@QType(t, p), body, rt@Some(QType(u, r))) =>
     // Note: assume that at/rt is consistent with the provided ft
@@ -378,7 +381,7 @@ def infer(tenv: TEnv, e: Expr): (Qual, QType) = {
       assert(b1 == b2, "must have the same type")
       (fl1 ++ fl2, QType(b1, Qual.untrack))
     case EAscribe(e, qt) =>
-      // TODO: qt is well-formed
+      assert(wellFormed(tenv, qt), "must be well-formed")
       val fl = check(tenv, e, qt)
       (fl, qt)
     case ELet(x, _, rhs, body, _) =>
