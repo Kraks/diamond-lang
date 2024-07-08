@@ -293,26 +293,9 @@ def avoidanceNeg(t: Type, a: String): (Qual /*filter*/, Qual /*growth*/, Type) =
         else gr2
       val fl = fl1 ++ fl2 ++ gr
       (fl, gr, TFun(f, x, QType(t1, p1), QType(u1, r1)))
-    case F@TFun(f, x, QType(t, p), QType(u, r)) => // AV-NEGF-NG
-      // AV-NEGF-NG
-      val (fl1, gr1, t1) = avoidancePos(t, a)
-      val (fl2, u1) = avoidanceNegNG(u, a)
-      // S-NEGF
-      val p1 =
-        if (gr1.nonEmpty || p.contains(a))
-          (p - a) ++ Set(f, Fresh())
-        else p
-      // !S-DEPGR
-      val r1 =
-        if (gr1.nonEmpty || p.contains(a)) r -- Qual(Set(x, a))
-        else r - a
-      // !S-GROW
-      val gr =
-        if (!r.contains(f) || (p.contains(f) && p.nonFresh))
-          mt
-        else mt // XXX: should be the bot in Fig 8
-      val fl = fl1 ++ fl2
-      (fl, gr, TFun(f, x, QType(t1, p1), QType(u1, r1)))
+    case F@TFun(f, x, QType(t, p), QType(u, r)) =>
+      val (fl, ty) = avoidanceNegNG(t, a)
+      (fl, mt, ty)
   }
 }
 
@@ -327,11 +310,21 @@ def avoidanceNegNG(t: Type, a: String): (Qual /*filter*/, Type) = {
       val (fl, gr, t1) = avoidancePos(t, a)
       // XXX: check equivalence betweeen t and t1?
       (mt, TRef(QType(t, mt)))
-    case F@TFun(f, x, QType(t, p), QType(u, r)) =>
-      assert(!r.contains(f), "must not contain f")
-      val (fl, gr, t1) = avoidanceNeg(t, x)
-      assert(gr.isEmpty, "must output no growth")
-      (fl, t1)
+    case F@TFun(f, x, QType(t, p), QType(u, r)) => // AV-NEGF-NG
+      assert(!r.contains(f) || (p.contains(f) && p.isFresh), "AV-NEGF-NG")
+      val (fl1, gr1, t1) = avoidancePos(t, a)
+      val (fl2, u1) = avoidanceNegNG(u, a)
+      // S-NEGF
+      val p1 =
+        if (gr1.nonEmpty || p.contains(a))
+          (p - a) ++ Set(f, Fresh())
+        else p
+      // !S-DEPGR
+      val r1 =
+        if (gr1.nonEmpty || p.contains(a)) r -- Qual(Set(x, a))
+        else r - a
+      val fl = fl1 ++ fl2
+      (fl, TFun(f, x, QType(t1, p1), QType(u1, r1)))
   }
 }
 
