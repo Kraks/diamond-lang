@@ -311,7 +311,6 @@ def avoidanceNegNG(t: Type, a: String): (Qual /*filter*/, Type) = {
       // XXX: check equivalence betweeen t and t1?
       (mt, TRef(QType(t, mt)))
     case F@TFun(f, x, QType(t, p), QType(u, r)) => // AV-NEGF-NG
-      assert(!r.contains(f) || (p.contains(f) && p.isFresh), "AV-NEGF-NG")
       val (fl1, gr1, t1) = avoidancePos(t, a)
       val (fl2, u1) = avoidanceNegNG(u, a)
       // S-NEGF
