@@ -1,8 +1,10 @@
 package diamond.avoidancestlc
 
 import diamond._
-import Type._
-import Expr._
+import diamond.avoidancestlc.core._
+
+import core.Type._
+import core.Expr._
 
 /* Typing environment */
 
@@ -65,6 +67,20 @@ extension (q: Qual)
     if (q.contains(from)) q - from ++ to.set else q
   def rename(from: String, to: String): Qual =
     q.subst(from, Qual.singleton(to))
+
+/* Auxiliary functions for expressions */
+
+extension (e: Expr)
+  def freeVars: Set[String] = e match
+    case EUnit | ENum(_) | EBool(_) => Set()
+    case EVar(x) => Set(x)
+    case ELam(f, x, at, e, rt) => e.freeVars -- Set(f, x)
+    case EApp(e1, e2, _) => e1.freeVars ++ e2.freeVars
+    case ELet(x, _, rhs, body, _) => rhs.freeVars ++ (body.freeVars - x)
+    case EAlloc(e) => e.freeVars
+    case EAssign(e1, e2) => e1.freeVars ++ e2.freeVars
+    case EDeref(e) => e.freeVars
+    case EAscribe(e, t) => e.freeVars
 
 /* Auxiliary functions for types */
 
@@ -209,6 +225,7 @@ def subtypeCheck(tenv: TEnv, t1: Type, t2: Type): (Qual /*filter*/, Qual /*growt
         val G1 = TFun(g, x1, qt3, qt4.rename(y, x1))
         subtypeCheck(tenv, F1, G1)
       } else throw new RuntimeException("Impossible")
+    case _ => throw new RuntimeException(s"Not subtype $t1 <: $t2")
   }
 }
 
@@ -410,6 +427,12 @@ def infer(tenv: TEnv, e: Expr): (Qual, QType) = {
         } else Qual.untrack
       val fl = fl1 ++ fl2 ++ fl3 ++ (r \ Qual(Set(f, x, Fresh())))
       (fl, QType(u, r.subst(x, p1).subst(f, q)))
+    // We consider a lambda term with type annotation as "ascription"
+    case ELam(f, x, at, body, Some(rt)) =>
+      val q = Qual((body.freeVars -- Set(f, x)).asInstanceOf[Set[QElem]])
+      val tq = QType(TFun(f, x, at, rt), q)
+      val fl = check(tenv, e, tq)
+      (fl, tq)
   }
 }
 
@@ -417,4 +440,11 @@ def checkInfer(tenv: TEnv, e: Expr, t: Type): (Qual/*filter*/, Qual/*qual*/) = {
   val (fl1, QType(t1, q)) = infer(tenv, e)
   val (fl2, gr) = subtypeCheck(tenv, t1, t)
   (fl1 ++ fl2, q ++ gr)
+}
+
+def topTypeCheck(e: Expr): QType = {
+  println(e)
+  Counter.reset
+  val (fl, qt) = infer(TEnv.empty, e)
+  qt
 }
