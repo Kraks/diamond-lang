@@ -377,8 +377,8 @@ def check(tenv: TEnv, e: Expr, tq: QType): Qual = e match {
 def infer(tenv: TEnv, e: Expr): (Qual, QType) = {
   e match {
     case EUnit => (Qual.untrack, QType(TUnit, Qual.untrack))
-    case ENum(_) => (Qual.untrack, QType(TUnit, Qual.untrack))
-    case EBool(_) => (Qual.untrack, QType(TUnit, Qual.untrack))
+    case ENum(_) => (Qual.untrack, QType(TNum, Qual.untrack))
+    case EBool(_) => (Qual.untrack, QType(TBool, Qual.untrack))
     case EVar(x) =>
       val QType(t, q) = tenv(x)
       (Qual.singleton(x), QType(t, Qual.singleton(x)))
@@ -407,6 +407,10 @@ def infer(tenv: TEnv, e: Expr): (Qual, QType) = {
       val fl = (fl2 ++ fl1 ++ fl3 ++ p ++ r ++ gr) -- Qual(Set(x, Fresh()))
       val rq = (r ++ gr).subst(x, p)
       (fl, QType(v, rq))
+    case EApp(ELam(f, x, at, body, rt), e2, _) =>
+      // If an application's left-hand side is a literal lambda term,
+      // we delegate the inference using TA-LET rule
+      infer(tenv, ELet(x, Some(at), e2, body, false))
     case EApp(e1, e2, _) =>
       val (fl1, QType(TFun(f, x, QType(t, p), QType(u, r)), q)) = infer(tenv, e1)
       val (fl2, p1) = checkInfer(tenv, e2, t)
@@ -422,16 +426,24 @@ def infer(tenv: TEnv, e: Expr): (Qual, QType) = {
         else if (p.isFresh && !p.contains(f)) {
           val (fl, p2) = qualUpcast(tenv, p1, p)
           given TEnv = tenv
-          assert((p2 \ p) ⋒ q ⊆ Qual.untrack, "qualifiers not separate")
+          assert(((p2 \ p) ⋒ q) ⊆ Qual.fresh, s"qualifiers not separate: ${p2 \ p} and $q")
           fl
         } else Qual.untrack
       val fl = fl1 ++ fl2 ++ fl3 ++ (r \ Qual(Set(f, x, Fresh())))
       (fl, QType(u, r.subst(x, p1).subst(f, q)))
-    // We consider a lambda term with type annotation as "ascription"
     case ELam(f, x, at, body, Some(rt)) =>
+      // We consider a lambda term with full type annotation as "ascription"
       val q = Qual((body.freeVars -- Set(f, x)).asInstanceOf[Set[QElem]])
       val tq = QType(TFun(f, x, at, rt), q)
       val fl = check(tenv, e, tq)
+      (fl, tq)
+    case ELam(f, x, at, body, None) =>
+      // If there is only argument type, we infer the return type and
+      // check the whole lambda term again
+      val q = Qual((body.freeVars -- Set(f, x)).asInstanceOf[Set[QElem]])
+      val (bodyFl, rt) = infer(tenv + (x -> at), body)
+      val tq = QType(TFun(f, x, at, rt), q)
+      val fl = check(tenv, ELam(f, x, at, body, Some(rt)), tq)
       (fl, tq)
   }
 }
