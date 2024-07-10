@@ -104,7 +104,7 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
   import DiamondParser._
   import ir._
 
-  val coreTop: core.QType = ??? //core.QType(core.Type.TTop, core.Qual.fresh)
+  lazy val coreTop: core.QType = ??? //core.QType(core.Type.TTop, core.Qual.fresh)
 
   def error = ???
 

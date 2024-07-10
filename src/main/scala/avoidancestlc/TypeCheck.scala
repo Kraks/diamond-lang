@@ -357,6 +357,7 @@ def isVar(e: Expr): Boolean = e match
 def wellFormed(tenv: TEnv, t: QType): Boolean =
   t.freeVars.subsetOf(tenv.dom)
 
+// check returns the filter
 def check(tenv: TEnv, e: Expr, tq: QType): Qual = e match {
   case ELam(f, x, at@QType(t, p), body, rt@Some(QType(u, r))) =>
     // Note: assume that at/rt is consistent with the provided ft
@@ -364,16 +365,17 @@ def check(tenv: TEnv, e: Expr, tq: QType): Qual = e match {
     val r1 = if (p.contains(f)) r else r.subst(f, q)
     val x1 = if (p.isFresh && p ⊆ r1) Qual.singleton(x) else Qual.untrack
     val fl = check(tenv + (x -> QType(t, p.subst(f, q))), body,
-              QType(u, x1 ++ r.subst(f, q)))
-    assert(fl ⊆ (q + x), "must be a subset of the provided qualifier")
-    p ++ q
+                   QType(u, x1 ++ r.subst(f, q)))
+    assert(fl ⊆ (q + x), s"filter must be a subset of the provided qualifier: $fl ⊆ ${q + x}")
+    (p ++ q) - Fresh()
   case _ =>
     val QType(t, q) = tq
     val (fl1, q1) = checkInfer(tenv, e, t)
     val Some(fl2) = subQualCheck(tenv, q1, q)
-    fl1 ++ fl2
+    (fl1 ++ fl2) - Fresh()
 }
 
+// infer returns the filter and the inferred type
 def infer(tenv: TEnv, e: Expr): (Qual, QType) = {
   e match {
     case EUnit => (Qual.untrack, QType(TUnit, Qual.untrack))

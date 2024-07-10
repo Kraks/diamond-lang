@@ -4,6 +4,7 @@ import org.scalatest.matchers.should.Matchers
 
 import diamond._
 import diamond.avoidancestlc.core._
+import diamond.avoidancestlc.Parser._
 
 import core.Type._
 import core.Expr._
@@ -14,6 +15,8 @@ import TypeSyntax.given_Conversion_Type_QType
 import ExprSyntax.given_Conversion_Int_ENum
 
 class AvoidanceSTLCTests extends AnyFunSuite {
+  def parseAndCheck(s: String): QType = topTypeCheck(parseToCore(s))
+
   test("escaping closures") {
     val e1 =
       let("x" ⇐ alloc(3)) {
@@ -69,5 +72,68 @@ class AvoidanceSTLCTests extends AnyFunSuite {
       f(arg)
     }
     assert(topTypeCheck(e5) == (TFun("f", "z", TNum^(), TRef(TNum)^"f") ^ ◆))
+  }
+
+  test("escaping closures -- surface syntax") {
+    val p0 = """
+    def f0(x: Int) =
+      val c = Ref x;
+      g() => { c };
+    f0(0)
+    """
+    assert(parseAndCheck(p0) == (TFun("g","𝑥#0",TUnit^(),TRef(TNum)^"g")^ ◆))
+
+    val p1 = """
+    def f1(x: Int) =
+      val c = Ref x;
+      g(): Ref[Int]^g => { c };
+    f1(0)
+    """
+    assert(parseAndCheck(p1) == (TFun("g","𝑥#0",TUnit^(),TRef(TNum)^"g")^ ◆))
+
+    val p2 = """
+    def f2(x: Int): (g() => Ref[Int]^g)^<> =
+      val c = Ref x;
+      g(): Ref[Int]^g => { c };
+    f2(0)
+    """
+    assert(parseAndCheck(p2) == (TFun("g","𝑥#0",TUnit^(),TRef(TNum)^"g")^ ◆))
+
+    val p3 = """
+    def f3(x: Int): (g() => Ref[Int]^g)^<> =
+      val c = Ref x;
+      def g(): Ref[Int]^g = c;
+      g;
+    f3(0)
+    """
+    assert(parseAndCheck(p3) == (TFun("g","𝑥#0",TUnit^(),TRef(TNum)^"g")^ ◆))
+
+    val p4 = """
+    def f4(x: Int): (g() => Ref[Int]^g)^<> =
+      val c = Ref x;
+      val g = g(): Ref[Int]^g => { c };
+      g;
+    f4(0)
+    """
+    assert(parseAndCheck(p4) == (TFun("g","𝑥#0",TUnit^(),TRef(TNum)^"g")^ ◆))
+
+    val p5 = """
+    def f5(x: Int): (g() => Ref[Int]^g)^<> =
+      val c = Ref x;
+      val g: (g() => Ref[Int]^g)^c = g(): Ref[Int]^g => { c };
+      g;
+    f5(0)
+    """
+    assert(parseAndCheck(p5) == (TFun("g","𝑥#0",TUnit^(),TRef(TNum)^"g")^ ◆))
+
+    // written as anonymous functions:
+    val p6 = """
+    def f6(x: Int): (g() => Ref[Int]^g)^<> =
+      ((c: Ref[Int]^<>) => {
+         g(): Ref[Int]^g => { c }
+      })(Ref x);
+    f6(0)
+    """
+    assert(parseAndCheck(p6) == (TFun("g","𝑥#0",TUnit^(),TRef(TNum)^"g")^ ◆))
   }
 }
