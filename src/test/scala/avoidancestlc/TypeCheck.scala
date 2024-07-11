@@ -145,20 +145,58 @@ class AvoidanceSTLCTests extends AnyFunSuite {
     """
     def fstT(t: String, a: String)(p: String) = s"""
       $p(f(x: $t^$a)^$a: (g(y: $t^{<>, g}) => $t^g)^f => { g(y: $t^{<>, g})^f: $t^g => { x } })
-      //$p(f(x: $t^$a)^$a => { g(y: $t^{<>, g})^{x}: $t^g => { x } })
     """
     def sndT(t: String, b: String)(p: String) = s"""
-      $p(f(x: $t^{<>, f})^$b => { g(y: $t^$b)^y: $t^g => { y } })
+      $p(f(x: $t^{<>, f})^$b: (g(y: $t^$b) => $t^g)^f => { g(y: $t^$b)^f: $t^g => { y } })
     """
-    val p0 = s"""
+    val prog1 = s"""
       val r1 = Ref 1;
       val r2 = Ref 2;
       val p = ${makePair("Ref[Int]")("r1", "r2")};
       ${fstT("Ref[Int]", "r1")("p")}
     """
-    //println(parseToCore(fstT("Ref[Int]", "r1")("p")))
-    println(parseToCore(p0))
-    println(parseAndCheck(p0))
+    assert(parseAndCheck(prog1) == (TRef(TNum^()) ^ ◆))
+    val prog2 = s"""
+      val r1 = Ref 1;
+      val r2 = Ref 2;
+      val p = ${makePair("Ref[Int]")("r1", "r2")};
+      ${sndT("Ref[Int]", "r2")("p")}
+    """
+    assert(parseAndCheck(prog2) == (TRef(TNum^()) ^ ◆))
+  }
+
+  test("opaque mono pair") {
+    def makePair(t: String)(a: String, b: String) = s"""
+      p(f: (f(x: $t^$a) => (g(y: $t^$b) => $t^g)^f)^{<>, p})^{$a, $b}: $t^f => { f($a)($b) }
+    """
+    def fstO(t: String)(p: String) = s"""
+      $p(f(x: $t^{<>, f}): (g(y: $t^{<>,g}) => $t^{g,y})^{x, f} => { g(y: $t^{<>, g})^{x, f}: $t^{g, y} => { x } })
+    """
+    def sndO(t: String, b: String)(p: String) = s"""
+      $p(f(x: $t^{<>, f})^$b => { g(y: $t^$b)^y: $t^g => { y } })
+    """
+    val prog1 = s"""
+      def makePair() = {
+        val r1 = Ref 1;
+        val r2 = Ref 2;
+        val p0 = ${makePair("Ref[Int]")("r1", "r2")};
+        p0
+      };
+      makePair()
+    """
+    //println(parseToCore(p0))
+    println(parseAndCheck(prog1))
+    val prog2 = s"""
+      def makePair() = {
+        val r1 = Ref 1;
+        val r2 = Ref 2;
+        val p0 = ${makePair("Ref[Int]")("r1", "r2")};
+        p0
+      };
+      val p1 = makePair();
+      ${fstO("Ref[Int]")("p1")}
+    """
+    println(prog2)
+    //println(parseAndCheck(prog2))
   }
 }
-

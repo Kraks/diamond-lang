@@ -83,6 +83,21 @@ extension (e: Expr)
     case EAssign(e1, e2) => e1.freeVars ++ e2.freeVars
     case EDeref(e) => e.freeVars
     case EAscribe(e, t) => e.freeVars
+  def substAnno(x: String, q: Qual): Expr = e match
+    case EUnit | ENum(_) | EBool(_) | EVar(_) => e
+    case ELam(f, y, at, body, rt, qual) =>
+      ELam(f, y, at.substQual(x, q), body.substAnno(x, q), rt.map(_.substQual(x, q)), qual.map(_.subst(x, q)))
+    case EApp(e1, e2, fr) => EApp(e1.substAnno(x, q), e2.substAnno(x, q), fr)
+    case ELet(x, ty, rhs, body, gl) =>
+      ELet(x, ty.map(_.substQual(x, q)), rhs.substAnno(x, q), body.substAnno(x, q), gl)
+    case EAlloc(e) =>
+      EAlloc(e.substAnno(x, q))
+    case EAssign(e1, e2) =>
+      EAssign(e1.substAnno(x, q), e2.substAnno(x, q))
+    case EDeref(e) =>
+      EDeref(e.substAnno(x, q))
+    case EAscribe(e, t) =>
+      EAscribe(e.substAnno(x, q), t.substQual(x, q))
 
 /* Auxiliary functions for types */
 
@@ -190,6 +205,8 @@ def subtypeCheck(tenv: TEnv, t1: Type, t2: Type): (Qual /*filter*/, Qual /*growt
         val (fl1, gr1) = subtypeCheck(tenv, t2, t1)
         val (fl2, gr2) = subtypeCheck(tenv, u1, u2)
         assert(p2.subsetAt(Qual(Set(f, Fresh())), p1), "argument qualifier contravariance")
+        println(s"$F <: $G")
+        println(s"r1: $r1 r2: $r2")
         assert(r1.subsetAt(Qual(Set(f, Fresh())), r2), "return qualifier covariance")
         val p1_* = (p2 -- Qual(Set(f, Fresh()))) ++ gr1
         val r2_* = (r1 -- Qual(Set(f, x, Fresh()))) ++ gr2
@@ -286,7 +303,7 @@ def avoidanceNeg(t: Type, a: String): (Qual /*filter*/, Qual /*growth*/, Type) =
     case TRef(QType(t, q)) =>
       assert(q.isUntrack, "must be untrack in this system")
       val (fl, gr, t1) = avoidancePos(t, a)
-      // XXX: check equivalence betweeen t and t1?
+      assert(t == t1, "must be equivalent")
       (mt, mt, TRef(QType(t, mt)))
     case F@TFun(f, x, QType(t, p), QType(u, r0))
       if r0.contains(f) && (!p.contains(f) || p.isFresh) => // AV-NEGF-GR
@@ -314,7 +331,7 @@ def avoidanceNeg(t: Type, a: String): (Qual /*filter*/, Qual /*growth*/, Type) =
       val fl = fl1 ++ fl2 ++ gr
       (fl, gr, TFun(f, x, QType(t1, p1), QType(u1, r1)))
     case F@TFun(f, x, QType(t, p), QType(u, r)) =>
-      val (fl, ty) = avoidanceNegNG(t, a)
+      val (fl, ty) = avoidanceNegNG(F, a)
       (fl, mt, ty)
   }
 }
@@ -368,14 +385,15 @@ def check(tenv: TEnv, e: Expr, tq: QType): Qual = e match {
     val q = qual.getOrElse(tq.q)
     val r1 = if (p.contains(f)) r else r.subst(f, q)
     val x1 = if (p.isFresh && p ⊆ r1) Qual.singleton(x) else Qual.untrack
-    val fl = check(tenv + (x -> QType(t, p.subst(f, q))), body, QType(u, x1 ++ r.subst(f, q)))
-    assert(fl ⊆ (q + x), s"filter must be a subset of the provided qualifier: $fl ⊆ ${q + x}")
+    val fl = check(tenv + (x -> QType(t, p.subst(f, q))), body.substAnno(f, q), QType(u, x1 ++ r.subst(f, q)))
+    // XXX: should also include f?
+    //assert(fl ⊆ (q + x + f), s"filter must be a subset of the provided qualifier: $fl ⊆ ${q + x + f}")
     (p ++ q) -- Qual(Set(Fresh(), f))
   case _ =>
-    println(s"check $e $tq")
+    //println(s"check $e $tq")
     val QType(t, q) = tq
     val (fl1, q1) = checkInfer(tenv, e, t)
-    println(s"$e $q1 $q")
+    //println(s"$e $q1 $q")
     val Some(fl2) = subQualCheck(tenv, q1, q)
     (fl1 ++ fl2) - Fresh()
 }
@@ -445,7 +463,6 @@ def infer(tenv: TEnv, e: Expr): (Qual, QType) = {
     case ELam(f, x, at, body, None, qual) =>
       // If there is only argument type, we infer the return type and
       // check the whole lambda term again
-      println(s"Hey: $e")
       val q = qual.getOrElse(Qual((body.freeVars -- Set(f, x)).asInstanceOf[Set[QElem]]))
       val (bodyFl, rt) = infer(tenv + (x -> at), body)
       val tq = QType(TFun(f, x, at, rt), q)
@@ -456,6 +473,7 @@ def infer(tenv: TEnv, e: Expr): (Qual, QType) = {
 
 def checkInfer(tenv: TEnv, e: Expr, t: Type): (Qual/*filter*/, Qual/*qual*/) = {
   val (fl1, QType(t1, q)) = infer(tenv, e)
+  println(s"checkInfer $t1 <: $t")
   val (fl2, gr) = subtypeCheck(tenv, t1, t)
   (fl1 ++ fl2, q ++ gr)
 }
