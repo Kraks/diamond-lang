@@ -144,8 +144,11 @@ class AvoidanceSTLCTests extends AnyFunSuite {
       p(f: (f(x: $t^$a) => (g(y: $t^$b) => $t^g)^f)^{<>, p})^{$a, $b}: $t^f => { f($a)($b) }
     """
     def fstT(t: String, a: String)(p: String) = s"""
-      $p(f(x: $t^$a)^$a => { g(y: $t^{<>, g})^f: $t^g => { x } })
+      $p(f(x: $t^$a)^$a: (g(y: $t^{<>, g}) => $t^g)^f => { g(y: $t^{<>, g})^f: $t^g => { x } })
       //$p(f(x: $t^$a)^$a => { g(y: $t^{<>, g})^{x}: $t^g => { x } })
+    """
+    def sndT(t: String, b: String)(p: String) = s"""
+      $p(f(x: $t^{<>, f})^$b => { g(y: $t^$b)^y: $t^g => { y } })
     """
     val p0 = s"""
       val r1 = Ref 1;
@@ -153,6 +156,7 @@ class AvoidanceSTLCTests extends AnyFunSuite {
       val p = ${makePair("Ref[Int]")("r1", "r2")};
       ${fstT("Ref[Int]", "r1")("p")}
     """
+    //println(parseToCore(fstT("Ref[Int]", "r1")("p")))
     println(parseToCore(p0))
     println(parseAndCheck(p0))
   }

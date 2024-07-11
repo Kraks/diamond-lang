@@ -445,6 +445,7 @@ def infer(tenv: TEnv, e: Expr): (Qual, QType) = {
     case ELam(f, x, at, body, None, qual) =>
       // If there is only argument type, we infer the return type and
       // check the whole lambda term again
+      println(s"Hey: $e")
       val q = qual.getOrElse(Qual((body.freeVars -- Set(f, x)).asInstanceOf[Set[QElem]]))
       val (bodyFl, rt) = infer(tenv + (x -> at), body)
       val tq = QType(TFun(f, x, at, rt), q)
