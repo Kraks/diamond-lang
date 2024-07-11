@@ -43,7 +43,7 @@ enum Expr:
   case ENum(n: Int)
   case EBool(b: Boolean)
   case EVar(x: String)
-  case ELam(f: String, x: String, at: QType, body: Expr, rt: Option[QType])
+  case ELam(f: String, x: String, at: QType, body: Expr, rt: Option[QType], qual: Option[Qual])
   case EApp(e1: Expr, e2: Expr, fresh: Option[Boolean] = None)
   case ELet(x: String, t: Option[QType], rhs: Expr, body: Expr, global: Boolean = false)
   case EAlloc(init: Expr)
@@ -97,9 +97,9 @@ object ExprSyntax:
     def ⦂(t: QType): BindTy = BindTy(id, t)
     def ⇐(e: Expr): Bind = Bind(id, e, None)
 
-  def λ(f: String, x: String)(ft: TFun)(e: => Expr): ELam = ELam(f, x, ft.t1, e, Some(ft.t2))
-  def λ(f: String, xt: BindTy, rt: QType)(e: => Expr): ELam = ELam(f, xt.id, xt.ty, e, Some(rt))
-  def λ(xt: BindTy)(e: => Expr): ELam = ELam(freshVar("AnnoFun"), xt.id, xt.ty, e, None)
+  def λ(f: String, x: String)(ft: TFun)(e: => Expr): ELam = ELam(f, x, ft.t1, e, Some(ft.t2), None)
+  def λ(f: String, xt: BindTy, rt: QType)(e: => Expr): ELam = ELam(f, xt.id, xt.ty, e, Some(rt), None)
+  def λ(xt: BindTy)(e: => Expr): ELam = ELam(freshVar("AnnoFun"), xt.id, xt.ty, e, None, None)
   def let(xv: Bind)(e: Expr): Expr = ELet(xv.id, xv.ty, xv.rhs, e)
   def alloc(e: Expr): Expr = EAlloc(e)
 

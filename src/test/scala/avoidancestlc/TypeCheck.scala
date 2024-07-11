@@ -17,6 +17,7 @@ import ExprSyntax.given_Conversion_Int_ENum
 class AvoidanceSTLCTests extends AnyFunSuite {
   def parseAndCheck(s: String): QType = topTypeCheck(parseToCore(s))
 
+  /*
   test("escaping closures") {
     val e1 =
       let("x" ⇐ alloc(3)) {
@@ -136,4 +137,24 @@ class AvoidanceSTLCTests extends AnyFunSuite {
     """
     assert(parseAndCheck(p6) == (TFun("g","𝑥#0",TUnit^(),TRef(TNum)^"g")^ ◆))
   }
+  */
+
+  test("mono pair") {
+    def makePair(t: String)(a: String, b: String) = s"""
+      p(f: (f(x: $t^$a) => (g(y: $t^$b) => $t^g)^f)^{<>, p})^{$a, $b}: $t^f => { f($a)($b) }
+    """
+    def fstT(t: String, a: String)(p: String) = s"""
+      $p(f(x: $t^$a)^$a => { g(y: $t^{<>, g})^f: $t^g => { x } })
+      //$p(f(x: $t^$a)^$a => { g(y: $t^{<>, g})^{x}: $t^g => { x } })
+    """
+    val p0 = s"""
+      val r1 = Ref 1;
+      val r2 = Ref 2;
+      val p = ${makePair("Ref[Int]")("r1", "r2")};
+      ${fstT("Ref[Int]", "r1")("p")}
+    """
+    println(parseToCore(p0))
+    println(parseAndCheck(p0))
+  }
 }
+

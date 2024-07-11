@@ -72,7 +72,7 @@ package ir {
         case ((param, idx), body) =>
           val funName = if (idx == 0) name else freshVar(funPre)
           val realRt = if (idx == realParams.size-1) rt.map(_.toCore) else None
-          core.Expr.ELam(funName, param.name, param.qty, body, realRt)
+          core.Expr.ELam(funName, param.name, param.qty, body, realRt, None)
       }
       val rhsTy = None
       core.Expr.ELet(name, rhsTy, rhs, e)
@@ -86,7 +86,7 @@ package ir {
       val lam = realParams.zipWithIndex.foldRight(body) {
         case ((param, idx), body) =>
           val realRt = if (idx == realParams.size-1) rt.map(_.toCore) else None
-          core.Expr.ELam(freshVar(funPre), param.name, param.qty, body, realRt)
+          core.Expr.ELam(freshVar(funPre), param.name, param.qty, body, realRt, None)
       }
       val rhs = tyParams.zipWithIndex.foldRight(lam) {
         case ((ty, idx), body) =>
@@ -230,11 +230,12 @@ class DiamondVisitor extends DiamondParserBaseVisitor[ir.IR] {
       else List(Param(freshVar(varPre), core.QType(core.Type.TUnit, core.Qual.untrack)))
     val rt = if (ctx.qty != null) Some(visitQty(ctx.qty).toCore) else None
     val body = visitExpr(ctx.expr).toCore
+    val qual = if (ctx.qual != null) Some(visitQual(ctx.qual).toCore) else None
     val ret = args.zipWithIndex.foldRight(body) {
       case ((arg, idx), body) =>
         val realName = if (idx == 0) name else freshVar(funPre)
         val realRt = if (idx == args.size-1) rt else None
-        core.Expr.ELam(realName, arg.name, arg.qty, body, realRt)
+        core.Expr.ELam(realName, arg.name, arg.qty, body, realRt, qual)
     }
     Expr(ret)
   }

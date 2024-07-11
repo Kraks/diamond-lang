@@ -9,6 +9,7 @@ echo "Copy Diamond parsers into $DST"
 
 for file in "DiamondLexer.java" "DiamondParserBaseVisitor.java" "DiamondParserListener.java" "DiamondParserBaseListener.java" "DiamondParser.java" "DiamondParserVisitor.java"
 do
-  sed -i "1ipackage diamond.parser;$line" $file
+  #sed -i "1ipackage diamond.parser;$line" $file
+  sed -i '' '1s/^/package diamond.parser;\n/' $file
   cp $file $DST/$file
 done

@@ -152,7 +152,7 @@ move :
 ;
 
 lam :
-  ID '(' namedParamList? ')' (':' qty effs?)? RIGHTARROW '{' expr '}'
+  ID '(' namedParamList? ')' ('^' qual)? (':' qty effs?)? RIGHTARROW '{' expr '}'
 | '(' namedParamList? ')' (':' qty effs?)? RIGHTARROW '{' expr '}'
 ;
 

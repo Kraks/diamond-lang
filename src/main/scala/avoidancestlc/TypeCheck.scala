@@ -9,7 +9,9 @@ import core.Expr._
 /* Typing environment */
 
 case class TEnv(m: AssocList[String, QType], observable: Set[String] = Set()):
-  def apply(x: String): QType = m(x)
+  def apply(x: String): QType =
+    if (m.contains(x)) m(x)
+    else throw new RuntimeException(s"Variable $x not found in the environment")
   def +(xt: (String, QType)) = xt match {
     case (x, t: QType) => TEnv(m + (x -> t), observable + x)
   }
@@ -74,7 +76,7 @@ extension (e: Expr)
   def freeVars: Set[String] = e match
     case EUnit | ENum(_) | EBool(_) => Set()
     case EVar(x) => Set(x)
-    case ELam(f, x, at, e, rt) => e.freeVars -- Set(f, x)
+    case ELam(f, x, at, e, rt, _) => e.freeVars -- Set(f, x)
     case EApp(e1, e2, _) => e1.freeVars ++ e2.freeVars
     case ELet(x, _, rhs, body, _) => rhs.freeVars ++ (body.freeVars - x)
     case EAlloc(e) => e.freeVars
@@ -166,6 +168,7 @@ def qualUpcast(g: TEnv, p: Qual, r: Qual): (Qual /*filter*/, Qual /*ub*/) = {
 
 def subQualCheck(g: TEnv, p: Qual, r: Qual): Option[Qual] =
   val (fl, p1) = qualUpcast(g, p, r)
+  println(s"$g |- p1: $p1 r: $r")
   if (p1 ⊆ r) Some(fl ++ r) else None
 
 /* Subtype checking */
@@ -246,7 +249,7 @@ def avoidancePos(t: Type, a: String): (Qual /*filter*/, Qual /*growth*/, Type) =
     case TRef(QType(t, q)) =>
       assert(q.isUntrack, "must be untrack in this system")
       val (fl, gr, t1) = avoidancePos(t, a)
-      // XXX: check equivalence betweeen t and t1?
+      assert(t == t1, s"$t and $t1 should be equivalent")
       (mt, mt, TRef(QType(t, mt)))
     case F@TFun(f, x, QType(t, p), QType(u, r)) => // AV-POSF
       // S-NEGF
@@ -359,18 +362,20 @@ def wellFormed(tenv: TEnv, t: QType): Boolean =
 
 // check returns the filter
 def check(tenv: TEnv, e: Expr, tq: QType): Qual = e match {
-  case ELam(f, x, at@QType(t, p), body, rt@Some(QType(u, r))) =>
+  case ELam(f, x, at@QType(t, p), body, rt@Some(QType(u, r)), qual) =>
     // Note: assume that at/rt is consistent with the provided ft
-    val QType(ft, q) = tq
+    val QType(ft, _) = tq
+    val q = qual.getOrElse(tq.q)
     val r1 = if (p.contains(f)) r else r.subst(f, q)
     val x1 = if (p.isFresh && p ⊆ r1) Qual.singleton(x) else Qual.untrack
-    val fl = check(tenv + (x -> QType(t, p.subst(f, q))), body,
-                   QType(u, x1 ++ r.subst(f, q)))
+    val fl = check(tenv + (x -> QType(t, p.subst(f, q))), body, QType(u, x1 ++ r.subst(f, q)))
     assert(fl ⊆ (q + x), s"filter must be a subset of the provided qualifier: $fl ⊆ ${q + x}")
-    (p ++ q) - Fresh()
+    (p ++ q) -- Qual(Set(Fresh(), f))
   case _ =>
+    println(s"check $e $tq")
     val QType(t, q) = tq
     val (fl1, q1) = checkInfer(tenv, e, t)
+    println(s"$e $q1 $q")
     val Some(fl2) = subQualCheck(tenv, q1, q)
     (fl1 ++ fl2) - Fresh()
 }
@@ -409,7 +414,7 @@ def infer(tenv: TEnv, e: Expr): (Qual, QType) = {
       val fl = (fl2 ++ fl1 ++ fl3 ++ p ++ r ++ gr) -- Qual(Set(x, Fresh()))
       val rq = (r ++ gr).subst(x, p)
       (fl, QType(v, rq))
-    case EApp(ELam(f, x, at, body, rt), e2, _) =>
+    case EApp(ELam(f, x, at, body, rt, _), e2, _) =>
       // If an application's left-hand side is a literal lambda term,
       // we delegate the inference using TA-LET rule
       infer(tenv, ELet(x, Some(at), e2, body, false))
@@ -420,12 +425,10 @@ def infer(tenv: TEnv, e: Expr): (Qual, QType) = {
         if (p.nonFresh && !isVar(e1)) {
           val Some(fl) = subQualCheck(tenv, p1, p)
           fl
-        }
-        else if (p.nonFresh && isVar(e1)) {
+        } else if (p.nonFresh && isVar(e1)) {
           val Some(fl) = subQualCheck(tenv, p1, p.subst(f, Qual.singleton(e1.asInstanceOf[EVar].x)))
           fl
-        }
-        else if (p.isFresh && !p.contains(f)) {
+        } else if (p.isFresh && !p.contains(f)) {
           val (fl, p2) = qualUpcast(tenv, p1, p)
           given TEnv = tenv
           assert(((p2 \ p) ⋒ q) ⊆ Qual.fresh, s"qualifiers not separate: ${p2 \ p} and $q")
@@ -433,19 +436,19 @@ def infer(tenv: TEnv, e: Expr): (Qual, QType) = {
         } else Qual.untrack
       val fl = fl1 ++ fl2 ++ fl3 ++ (r \ Qual(Set(f, x, Fresh())))
       (fl, QType(u, r.subst(x, p1).subst(f, q)))
-    case ELam(f, x, at, body, Some(rt)) =>
+    case ELam(f, x, at, body, Some(rt), qual) =>
       // We consider a lambda term with full type annotation as "ascription"
-      val q = Qual((body.freeVars -- Set(f, x)).asInstanceOf[Set[QElem]])
+      val q = qual.getOrElse(Qual((body.freeVars -- Set(f, x)).asInstanceOf[Set[QElem]]))
       val tq = QType(TFun(f, x, at, rt), q)
       val fl = check(tenv, e, tq)
       (fl, tq)
-    case ELam(f, x, at, body, None) =>
+    case ELam(f, x, at, body, None, qual) =>
       // If there is only argument type, we infer the return type and
       // check the whole lambda term again
-      val q = Qual((body.freeVars -- Set(f, x)).asInstanceOf[Set[QElem]])
+      val q = qual.getOrElse(Qual((body.freeVars -- Set(f, x)).asInstanceOf[Set[QElem]]))
       val (bodyFl, rt) = infer(tenv + (x -> at), body)
       val tq = QType(TFun(f, x, at, rt), q)
-      val fl = check(tenv, ELam(f, x, at, body, Some(rt)), tq)
+      val fl = check(tenv, ELam(f, x, at, body, Some(rt), Some(q)), tq)
       (fl, tq)
   }
 }
@@ -457,7 +460,6 @@ def checkInfer(tenv: TEnv, e: Expr, t: Type): (Qual/*filter*/, Qual/*qual*/) = {
 }
 
 def topTypeCheck(e: Expr): QType = {
-  println(e)
   Counter.reset
   val (fl, qt) = infer(TEnv.empty, e)
   qt
