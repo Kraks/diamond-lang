@@ -424,9 +424,16 @@ def avoidancePos(t: Type, a: String): (Qual /*filter*/, Qual /*growth*/, Type) =
       (fl, gr, TFun(f, x, QType(t1, p1), QType(u1, r1)))
     // F-sub new types
     // XXX
-    case TTop => ???
-    case TVar(x) => ???
-    case TForall(f, tvar, qvar, bound, res) => ???
+    case TTop => (mt, mt, t)
+    case TVar(x) => (mt, mt, t)
+    case TForall(f, tvar, qvar, bound@QType(tbound, qbound), QType(u, r)) =>
+      val (fl1, tbound1) = avoidanceNegNG(tbound, a)
+      assert(tbound == tbound1, "kernel fsub")
+      val (fl2, gr2, u1) = avoidancePos(u, a)
+      val gr = gr2 ++ (r ∩ a)
+      val r1 = if (gr.nonEmpty) (r \ a) + f else r
+      val fl = fl2 ++ gr
+      (fl, gr, TForall(f, tvar, qvar, bound, QType(u1, r1)))
   }
 }
 
@@ -470,9 +477,18 @@ def avoidanceNeg(t: Type, a: String): (Qual /*filter*/, Qual /*growth*/, Type) =
       (fl, mt, ty)
     // F-sub new types
     // XXX
-    case TTop => ???
-    case TVar(x) => ???
-    case TForall(f, tvar, qvar, bound, res) => ???
+    case TTop => (mt, mt, t)
+    case TVar(x) => (mt, mt, t)
+    case TForall(f, tvar, qvar, bound@QType(tbound, qbound), QType(u, r))
+      if r.contains(f) =>
+      val (fl1, gr1, tbound1) = avoidancePos(tbound, a)
+      assert(tbound == tbound1, "kernel fsub")
+      val (fl2, gr2, u1) = avoidanceNeg(u, a)
+      val r1 = r \ a
+      (fl2 ++ gr2, gr2, TForall(f, tvar, qvar, bound, QType(u1, r1)))
+    case TForall(f, tvar, qvar, bound, res) =>
+      val (fl, t1) = avoidanceNegNG(t, a)
+      (fl, mt, t1)
   }
 }
 
@@ -503,9 +519,14 @@ def avoidanceNegNG(t: Type, a: String): (Qual /*filter*/, Type) = {
       (fl, TFun(f, x, QType(t1, p1), QType(u1, r1)))
     // F-sub new types
     // XXX
-    case TTop => ???
-    case TVar(x) => ???
-    case TForall(f, tvar, qvar, bound, res) => ???
+    case TTop => (mt, t)
+    case TVar(x) => (mt, t)
+    case TForall(f, tvar, qvar, bound@QType(tbound, qbound), QType(u, r)) =>
+      val (fl1, gr1, tbound1) = avoidancePos(tbound, a)
+      assert(tbound == tbound1, "kernel fsub")
+      val (fl2, u1) = avoidanceNegNG(u, a)
+      val r1 = r \ a
+      (fl2, TForall(f, tvar, qvar, bound, QType(u1, r1)))
   }
 }
 
