@@ -381,13 +381,12 @@ def wellFormed(tenv: TEnv, t: QType): Boolean =
 def check(tenv: TEnv, e: Expr, tq: QType): Qual = e match {
   case ELam(f, x, at@QType(t, p), body, rt@Some(QType(u, r)), qual) =>
     // Note: assume that at/rt is consistent with the provided ft
-    val QType(ft, _) = tq
-    val q = qual.getOrElse(tq.q)
+    val QType(ft, q) = tq
     val r1 = if (p.contains(f)) r else r.subst(f, q)
-    val x1 = if (p.isFresh && p ⊆ r1) Qual.singleton(x) else Qual.untrack
-    val fl = check(tenv + (x -> QType(t, p.subst(f, q))), body.substAnno(f, q), QType(u, x1 ++ r.subst(f, q)))
+    val x1 = if (!p.isFresh && p ⊆ r1) Qual.singleton(x) else Qual.untrack
+    val fl = check(tenv + (x -> QType(t, p.subst(f, q))), body, QType(u, x1 ++ r.subst(f, q)))
     // XXX: should also include f?
-    //assert(fl ⊆ (q + x + f), s"filter must be a subset of the provided qualifier: $fl ⊆ ${q + x + f}")
+    assert(fl ⊆ (q + x), s"filter must be a subset of the provided qualifier: $fl ⊆ ${q + x}")
     (p ++ q) -- Qual(Set(Fresh(), f))
   case _ =>
     //println(s"check $e $tq")
