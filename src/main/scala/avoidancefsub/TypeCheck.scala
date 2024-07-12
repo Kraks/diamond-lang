@@ -341,13 +341,25 @@ def subtypeCheck(tenv: TEnv, t1: Type, t2: Type): (Qual /*filter*/, Qual /*growt
     case (_, TTop) => (Qual.untrack, Qual.untrack)
     case (TVar(x), TVar(y)) if x == y => (Qual.untrack, Qual.untrack)
     case (x@TVar(_), t) => subtypeCheck(tenv, tenv(x), t)
-    case (F@TForall(f1, tvar1, qvar1, bound1, rt1),
-          G@TForall(f2, tvar2, qvar2, bound2, rt2)) =>
+    case (F@TForall(f1, tvar1, qvar1, bound1@QType(tbound1, qbound1), rt1@QType(t1, q1)),
+          G@TForall(f2, tvar2, qvar2, bound2@QType(tbound2, qbound2), rt2@QType(t2, q2))) =>
       if (f1 == f2 && tvar1 == tvar2 && qvar1 == qvar2) {
         //val Γ1 = Γ + (f1 -> (F ^ ◆)) + ((tvar1, qvar1) <⦂ bound2)
         //bound2.isSubQType(bound1) && rt1.isSubQType(rt2)(using Γ1)
-        // XXX
-        ???
+        // XXX: assume qvars are never used
+        assert(tbound1 == tbound2, "kernel fsub requires same bound")
+        val fnfr = Qual(Set(f1, Fresh()))
+        assert(q1.subsetAt(fnfr, q2))
+        val tenv1 = tenv + TypeBound(tvar1, qvar1, bound1)
+        val (fl1, gr1) = subtypeCheck(tenv1, t1, t2)
+        subQualCheck(tenv, q1 ++ gr1 -- fnfr, q2 -- fnfr) match {
+          case Some(fl2) =>
+            (fl1 ++ fl2, Qual.untrack)
+          case None =>
+            assert(q2.contains(f1), "s-grow")
+            val gr = q1 ++ gr1 -- fnfr
+            (fl1 ++ gr, gr)
+        }
       } else if (f1 != f2) {
         val g = freshVar()
         val F1 = TForall(g, tvar1, qvar1, bound1.rename(f1, g), rt1.rename(f1, g))
