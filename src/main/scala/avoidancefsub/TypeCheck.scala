@@ -556,12 +556,12 @@ def check(tenv: TEnv, e: Expr, tq: QType): Qual = e match {
     val fl = check(tenv + (x -> QType(t, p.subst(f, q))), body, QType(u, x1 ++ r.subst(f, q)))
     //assert(fl ⊆ (q + x), s"filter must be a subset of the provided qualifier: $fl ⊆ ${q + x}")
     (p ++ q) -- Qual(Set(Fresh(), f))
-  case ETyLam(f, tvar, qvar, bound@QType(t, p), body, rt@Some(QType(u, r)), qual) =>
+  case ETyLam(f, tvar, qvar, _, body, _, qual) =>
     // XXX: Need double check
-    val QType(ft, q) = tq
+    val QType(TForall(f, tvar, qvar, bound@QType(t, p), rt@QType(u, r)), q) = tq
     val r1 = if (p.contains(f)) r else r.subst(f, q)
     val tenv1 = tenv + TypeBound(tvar, qvar, QType(t, p.subst(f, q)))
-    val fl = check(tenv1, body, QType(u.substType(tvar, t), r.subst(f, q)))
+    val fl = check(tenv1, body, QType(u, r.subst(f, q)))
     //assert(fl ⊆ (q + qvar), s"filter must be a subset of the provided qualifier: $fl ⊆ ${q + qvar}")
     (p ++ q) -- Qual(Set(Fresh(), f))
   case _ =>
@@ -658,6 +658,9 @@ def infer(tenv: TEnv, e: Expr): (Qual, QType) = {
       (fl, tq)
     case ETyApp(e1, tq, _) =>
       val (fl1, t1) = infer(tenv, e1)
+      println(s"e: $e")
+      println(s"e1: $e1")
+      println(s"t1: $t1")
       val QType(TForall(f, tvar, qvar, bound@QType(t, p), rt@QType(u, r)), q) = t1.expose(tenv)
       val (fl2, gr) = subtypeCheck(tenv, tq.ty, t)
       assert(wellFormed(tenv, tq), "must be well-formed")
