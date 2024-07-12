@@ -1,4 +1,0 @@
-val c1 = Ref 1;
-val c2 = c1;
-def f(x: Ref[Int]^{c1, <>}): Int = { (!x) + (!c1) }; // allowing overlap c1
-f(c2)

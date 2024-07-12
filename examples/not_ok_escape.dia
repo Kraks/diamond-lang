@@ -1,7 +1,0 @@
-// Not Ok
-// Because (g() => Ref(Int)^c)^c is not a subtype of (g() => Ref(Int)^g)^c
-def f6(x: Int): (g() => Ref[Int]^g)^<> =
-  val c = Ref x;
-  val g: (g() => Ref[Int]^g)^c = g() => { c };
-  g;
-f6(0)

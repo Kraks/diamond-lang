@@ -1,5 +1,0 @@
-def id[T <: Top](x: T^<>): T^x = x;
-
-val x = id[Int](3);              // : Int^∅
-val c = id[Ref[Int]^<>](Ref 42); // : Ref[Int]^◆
-x + (! c)                        // : Int^∅
