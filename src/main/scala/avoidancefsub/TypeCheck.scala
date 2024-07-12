@@ -214,6 +214,9 @@ extension (t: Type)
       val boundFreeVars = bound.freeVars
       val rtFreeVars = rt.freeVars
       boundFreeVars ++ (rtFreeVars -- Set(f, qvar))
+  def expose(Γ: TEnv): Type = t match
+    case x@TVar(_) => Γ(x).expose(Γ)
+    case _ => t
 
 /* Auxiliary functions for qualified types */
 
@@ -238,6 +241,10 @@ extension (tq: QType)
   def freeVars: Set[String] =
     val QType(t, q) = tq
     t.freeVars ++ q.varSet
+  def expose(tenv: TEnv): QType =
+    val QType(ty, q) = tq
+    //QType(typeExposure(ty), qualExposure(q))
+    QType(ty.expose(tenv), q)
 
 /* Qualifier upcasting */
 
@@ -656,7 +663,8 @@ def infer(tenv: TEnv, e: Expr): (Qual, QType) = {
       val fl = check(tenv, ETyLam(f, tvar, qvar, bound, body, Some(rt), Some(q)), tq)
       (fl, tq)
     case ETyApp(e, tq, _) =>
-      val (fl1, QType(TForall(f, tvar, qvar, bound@QType(t, p), rt@QType(u, r)), q)) = infer(tenv, e)
+      val (fl1, t1) = infer(tenv, e)
+      val QType(TForall(f, tvar, qvar, bound@QType(t, p), rt@QType(u, r)), q) = t1.expose
       val (fl2, gr) = subtypeCheck(tenv, tq.ty, u)
       assert(wellFormed(tenv, tq), "must be well-formed")
       val fl = (fl1 ++ fl2 ++ p ++ r) -- Qual(Set(f, qvar, Fresh()))
