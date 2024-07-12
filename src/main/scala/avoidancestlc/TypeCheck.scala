@@ -384,7 +384,6 @@ def check(tenv: TEnv, e: Expr, tq: QType): Qual = e match {
     val r1 = if (p.contains(f)) r else r.subst(f, q)
     val x1 = if (!p.isFresh && p ⊆ r1) Qual.singleton(x) else Qual.untrack
     val fl = check(tenv + (x -> QType(t, p.subst(f, q))), body, QType(u, x1 ++ r.subst(f, q)))
-    // XXX: should also include f?
     assert(fl ⊆ (q + x), s"filter must be a subset of the provided qualifier: $fl ⊆ ${q + x}")
     (p ++ q) -- Qual(Set(Fresh(), f))
   case _ =>

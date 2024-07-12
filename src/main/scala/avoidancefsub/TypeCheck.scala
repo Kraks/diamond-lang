@@ -346,6 +346,7 @@ def subtypeCheck(tenv: TEnv, t1: Type, t2: Type): (Qual /*filter*/, Qual /*growt
       if (f1 == f2 && tvar1 == tvar2 && qvar1 == qvar2) {
         //val Γ1 = Γ + (f1 -> (F ^ ◆)) + ((tvar1, qvar1) <⦂ bound2)
         //bound2.isSubQType(bound1) && rt1.isSubQType(rt2)(using Γ1)
+        // XXX
         ???
       } else if (f1 != f2) {
         val g = freshVar()
@@ -410,6 +411,7 @@ def avoidancePos(t: Type, a: String): (Qual /*filter*/, Qual /*growth*/, Type) =
       val fl = fl1 ++ fl2 ++ gr
       (fl, gr, TFun(f, x, QType(t1, p1), QType(u1, r1)))
     // F-sub new types
+    // XXX
     case TTop => ???
     case TVar(x) => ???
     case TForall(f, tvar, qvar, bound, res) => ???
@@ -456,6 +458,7 @@ def avoidanceNeg(t: Type, a: String): (Qual /*filter*/, Qual /*growth*/, Type) =
       val (fl, ty) = avoidanceNegNG(F, a)
       (fl, mt, ty)
     // F-sub new types
+    // XXX
     case TTop => ???
     case TVar(x) => ???
     case TForall(f, tvar, qvar, bound, res) => ???
@@ -488,6 +491,7 @@ def avoidanceNegNG(t: Type, a: String): (Qual /*filter*/, Type) = {
       val fl = fl1 ++ fl2
       (fl, TFun(f, x, QType(t1, p1), QType(u1, r1)))
     // F-sub new types
+    // XXX
     case TTop => ???
     case TVar(x) => ???
     case TForall(f, tvar, qvar, bound, res) => ???
@@ -511,16 +515,21 @@ def wellFormed(tenv: TEnv, t: QType): Boolean =
 def check(tenv: TEnv, e: Expr, tq: QType): Qual = e match {
   case ELam(f, x, at@QType(t, p), body, rt@Some(QType(u, r)), qual) =>
     // Note: assume that at/rt is consistent with the provided ft
-    val QType(ft, _) = tq
-    val q = qual.getOrElse(tq.q)
+    val QType(ft, q) = tq
     val r1 = if (p.contains(f)) r else r.subst(f, q)
-    val x1 = if (p.isFresh && p ⊆ r1) Qual.singleton(x) else Qual.untrack
-    val fl = check(tenv + (x -> QType(t, p.subst(f, q))), body.substAnno(f, q), QType(u, x1 ++ r.subst(f, q)))
-    // XXX: should also include f?
-    //assert(fl ⊆ (q + x + f), s"filter must be a subset of the provided qualifier: $fl ⊆ ${q + x + f}")
+    val x1 = if (!p.isFresh && p ⊆ r1) Qual.singleton(x) else Qual.untrack
+    val fl = check(tenv + (x -> QType(t, p.subst(f, q))), body, QType(u, x1 ++ r.subst(f, q)))
+    assert(fl ⊆ (q + x), s"filter must be a subset of the provided qualifier: $fl ⊆ ${q + x}")
     (p ++ q) -- Qual(Set(Fresh(), f))
-  case ETyLam(f, tvar, qvar, bound, body, rt, qual) =>
-    ???
+  case ETyLam(f, tvar, qvar, bound@QType(t, p), body, rt@Some(QType(u, r)), qual) =>
+    // XXX: Need double check
+    val QType(ft, q) = tq
+    val r1 = if (p.contains(f)) r else r.subst(f, q)
+    val x1 = if (!p.isFresh && p ⊆ r1) Qual.singleton(qvar) else Qual.untrack
+    val tenv1 = tenv + TypeBound(tvar, qvar, QType(t, p.subst(f, q)))
+    val fl = check(tenv1, body, QType(u, x1 ++ r.subst(f, q)))
+    assert(fl ⊆ (q + qvar), s"filter must be a subset of the provided qualifier: $fl ⊆ ${q + qvar}")
+    (p ++ q) -- Qual(Set(Fresh(), f))
   case _ =>
     //println(s"check $e $tq")
     val QType(t, q) = tq
@@ -601,8 +610,8 @@ def infer(tenv: TEnv, e: Expr): (Qual, QType) = {
       val fl = check(tenv, ELam(f, x, at, body, Some(rt), Some(q)), tq)
       (fl, tq)
     // F-sub new terms
-    case ETyLam(f, tvar, qvar, bound, body, rt, qual) => ???
-    case ETyApp(t, q, fresh) => ???
+    case ETyLam(f, tvar, qvar, bound, body, rt, qual) => ??? //XXX
+    case ETyApp(t, q, fresh) => ??? //XXX
   }
 }
 
