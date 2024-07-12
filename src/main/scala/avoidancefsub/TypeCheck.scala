@@ -557,9 +557,8 @@ def check(tenv: TEnv, e: Expr, tq: QType): Qual = e match {
     // XXX: Need double check
     val QType(ft, q) = tq
     val r1 = if (p.contains(f)) r else r.subst(f, q)
-    val x1 = if (!p.isFresh && p ⊆ r1) Qual.singleton(qvar) else Qual.untrack
     val tenv1 = tenv + TypeBound(tvar, qvar, QType(t, p.subst(f, q)))
-    val fl = check(tenv1, body, QType(u, x1 ++ r.subst(f, q)))
+    val fl = check(tenv1, body, QType(u, r.subst(f, q)))
     assert(fl ⊆ (q + qvar), s"filter must be a subset of the provided qualifier: $fl ⊆ ${q + qvar}")
     (p ++ q) -- Qual(Set(Fresh(), f))
   case _ =>
