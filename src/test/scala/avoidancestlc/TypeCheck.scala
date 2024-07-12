@@ -137,7 +137,7 @@ class AvoidanceSTLCTests extends AnyFunSuite {
     assert(parseAndCheck(p6) == (TFun("g","𝑥#0",TUnit^(),TRef(TNum)^"g")^ ◆))
   }
 
-  test("mono pair") {
+  test("transparent mono pair") {
     def makePair(t: String)(a: String, b: String) = s"""
       p(f: (f(x: $t^$a) => (g(y: $t^$b) => $t^g)^f)^{<>, p})^{$a, $b}: $t^f => { f($a)($b) }
     """

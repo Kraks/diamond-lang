@@ -485,7 +485,7 @@ def avoidanceNegNG(t: Type, a: String): (Qual /*filter*/, Type) = {
     case TRef(QType(t, q)) =>
       assert(q.isUntrack, "must be untrack in this system")
       val (fl, gr, t1) = avoidancePos(t, a)
-      // XXX: check equivalence betweeen t and t1?
+      assert(t == t1, "must be equivalent")
       (mt, TRef(QType(t, mt)))
     case F@TFun(f, x, QType(t, p), QType(u, r)) => // AV-NEGF-NG
       val (fl1, gr1, t1) = avoidancePos(t, a)
@@ -620,9 +620,26 @@ def infer(tenv: TEnv, e: Expr): (Qual, QType) = {
       val tq = QType(TFun(f, x, at, rt), q)
       val fl = check(tenv, ELam(f, x, at, body, Some(rt), Some(q)), tq)
       (fl, tq)
-    // F-sub new terms
-    case ETyLam(f, tvar, qvar, bound, body, rt, qual) => ??? //XXX
-    case ETyApp(t, q, fresh) => ??? //XXX
+    /** F-sub new terms **/
+    case ETyLam(f, tvar, qvar, bound, body, Some(rt), qual) =>
+      // We consider a type lambda term with full type annotation as "ascription"
+      val q = qual.getOrElse(Qual((body.freeVars -- Set(f, qvar)).asInstanceOf[Set[QElem]]))
+      val tq = QType(TForall(f, tvar, qvar, bound, rt), q)
+      val fl = check(tenv, e, tq)
+      (fl, tq)
+    case ETyLam(f, tvar, qvar, bound, body, None, qual) =>
+      // If there is only bound type, we infer the return type and
+      // check the whole type lambda term again
+      val q = qual.getOrElse(Qual((body.freeVars -- Set(f, qvar)).asInstanceOf[Set[QElem]]))
+      val (bodyFl, rt) = infer(tenv + TypeBound(tvar, qvar, bound), body)
+      val tq = QType(TForall(f, tvar, qvar, bound, rt), q)
+      val fl = check(tenv, ETyLam(f, tvar, qvar, bound, body, Some(rt), Some(q)), tq)
+      (fl, tq)
+    case ETyApp(e, tq, _) =>
+      val (fl1, QType(TForall(f, tvar, qvar, bound@QType(t, p), rt@QType(u, r)), q)) = infer(tenv, e)
+      assert(wellFormed(tenv, tq), "must be well-formed")
+      val fl = (fl1 ++ p ++ r) -- Qual(Set(f, qvar, Fresh()))
+      (fl -- Qual(Set(f, qvar, Fresh())), QType(u, r.subst(qvar, tq.q)))
   }
 }
 

@@ -342,7 +342,7 @@ def avoidanceNegNG(t: Type, a: String): (Qual /*filter*/, Type) = {
     case TRef(QType(t, q)) =>
       assert(q.isUntrack, "must be untrack in this system")
       val (fl, gr, t1) = avoidancePos(t, a)
-      // XXX: check equivalence betweeen t and t1?
+      assert(t == t1, "must be equivalent")
       (mt, TRef(QType(t, mt)))
     case F@TFun(f, x, QType(t, p), QType(u, r)) => // AV-NEGF-NG
       val (fl1, gr1, t1) = avoidancePos(t, a)
