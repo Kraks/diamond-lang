@@ -305,9 +305,8 @@ def avoidanceNeg(t: Type, a: String): (Qual /*filter*/, Qual /*growth*/, Type) =
       val (fl, gr, t1) = avoidancePos(t, a)
       assert(t == t1, "must be equivalent")
       (mt, mt, TRef(QType(t, mt)))
-    case F@TFun(f, x, QType(t, p), QType(u, r0))
-      if r0.contains(f) && (!p.contains(f) || p.isFresh) => // AV-NEGF-GR
-      val r = r0 - f
+    case F@TFun(f, x, QType(t, p), QType(u, r))
+      if r.contains(f) && (!p.contains(f) || p.isFresh) => // AV-NEGF-GR
       // S-GROW
       val (fl1, gr1, t1) = avoidancePos(t, a)
       val (fl2, gr2, u1) = avoidanceNeg(u, a)
