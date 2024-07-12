@@ -243,7 +243,6 @@ extension (tq: QType)
     t.freeVars ++ q.varSet
   def expose(tenv: TEnv): QType =
     val QType(ty, q) = tq
-    //QType(typeExposure(ty), qualExposure(q))
     QType(ty.expose(tenv), q)
 
 /* Qualifier upcasting */
@@ -383,7 +382,7 @@ def subtypeCheck(tenv: TEnv, t1: Type, t2: Type): (Qual /*filter*/, Qual /*growt
         val G1 = TForall(f2, tvar2, qvar3, bound2.rename(qvar2, qvar3), rt2.rename(qvar2, qvar3))
         subtypeCheck(tenv, F1, G1)
       } else throw new RuntimeException("Impossible")
-    case _ => throw new RuntimeException(s"Not subtype $t1 <: $t2")
+    case _ => throw new RuntimeException(s"Not subtype $tenv |- $t1 <: $t2")
   }
 }
 
@@ -664,8 +663,8 @@ def infer(tenv: TEnv, e: Expr): (Qual, QType) = {
       (fl, tq)
     case ETyApp(e, tq, _) =>
       val (fl1, t1) = infer(tenv, e)
-      val QType(TForall(f, tvar, qvar, bound@QType(t, p), rt@QType(u, r)), q) = t1.expose
-      val (fl2, gr) = subtypeCheck(tenv, tq.ty, u)
+      val QType(TForall(f, tvar, qvar, bound@QType(t, p), rt@QType(u, r)), q) = t1.expose(tenv)
+      val (fl2, gr) = subtypeCheck(tenv, tq.ty, t)
       assert(wellFormed(tenv, tq), "must be well-formed")
       val fl = (fl1 ++ fl2 ++ p ++ r) -- Qual(Set(f, qvar, Fresh()))
       (fl -- Qual(Set(f, qvar, Fresh())), rt.qtypeSubst(tvar, qvar, tq))

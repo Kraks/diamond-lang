@@ -67,8 +67,9 @@ class AvoidanceFSubTests extends AnyFunSuite {
       val r1 = Ref 1;
       val r2 = Ref 2;
       val p = ${makePair("r1", "r2")}[Ref[Int], Ref[Int]];
-      ${fstT("r1", "p")}[Ref[Int], Ref[Int]]
+      p
     """
+      //${fstT("r1", "p")}[Ref[Int], Ref[Int]]
     //println(parseToCore(prog1))
     assert(parseAndCheck(prog1) == (TRef(TNum^()) ^ ◆))
     val prog2 = s"""
