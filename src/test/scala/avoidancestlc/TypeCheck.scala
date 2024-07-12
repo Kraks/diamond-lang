@@ -172,9 +172,10 @@ class AvoidanceSTLCTests extends AnyFunSuite {
     def fstO(t: String)(p: String) = s"""
       $p(f(x: $t^{<>, f}): (g(y: $t^{<>,g}) => $t^{g,y})^{x, f} => { g(y: $t^{<>, g})^{x, f}: $t^{g, y} => { x } })
     """
-    def sndO(t: String, b: String)(p: String) = s"""
-      $p(f(x: $t^{<>, f})^$b => { g(y: $t^$b)^y: $t^g => { y } })
+    def sndO(t: String)(p: String) = s"""
+      $p(f(x: $t^{<>, f}): (g(y: $t^{<>,g}) => $t^{g,y})^{x, f} => { g(y: $t^{<>, g})^{x, f}: $t^{g, y} => { y } })
     """
+
     val prog1 = s"""
       def makePair() = {
         val r1 = Ref 1;
@@ -184,8 +185,12 @@ class AvoidanceSTLCTests extends AnyFunSuite {
       };
       makePair()
     """
-    //println(parseToCore(p0))
-    println(parseAndCheck(prog1))
+    assert(parseAndCheck(prog1) ==
+      (TFun("p","f",
+        TFun("f","x",TRef(TNum^()) ^ ("f", ◆),
+          TFun("g","y",TRef(TNum^()) ^ ("g", ◆),
+            TRef(TNum^()) ^ ("g","y")) ^ ("f","x")) ^ ("p", ◆), TRef(TNum^()) ^ ("f", "p")) ^ ◆))
+
     val prog2 = s"""
       def makePair() = {
         val r1 = Ref 1;
@@ -196,7 +201,18 @@ class AvoidanceSTLCTests extends AnyFunSuite {
       val p1 = makePair();
       ${fstO("Ref[Int]")("p1")}
     """
-    println(prog2)
-    //println(parseAndCheck(prog2))
+    assert(parseAndCheck(prog2) == (TRef(TNum^())^ ◆))
+
+    val prog3 = s"""
+      def makePair() = {
+        val r1 = Ref 1;
+        val r2 = Ref 2;
+        val p0 = ${makePair("Ref[Int]")("r1", "r2")};
+        p0
+      };
+      val p1 = makePair();
+      ${sndO("Ref[Int]")("p1")}
+    """
+    assert(parseAndCheck(prog3) == (TRef(TNum^())^ ◆))
   }
 }

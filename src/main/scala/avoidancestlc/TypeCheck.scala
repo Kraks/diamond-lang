@@ -183,7 +183,7 @@ def qualUpcast(g: TEnv, p: Qual, r: Qual): (Qual /*filter*/, Qual /*ub*/) = {
 
 def subQualCheck(g: TEnv, p: Qual, r: Qual): Option[Qual] =
   val (fl, p1) = qualUpcast(g, p, r)
-  println(s"$g |- p1: $p1 r: $r")
+  //println(s"$g |- p1: $p1 r: $r")
   if (p1 ⊆ r) Some(fl ++ r) else None
 
 /* Subtype checking */
@@ -205,8 +205,6 @@ def subtypeCheck(tenv: TEnv, t1: Type, t2: Type): (Qual /*filter*/, Qual /*growt
         val (fl1, gr1) = subtypeCheck(tenv, t2, t1)
         val (fl2, gr2) = subtypeCheck(tenv, u1, u2)
         assert(p2.subsetAt(Qual(Set(f, Fresh())), p1), "argument qualifier contravariance")
-        println(s"$F <: $G")
-        println(s"r1: $r1 r2: $r2")
         assert(r1.subsetAt(Qual(Set(f, Fresh())), r2), "return qualifier covariance")
         val p1_* = (p2 -- Qual(Set(f, Fresh()))) ++ gr1
         val r2_* = (r1 -- Qual(Set(f, x, Fresh()))) ++ gr2
@@ -470,7 +468,7 @@ def infer(tenv: TEnv, e: Expr): (Qual, QType) = {
 
 def checkInfer(tenv: TEnv, e: Expr, t: Type): (Qual/*filter*/, Qual/*qual*/) = {
   val (fl1, QType(t1, q)) = infer(tenv, e)
-  println(s"checkInfer $t1 <: $t")
+  //println(s"checkInfer $t1 <: $t")
   val (fl2, gr) = subtypeCheck(tenv, t1, t)
   (fl1 ++ fl2, q ++ gr)
 }
