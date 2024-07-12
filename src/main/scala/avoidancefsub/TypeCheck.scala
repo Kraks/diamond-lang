@@ -658,8 +658,9 @@ def infer(tenv: TEnv, e: Expr): (Qual, QType) = {
       (fl, tq)
     case ETyApp(e, tq, _) =>
       val (fl1, QType(TForall(f, tvar, qvar, bound@QType(t, p), rt@QType(u, r)), q)) = infer(tenv, e)
+      val (fl2, gr) = subtypeCheck(tenv, tq.ty, u)
       assert(wellFormed(tenv, tq), "must be well-formed")
-      val fl = (fl1 ++ p ++ r) -- Qual(Set(f, qvar, Fresh()))
+      val fl = (fl1 ++ fl2 ++ p ++ r) -- Qual(Set(f, qvar, Fresh()))
       (fl -- Qual(Set(f, qvar, Fresh())), QType(u, r.subst(qvar, tq.q)))
   }
 }
