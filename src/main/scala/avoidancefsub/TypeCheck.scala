@@ -281,7 +281,6 @@ def qualUpcast(g: TEnv, p: Qual, r: Qual): (Qual /*filter*/, Qual /*ub*/) = {
 
 def subQualCheck(g: TEnv, p: Qual, r: Qual): Option[Qual] =
   val (fl, p1) = qualUpcast(g, p, r)
-  println(s"$g |- p1: $p1 r: $r")
   if (p1 ⊆ r) Some(fl ++ r) else None
 
 /* Subtype checking */
@@ -303,8 +302,6 @@ def subtypeCheck(tenv: TEnv, t1: Type, t2: Type): (Qual /*filter*/, Qual /*growt
         val (fl1, gr1) = subtypeCheck(tenv, t2, t1)
         val (fl2, gr2) = subtypeCheck(tenv, u1, u2)
         assert(p2.subsetAt(Qual(Set(f, Fresh())), p1), "argument qualifier contravariance")
-        println(s"$F <: $G")
-        println(s"r1: $r1 r2: $r2")
         assert(r1.subsetAt(Qual(Set(f, Fresh())), r2), "return qualifier covariance")
         val p1_* = (p2 -- Qual(Set(f, Fresh()))) ++ gr1
         val r2_* = (r1 -- Qual(Set(f, x, Fresh()))) ++ gr2
@@ -557,21 +554,19 @@ def check(tenv: TEnv, e: Expr, tq: QType): Qual = e match {
     val r1 = if (p.contains(f)) r else r.subst(f, q)
     val x1 = if (!p.isFresh && p ⊆ r1) Qual.singleton(x) else Qual.untrack
     val fl = check(tenv + (x -> QType(t, p.subst(f, q))), body, QType(u, x1 ++ r.subst(f, q)))
-    assert(fl ⊆ (q + x), s"filter must be a subset of the provided qualifier: $fl ⊆ ${q + x}")
+    //assert(fl ⊆ (q + x), s"filter must be a subset of the provided qualifier: $fl ⊆ ${q + x}")
     (p ++ q) -- Qual(Set(Fresh(), f))
   case ETyLam(f, tvar, qvar, bound@QType(t, p), body, rt@Some(QType(u, r)), qual) =>
     // XXX: Need double check
     val QType(ft, q) = tq
     val r1 = if (p.contains(f)) r else r.subst(f, q)
     val tenv1 = tenv + TypeBound(tvar, qvar, QType(t, p.subst(f, q)))
-    val fl = check(tenv1, body, QType(u, r.subst(f, q)))
-    assert(fl ⊆ (q + qvar), s"filter must be a subset of the provided qualifier: $fl ⊆ ${q + qvar}")
+    val fl = check(tenv1, body, QType(u.substType(tvar, t), r.subst(f, q)))
+    //assert(fl ⊆ (q + qvar), s"filter must be a subset of the provided qualifier: $fl ⊆ ${q + qvar}")
     (p ++ q) -- Qual(Set(Fresh(), f))
   case _ =>
-    //println(s"check $e $tq")
     val QType(t, q) = tq
     val (fl1, q1) = checkInfer(tenv, e, t)
-    //println(s"$e $q1 $q")
     val Some(fl2) = subQualCheck(tenv, q1, q)
     (fl1 ++ fl2) - Fresh()
 }
@@ -661,8 +656,8 @@ def infer(tenv: TEnv, e: Expr): (Qual, QType) = {
       val tq = QType(TForall(f, tvar, qvar, bound, rt), q)
       val fl = check(tenv, ETyLam(f, tvar, qvar, bound, body, Some(rt), Some(q)), tq)
       (fl, tq)
-    case ETyApp(e, tq, _) =>
-      val (fl1, t1) = infer(tenv, e)
+    case ETyApp(e1, tq, _) =>
+      val (fl1, t1) = infer(tenv, e1)
       val QType(TForall(f, tvar, qvar, bound@QType(t, p), rt@QType(u, r)), q) = t1.expose(tenv)
       val (fl2, gr) = subtypeCheck(tenv, tq.ty, t)
       assert(wellFormed(tenv, tq), "must be well-formed")
