@@ -157,7 +157,7 @@ lam :
 ;
 
 tyLam :
-  ID '[' tyParamList ']' (':' qty)? RIGHTARROW '{' expr '}'
+  ID '[' tyParamList ']' ('^' qual)? (':' qty)? RIGHTARROW '{' expr '}'
 | '[' tyParamList ']' (':' qty)? RIGHTARROW '{' expr '}'
 ;
 
