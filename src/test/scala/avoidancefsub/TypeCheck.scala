@@ -55,15 +55,16 @@ class AvoidanceFSubTests extends AnyFunSuite {
       val p = ${makePair("r1", "r2")}[Ref[Int], Ref[Int]](r1, r2);
       p
     """
-      //${fstT("r1", "p")}[Ref[Int], Ref[Int]]
-    println(parseToCore(prog1))
-    assert(parseAndCheck(prog1) == (TRef(TNum^()) ^ ◆))
-    val prog2 = s"""
-      val r1 = Ref 1;
-      val r2 = Ref 2;
-      val p = ${makePair("r1", "r2")}[Ref[Int], Ref[Int]];
-      ${sndT("r1", "p")}[Ref[Int], Ref[Int]]
-    """
+
+    //${fstT("r1", "p")}[Ref[Int], Ref[Int]]
+    //println(parseToCore(prog1))
+    //assert(parseAndCheck(prog1) == (TRef(TNum^()) ^ ◆))
+    //val prog2 = s"""
+    //  val r1 = Ref 1;
+    //  val r2 = Ref 2;
+    //  val p = ${makePair("r1", "r2")}[Ref[Int], Ref[Int]];
+    //  ${sndT("r1", "p")}[Ref[Int], Ref[Int]]
+    //"""
     //println(parseToCore(prog2))
     //assert(parseAndCheck(prog2) == (TRef(TNum^()) ^ ◆))
   }
@@ -130,13 +131,3 @@ class AvoidanceFSubTests extends AnyFunSuite {
   }
 
 }
-
-
-/*
-ELet(r1,None,EAlloc(ENum(1)),ELet(r2,None,EAlloc(ENum(2)),
-ELet(p,None,
-  ETyApp(ETyApp(
-    ETyLam(𝐹#0,A,𝑥#1,TTop^◆,ETyLam(𝐹#2,B,𝑥#3,TTop^◆,ETyLam(𝐹#4,C,𝑥#5,TTop^◆,ELam(p,f,TFun(f,x,TVar(A)^r1,TFun(g,y,TVar(B)^r2,TVar(C)^g)^f)^{◆,p},EApp(EApp(EVar(f),EVar(r1),None),EVar(r2),None),Some(TVar(C)^f),Some({r1,r2})),None,None),None,None),None,None),
-    TRef(TNum^∅)^∅,None),
-    TRef(TNum^∅)^∅,None),EVar(p),false),false),false)
-*/

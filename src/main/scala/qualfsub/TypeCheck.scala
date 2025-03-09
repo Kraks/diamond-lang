@@ -391,12 +391,13 @@ def checkSubQType(T: QType, S: QType)(using Γ: TEnv): Unit =
 def checkSubtypeOverlap(T: QType, S: QType)(using Γ: TEnv): Unit =
   val QType(t1, q1) = T
   val QType(t2, q2) = S
-  if (t1.isSubtype(t2)) {
+  if (t1.isSubtype(t2))
     val sq1 = q1.sat
     val sq2 = q2.sat // FIXME: should not compute saturated sat here
     if (sq1.isSubqual(sq2)) ()
     else throw NonOverlap(sq2 - Fresh(), sq1 \ sq2)
-  } else throw NotSubtype(t1, t2)()
+  else
+    throw NotSubtype(t1, t2)()
 
 def checkDeepDep(t: Type, x: String): Unit =
   if (!t.freeVars.contains(x)) ()
